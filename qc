@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import argparse
+from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.viewer import QCCorpusViewer
+
+parser = argparse.ArgumentParser(prog="python codes.py")
+parser.add_argument('-s', '--settings', default='settings.yaml')
+subparsers = parser.add_subparsers(help="command", dest="command")
+subparsers.required = True
+
+init = subparsers.add_parser("init", help="Initialize the qc project")
+
+codebook = subparsers.add_parser("codebook", help="Update the codebook", aliases=["cb"])
+
+ls = subparsers.add_parser("list", help="List codes", aliases=["ls"])
+ls.add_argument("-e", "--expanded", action="store_true")
+
+rename = subparsers.add_parser("rename", help="Rename a code")
+rename.add_argument("old_code")
+rename.add_argument("new_code")
+
+find = subparsers.add_parser("find", help="Find all coded text")
+find.add_argument("code", help="Code(s) to find", nargs="+")
+find.add_argument("-B", "--before", help="Number of lines before the code to show", default=2, type=int)
+find.add_argument("-C", "--after", help="Number of lines after the code to show", default=2, type=int)
+find.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
+find.add_argument("-t", "--textonly", help="Show text but not codes", action="store_true")
+find.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
+
+stats = subparsers.add_parser("stats", help="Show statistics about code usage")
+stats.add_argument("code", help="Code(s) to display", nargs="*")
+stats.add_argument("-u", "--max", help="Maximum count value to show", type=int)
+stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
+stats.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
+stats.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
+stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
+stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
+
+args = parser.parse_args()
+corpus = QCCorpus(args.settings)
+viewer = QCCorpusViewer(corpus)
+
+if args.command == "init":
+    QCCorpus.initialize(args.settings)
+if args.command in ["codebook", "cb"]:
+    corpus.update_codebook()
+if args.command in ["list", "ls"]:
+    viewer.list_codes(args.expanded)
+if args.command == "rename":
+    corpus.rename_code(args.old_code, args.new_code)
+if args.command == "find":
+    viewer.show_coded_text(
+        args.code, 
+        before=args.before, 
+        after=args.after, 
+        recursive=args.recursive,
+        textonly=args.textonly, 
+        filepattern=args.files
+    )
+if args.command == "stats":
+    viewer.show_stats(
+        args.code, 
+        max_count=args.max, 
+        min_count=args.min, 
+        depth=args.depth, 
+        expanded=args.expanded, 
+        format=args.format, 
+        filepattern=args.files
+    )
