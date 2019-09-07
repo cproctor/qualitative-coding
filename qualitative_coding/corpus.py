@@ -31,12 +31,12 @@ class QCCorpus:
     @classmethod
     def initialize(cls, settings_file):
         if not Path(settings_file).exists():
-            Path(settings_file).write_text(yaml.dump(DEFUALT_SETTINGS))
-        settings = yaml.load(Path(settings_file).read_text())
+            Path(settings_file).write_text(yaml.dump(DEFAULT_SETTINGS))
+        settings = yaml.safe_load(Path(settings_file).read_text())
         codebook_path = Path(settings['codebook'])
         if not codebook_path.is_absolute():
             codebook_path = Path(settings_file).parent / codebook_path
-        if not codebook_path.exists:
+        if not codebook_path.exists():
             codebook_path.write_text("")
             
     def __init__(self, settings_file="settings.yaml"):
@@ -45,7 +45,7 @@ class QCCorpus:
         provides a default (portable) working directory for relative links
         """
         self.settings_file = settings_file
-        self.settings = yaml.load(Path(settings_file).read_text())
+        self.settings = yaml.safe_load(Path(settings_file).read_text())
 
         for attr, is_dir in (('corpus_dir', True), ('codes_dir', True), ('codebook', False)):
             p = Path(self.settings[attr])
@@ -59,7 +59,7 @@ class QCCorpus:
                 raise ValueError("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
 
     def initialize_codefiles(self, coder):
-        "For/each text in corpus, creates a blank file of equivalent length"
+        "For each text in corpus, creates a blank file of equivalent length"
 
     def iter_corpus(self, pattern=None):
         "Iterates over files in the corpus"
