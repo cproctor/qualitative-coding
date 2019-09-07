@@ -38,11 +38,13 @@ stats.add_argument("-m", "--format", help="Output format. For values, see docume
 stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
 
 args = parser.parse_args()
-corpus = QCCorpus(args.settings)
-viewer = QCCorpusViewer(corpus)
 
 if args.command == "init":
     QCCorpus.initialize(args.settings)
+else:
+    corpus = QCCorpus(args.settings)
+    viewer = QCCorpusViewer(corpus)
+
 if args.command in ["codebook", "cb"]:
     corpus.update_codebook()
 if args.command in ["list", "ls"]:
