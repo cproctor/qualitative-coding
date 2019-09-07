@@ -19,10 +19,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     requires=[
-        "PyYAML>=3.13",
-        "tabulate>=0.8.3"
+        "PyYAML",
+        "tabulate"
     ],
-    packages=["qualitative_coding"],
     scripts=["qc"],
     python_requires='>=3.6',
 )
