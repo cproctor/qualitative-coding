@@ -17,7 +17,7 @@ class TreeNode:
     @classmethod
     def read_yaml(cls, filename):
         with open(filename) as f:
-            return TreeNode({cls.root: yaml.load(f)})
+            return TreeNode({cls.root: yaml.safe_load(f)})
 
     @classmethod
     def write_yaml(cls, filename, tree_node):
