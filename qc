@@ -3,6 +3,7 @@
 import argparse
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.viewer import QCCorpusViewer
+from pathlib import Path
 
 parser = argparse.ArgumentParser(prog="python codes.py")
 parser.add_argument('-s', '--settings', default='settings.yaml')
@@ -10,6 +11,18 @@ subparsers = parser.add_subparsers(help="command", dest="command")
 subparsers.required = True
 
 init = subparsers.add_parser("init", help="Initialize the qc project")
+init.add_argument("--prepare-corpus", help="Prepare all texts in corpus by wrapping at 80 chars", action="store_true")
+init.add_argument('-p', "--pattern", help="pattern to match for which files to format")
+init.add_argument("-f", "--preformatted", help="Wrap, but respect prior formatting", action="store_true")
+init.add_argument("--prepare-codes", help="Prepare code files for a coder", action="store_true")
+init.add_argument("--coder", help="Name of coder")
+
+check = subparsers.add_parser("check", help="Check settings")
+
+code = subparsers.add_parser("code", help="Open a file for coding")
+code.add_argument("coder", help="Name of coder")
+code.add_argument('-p', "--pattern", help="pattern to match for which files to format")
+code.add_argument("-f", "--first-without-codes", help="Open the first file without codes", action="store_true")
 
 codebook = subparsers.add_parser("codebook", help="Update the codebook", aliases=["cb"])
 
@@ -37,36 +50,60 @@ stats.add_argument("-e", "--expanded", help="Show all results in expanded form",
 stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
 stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
 
-args = parser.parse_args()
 
-if args.command == "init":
-    QCCorpus.initialize(args.settings)
-else:
+def main(args):
+    if args.command == "init" and not Path(args.settings).exists():
+        QCCorpus.initialize(args.settings)
+        return 
+        
     corpus = QCCorpus(args.settings)
     viewer = QCCorpusViewer(corpus)
 
-if args.command in ["codebook", "cb"]:
-    corpus.update_codebook()
-if args.command in ["list", "ls"]:
-    viewer.list_codes(args.expanded)
-if args.command == "rename":
-    corpus.rename_code(args.old_code, args.new_code)
-if args.command == "find":
-    viewer.show_coded_text(
-        args.code, 
-        before=args.before, 
-        after=args.after, 
-        recursive=args.recursive,
-        textonly=args.textonly, 
-        filepattern=args.files
-    )
-if args.command == "stats":
-    viewer.show_stats(
-        args.code, 
-        max_count=args.max, 
-        min_count=args.min, 
-        depth=args.depth, 
-        expanded=args.expanded, 
-        format=args.format, 
-        filepattern=args.files
-    )
+    if args.command == "check":
+        corpus.validate()
+
+    if args.command == "code":
+        viewer.open_for_coding(pattern=args.pattern, coder=args.coder, 
+                first_without_codes=args.first_without_codes)
+
+    if args.command == "init":
+        if args.prepare_corpus:
+            corpus.prepare_texts(pattern=args.pattern, preformatted=args.preformatted)
+        if args.prepare_codes:
+            if not args.coder:
+                raise ValueError("Name of coder is required")
+            corpus.prepare_code_files(pattern=args.pattern, coder=args.coder)
+
+    if args.command in ["codebook", "cb"]:
+        corpus.update_codebook()
+    if args.command in ["list", "ls"]:
+        viewer.list_codes(args.expanded)
+    if args.command == "rename":
+        corpus.rename_code(args.old_code, args.new_code)
+    if args.command == "find":
+        viewer.show_coded_text(
+            args.code, 
+            before=args.before, 
+            after=args.after, 
+            recursive=args.recursive,
+            textonly=args.textonly, 
+            filepattern=args.files
+        )
+    if args.command == "stats":
+        viewer.show_stats(
+            args.code, 
+            max_count=args.max, 
+            min_count=args.min, 
+            depth=args.depth, 
+            expanded=args.expanded, 
+            format=args.format, 
+            filepattern=args.files
+        )
+
+args = parser.parse_args()
+main(args)
+
+
+
+
+
