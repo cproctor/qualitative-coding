@@ -8,15 +8,18 @@
 # - wrap in view, but still count accurately.
 
 from qualitative_coding.tree_node import TreeNode
+from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import merge_ranges, prompt_for_choice
 from tabulate import tabulate
 from collections import defaultdict
 from subprocess import run
+from datetime import datetime
 
 class QCCorpusViewer:
 
     def __init__(self, corpus):
         self.corpus = corpus
+        self.log = get_logger(__name__, self.corpus.settings['logs_dir'], self.corpus.settings.get('debug'))
 
     def list_codes(self, expanded=False):
         "Prints all the codes in the codebook"
@@ -73,8 +76,6 @@ class QCCorpusViewer:
                     formattedName = '.' + "  " * ancestorDepth + ":".join(a.name for a in ancestorTraversal+[n])
                 results.append((formattedName,  n.sum("count")))
         print(tabulate(results, ["Code", "Count"], tablefmt=format))
-
-# ====================================
 
     def report_files_matching_pattern(self, pattern):
         print("From files:")
@@ -137,7 +138,6 @@ class QCCorpusViewer:
             if first_without_codes:
                 f = None
                 for cf in corpus_files:
-                    print(self.corpus.get_codes(cf, coder=coder))
                     if len(self.corpus.get_codes(cf, coder=coder)) == 0:
                         f = cf
                         print("OK", f)
@@ -149,6 +149,32 @@ class QCCorpusViewer:
                         [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
                 f = corpus_files[choice]
         code_file = self.corpus.get_code_file_path(f, coder)
-        run(["vim", "-O", f, code_file])
+        self.log.debug(f"{coder} opened {f} for coding")
+        self.open_editor([f, code_file])
+
+    def memo(self, coder, message=""):
+        "Opens a memo file for coding"
+        fname = datetime.now().strftime("%Y-%m-%d-%H-%M") + '_' + coder
+        if message:
+            fname += "_" + message.replace(" ", "_").lower()
+        fname += ".md"
+        path = self.corpus.memos_dir / fname
+        if message:
+            path.write_text(f"# {message}\n\n{coder} {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+        else:
+            path.write_text(f"# Memo by {coder} on {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n") 
+        self.log.info(f"{coder} wrote memo {message}")
+        self.open_editor(path)
+
+    def list_memos(self):
+        "Concatenates all memo text"
+        text = [f.read_text() for f in sorted(self.corpus.memos_dir.glob("*.md"))]
+        return "\n\n".join(text)
+
+    def open_editor(self, files):
+        if not (isinstance(files, list) or isinstance(files, tuple)):
+            files = [files]
+        run(["vim", "-O"] + files)
+
 
 

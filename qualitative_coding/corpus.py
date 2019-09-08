@@ -17,50 +17,81 @@ from collections import defaultdict
 from pathlib import Path
 import yaml
 from qualitative_coding.tree_node import TreeNode
+from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prepare_corpus_text
 
 
 DEFAULT_SETTINGS = {
     'corpus_dir': 'corpus',
     'codes_dir': 'codes',
+    'logs_dir': 'qc.log',
+    'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
-    'log_file': 'qc.log',
 }
 
 class QCCorpus:
     
     @classmethod
-    def initialize(cls, settings_file):
+    def initialize(cls, settings_file="settings.py"):
+        """
+        If the settings file does not exist, creates it. Otherwise, uses the settings
+        file to initialize the expected directories and files.
+        """
         if not Path(settings_file).exists():
             Path(settings_file).write_text(yaml.dump(DEFAULT_SETTINGS))
-        settings = yaml.safe_load(Path(settings_file).read_text())
-        codebook_path = Path(settings['codebook'])
-        if not codebook_path.is_absolute():
-            codebook_path = Path(settings_file).parent / codebook_path
-        if not codebook_path.exists():
-            codebook_path.write_text("")
-            
+            return
+        settings_path = Path(settings_file)
+        settings = yaml.safe_load(setting_path.read_text())
+        log = get_logger(__name__, settings['logs_dir'])
+        for required_setting in DEFAULT_SETTINGS.keys():
+            path = Path(settings[required_setting])
+            path = path if path.is_absolute() else settings_path.parent / path
+            if required_setting.endswith("dir"):
+                if path.exists():
+                    if not path.is_dir():
+                        log.error(f"Expected {path} to be a directory")
+                        raise ValueError(f"Expected {path} to be a directory")
+                else:
+                    path.mkdir(parents=True)
+                    log.debug(f"Created {path}")
+            else:
+                if path.exists():
+                    if path.is_dir():
+                        log.error(f"Expected {path} to be a file, not a directory")
+                        raise ValueError(f"Expected {path} to be a file, not a directory")
+                else:
+                    path.touch()
+                    log.debug(f"Created {path}")
+
     def __init__(self, settings_file="settings.yaml"):
         """
         We need the actual settings file instead of just settings because it also
         provides a default (portable) working directory for relative links
         """
-        self.settings_file = settings_file
-        self.settings = yaml.safe_load(Path(settings_file).read_text())
+        self.settings_file = Path(settings_file)
+        self.settings = yaml.safe_load(self.settings_file.read_text())
+        self.log = get_logger(__name__, self.settings['logs_dir'], self.settings.get('debug'))
 
-        for attr, is_dir in (('corpus_dir', True), ('codes_dir', True), ('codebook', False)):
-            p = Path(self.settings[attr])
-            if p.is_absolute():
-                setattr(self, attr, p)
-            else:
-                setattr(self, attr, (Path(settings_file).resolve().parent / p).resolve())
+        for required_setting in DEFAULT_SETTINGS.keys():
+            path = Path(self.settings[required_setting])
+            path = path if path.is_absolute() else self.settings_file.resolve().parent / path
+            setattr(self, required_setting, path)
 
     def validate(self):
-        for attr, is_dir in (('corpus_dir', True), ('codes_dir', True), ('codebook', False)):
+        "Checks that files are as they should be"
+        # TODO: Verify code file lengths are correct
+        errors = []
+        for attr in DEFAULT_SETTINGS.keys():
             if not getattr(self, attr).exists():
-                raise ValueError("settings['{}'] ({}) does not exist".format(attr, getattr(self, attr)))
-            if is_dir and not getattr(self, attr).is_dir():
-                raise ValueError("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
+                errors.append("settings['{}'] ({}) does not exist".format(attr, getattr(self, attr)))
+            if required_setting.endswith('dir') and not getattr(self, attr).is_dir():
+                errors.append("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
+            if not required_setting.endswith('dir') and getattr(self, attr).is_dir():
+                errors.append(("settings['{}'] ({}) is a directory".format(attr, getattr(self, attr))))
+        for error in errors:
+            self.log.error(error)
+        if any(errors):
+            raise ValueError("\n".join(errors))
 
     def prepare_texts(self, pattern=None, preformatted=False):
         "Wraps texts at 80 characters"
@@ -198,6 +229,7 @@ class QCCorpus:
         code_tree.remove_children_by_name(old_code)
         TreeNode.write_yaml(settings.codebook, code_tree)
         self.update_codebook()
+        self.log.info(f"Renamed code {old_code} to {new_code}")
                 
 
             

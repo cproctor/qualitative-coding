@@ -50,6 +50,10 @@ stats.add_argument("-e", "--expanded", help="Show all results in expanded form",
 stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
 stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
 
+memo = subparsers.add_parser("memo", help="write a memo")
+memo.add_argument("-c", "--coder", help="id of memo author")
+memo.add_argument("-m", "--message", help="short message, title of memo file")
+memo.add_argument("-l", "--list", help="list all memos in order", action="store_true", dest="list_memos")
 
 def main(args):
     if args.command == "init" and not Path(args.settings).exists():
@@ -99,6 +103,12 @@ def main(args):
             format=args.format, 
             filepattern=args.files
         )
+
+    if args.command == "memo":
+        if args.list_memos:
+            print(viewer.list_memos())
+        else:
+            viewer.memo(args.coder, args.message)
 
 args = parser.parse_args()
 main(args)
