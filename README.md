@@ -11,7 +11,9 @@ Ethnography*.
 
 Most of the tools available for qualitative coding and subsequent analysis were
 designed for non-programmers. They are GUI-based, proprietary, and don't expose 
-the data in well-structured ways. 
+the data in well-structured ways. Concepts from computer science, such as trees,
+sorting, and filtering, could also be applied to qualitative coding analysis if
+the interface supported it. 
 
 Qualitative Coding, or `qc`, was designed to address these issues. The impetus
 was my own dissertation work. 
