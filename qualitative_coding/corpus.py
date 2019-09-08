@@ -17,6 +17,7 @@ from collections import defaultdict
 from pathlib import Path
 import yaml
 from qualitative_coding.tree_node import TreeNode
+from qualitative_coding.helpers import prepare_corpus_text
 
 
 DEFAULT_SETTINGS = {
@@ -53,13 +54,31 @@ class QCCorpus:
                 setattr(self, attr, p)
             else:
                 setattr(self, attr, (Path(settings_file).resolve().parent / p).resolve())
+
+    def validate(self):
+        for attr, is_dir in (('corpus_dir', True), ('codes_dir', True), ('codebook', False)):
             if not getattr(self, attr).exists():
                 raise ValueError("settings['{}'] ({}) does not exist".format(attr, getattr(self, attr)))
             if is_dir and not getattr(self, attr).is_dir():
                 raise ValueError("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
 
-    def initialize_codefiles(self, coder):
+    def prepare_texts(self, pattern=None, preformatted=False):
+        "Wraps texts at 80 characters"
+        for f in self.iter_corpus(pattern):
+            f.write_text(prepare_corpus_text(f.read_text(), width=80, preformatted=preformatted))
+
+    def get_code_file_path(self, corpus_file_path, coder):
+        text_path = corpus_file_path.relative_to(self.corpus_dir) 
+        return self.codes_dir / (str(text_path) + "." + coder + ".codes")
+
+    def prepare_code_files(self, coder, pattern=None):
         "For each text in corpus, creates a blank file of equivalent length"
+        for f in self.iter_corpus(pattern):
+            with open(f) as inf:
+                file_len = len(list(inf))                
+            code_path = self.get_code_file_path(f, coder)
+            code_path.parent.mkdir(parents=True, exist_ok=True)
+            code_path.write_text("\n" * file_len)
 
     def iter_corpus(self, pattern=None):
         "Iterates over files in the corpus"

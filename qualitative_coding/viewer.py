@@ -8,9 +8,10 @@
 # - wrap in view, but still count accurately.
 
 from qualitative_coding.tree_node import TreeNode
-from qualitative_coding.helpers import merge_ranges
+from qualitative_coding.helpers import merge_ranges, prompt_for_choice
 from tabulate import tabulate
 from collections import defaultdict
+from subprocess import run
 
 class QCCorpusViewer:
 
@@ -126,6 +127,28 @@ class QCCorpusViewer:
                         print(lines[i].strip()[:textwidth].ljust(textwidth) + 
                                 " | " + ", ".join(sorted(corpusCodes[i])))
             
-    def open_for_coding(self, text_path):
-        "vim -O f1 f2"
+    def open_for_coding(self, pattern, coder, first_without_codes=False):
+        corpus_files = list(self.corpus.iter_corpus(pattern))
+        if not any(corpus_files):
+            raise ValueError("No corpus files matched.")
+        if len(corpus_files) == 1:
+            f = corpus_files[0]
+        else:
+            if first_without_codes:
+                f = None
+                for cf in corpus_files:
+                    print(self.corpus.get_codes(cf, coder=coder))
+                    if len(self.corpus.get_codes(cf, coder=coder)) == 0:
+                        f = cf
+                        print("OK", f)
+                        break 
+                if f is None:
+                    raise ValueError(f"All {len(corpus_files)} matching files have codes")
+            else:
+                choice = prompt_for_choice("Multiple files matched:", 
+                        [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
+                f = corpus_files[choice]
+        code_file = self.corpus.get_code_file_path(f, coder)
+        run(["vim", "-O", f, code_file])
+
 
