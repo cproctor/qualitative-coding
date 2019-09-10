@@ -79,9 +79,9 @@ class QCCorpus:
         for attr in DEFAULT_SETTINGS.keys():
             if not getattr(self, attr).exists():
                 errors.append("settings['{}'] ({}) does not exist".format(attr, getattr(self, attr)))
-            if required_setting.endswith('dir') and not getattr(self, attr).is_dir():
+            if attr.endswith('dir') and not getattr(self, attr).is_dir():
                 errors.append("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
-            if not required_setting.endswith('dir') and getattr(self, attr).is_dir():
+            if not attr.endswith('dir') and getattr(self, attr).is_dir():
                 errors.append(("settings['{}'] ({}) is a directory".format(attr, getattr(self, attr))))
         for error in errors:
             self.log.error(error)
