@@ -1,4 +1,4 @@
-# Interview Coding
+# Qualitative Coding
 
 Qualitative coding for comptuer scientists. 
 
