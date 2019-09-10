@@ -100,7 +100,7 @@ class QCCorpusViewer:
         ):
         "Search through all text files and show all text matching the codes"
         if recursive:
-            codes = set(sum([get_child_nodes(code, names=True) for code in codes], []))
+            codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
             codes = set(codes)
         print("Showing results for codes: ", ", ".join(sorted(codes)))
