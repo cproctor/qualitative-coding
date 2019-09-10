@@ -65,6 +65,110 @@ and there are options to filter on coder where relevant. Analytical tools, such
 as correlations (on multiple units of analysis) and inter-rater reliatbility are
 coming. 
 
+## Tutorial
+
+Create a new directory somewhere. We will create a virtual environment, intstall
+`qc`, and download some sample text from Wikipedia. 
+
+    $ python3 -m venv env
+    $ source env/bin/activate
+    $ pip install qualitative-coding
+    $ qc init
+    $ qc init
+    $ curl -o corpus/what_is_coding.txt "https://en.wikipedia.org/w/index.php?title=Coding_%28social_sciences%29&action=raw"
+    $ qc init --prepare-corpus --prepare-codes --coder chris
+
+Now we're ready to start coding. This next command will open a split-window vim session. 
+Add comma-separated codes to the blank file on the right. I usually page-up (control+u) 
+and page-down (control+d) each file to keep their line numbers synchronized. Once you've 
+added some codes, we can analyze and refine them.
+
+    $ qc code chris -f
+    $ qc codebook
+    $ qc list
+    - a_priori
+    - analysis
+    - coding_process
+    - computers
+    - errors
+    - grounded_coding
+    - themes
+
+Now that we have coded our corpus (consisting of a single document), we should
+think about whether these codes have any structure. All data in `qc` is stored
+in flat files, so you can easily modify it by hand. Re-organize some of your
+codes in `codebook.yaml`. When you finish, run `codebook` again. It will go
+through your corpus and add any missing codes. 
+
+    $ qc list
+    - analysis
+    - coding_process
+        - a_priori
+        - grounded_coding
+    - computers
+    - errors
+    - themes
+
+I decided to group a priori coding and grounded coding together under coding
+process. Let's see some statistics on the codes:
+
+    $ qc stats
+    Code                  Count
+    ------------------  -------
+    analysis                  2
+    coding_process            7
+    .  a_priori               2
+    .  grounded_coding        2
+    computers                 2
+    errors                    1
+    themes                    2
+
+`stats` has lots of useful filtering and formatting options. For example, `qc
+stats --files wiki --depth 1 --min 10 --format latex` would only consider files
+having "wiki" in the filename. Within these files, it would show only
+top-level categories of codes having at least ten instances, and would output a
+table suitable for inclusion in a LaTeX document. Use `--help` on any command to
+see available options.
+
+Next, we might want to see examples of what we have coded. 
+
+    $ qc code analysis
+    Showing results for codes:  analysis
+    
+    what_is_coding.txt (2)
+    ================================================================================
+    
+    [0:3]
+    In the [[social science|social sciences]], '''coding''' is an analytical process | analysis
+    in which data, in both [[quantitative research|quantitative]] form (such as      | 
+    [[questionnaire]]s results) or [[qualitative research|qualitative]] form (such   | 
+    
+    [52:57]
+    process of selecting core thematic categories present in several documents to    | 
+    discover common patterns and relations.<ref>Grbich, Carol. (2013). "Qualitative  | 
+    Data Analysis" (2nd ed.). The Flinders University of South Australia: SAGE       | analysis
+    Publications Ltd.</ref>                                                          | 
+                                                                                     | 
+
+Again, there are lots of options for filtering and viewing your coding. At some
+point, you will probably want to revise your codes. You can easily rename a
+code, or collapse codes together, with the `remane` command. This updates your 
+codebook as well as in all your code files.
+
+    $ qc rename grounded_coding grounded
+
+At this point, you are starting to realize some of the deeper themes running
+through your corpus. Capturing these in an "integrative memo" is an important
+part of qualitative coding. `memo` will open a preformatted document for you in vim. 
+
+    $ qc memo chris --message "Thoughts on coding process"
+
+Congratulations! You have finished the first round of coding. Before you move
+on, this would be an excellent time to check your files into version control.
+I hope you find `qc` to be powerful and efficient; it's worked for me!
+
+-Chris Proctor
+
 ## Commands
 
 Use `--help` for a full list of available options for each command.
