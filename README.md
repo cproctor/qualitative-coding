@@ -84,7 +84,7 @@ Opens a split-screen vim window with a corpus file and the corresponding code
 file. The name of the coder is a required positional argument. 
 Use `--pattern` to glob-match the corpus file you want to code. If
 multiple are matched, you will be prompted to choose. The `--first-without-codes` option is
-particularly 
+particularly useful for coding the next uncoded text.
 
     $ qc code chris -f
 
