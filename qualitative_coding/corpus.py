@@ -221,13 +221,13 @@ class QCCorpus:
             for code_file_path in self.get_code_files_for_corpus_file(corpus_path):
                 codes = self.read_codes(code_file_path)
                 codes = [(ln, new_code if code == old_code else code) for ln, code in codes]
-                coder = self.get_coder_from_code_file_path(code_file_path)
-                self.write_codes(code_file_path, coder, codes)
+                coder = self.get_coder_from_code_path(code_file_path)
+                self.write_codes(corpus_path, coder, codes)
 
         code_tree = self.get_codebook()
         code_tree.rename(old_code, new_code)
         code_tree.remove_children_by_name(old_code)
-        TreeNode.write_yaml(settings.codebook, code_tree)
+        TreeNode.write_yaml(self.codebook, code_tree)
         self.update_codebook()
         self.log.info(f"Renamed code {old_code} to {new_code}")
                 

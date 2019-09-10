@@ -18,8 +18,15 @@ the interface supported it.
 Qualitative Coding, or `qc`, was designed to address these issues. The impetus
 was my own dissertation work. 
 
-Due to its nature as a command-line program, `qc` is only well-suited to coding
-textual data. 
+## Limitations
+
+- Due to its nature as a command-line program, `qc` is only well-suited to coding textual data. 
+- `qc` uses line numbers as a fundamental unit. Therefore, it requires text files in your corpus to be 
+  hard-wrapped at 80 characters. The `init` task will handle this for you. 
+- Currently, the only interface for actually doing the coding is a split-screen
+  in vim, with the corpus text on one side and comma-separated codes adjacent. This works well 
+  for me, but might not work well for you. I have other ideas in the pipeline,
+  but they won't be around soon.
 
 # Installation
 
@@ -32,45 +39,70 @@ textual data.
 - Choose a working directory. Run `qc init`. This will create `settings.yaml`.
 - In `settings.yaml`, update `corpus_dir` with the directory holding your source
   files. This may be relative to `settings.yaml` or absolute. Similarly, specify
-a directory `codes_dir` where you will store the files containing your codes.
-Update the locations of `codebook` and `log_file` as well, if you like. 
-- Run `qc init` again. 
+  directories for `codes_dir` `logs_dir`, `memos_dir`, and the YAML file where you want
+  to store your codebook. Unless you're particular, the default settings are fine. 
+- Run `qc init --prepare_corpus --prepare_codes --coder yourname`. This will
+  hard-wrap all the text in your corpus at 80 characters and create blank coding
+  files. 
 
 # Usage
 
----
+## Workflow
 
-## OLD
+`qc` is designed to give you a powerful terminal-based interface. The general
+workflow is to use `code` to apply qualitative codes to your text files. As you
+go, you will start to have ideas about the meanings and organization of your
+codes. Use `memo` to capture these. 
 
-This repo contains the text from interviews and tools for analyzing them. Our strategy will be:
+Once you finish a round of coding, it's time to reorganize your codes. Use
+`codebook` to refresh the codebook based on new coding. Use `stats` to see the
+distribution of your codes. If you want to move codes into a tree, make these
+changes directly in the codebook's YAML. If you realize you have redundant
+codes, use `rename`. 
 
-1. Open coding: Tagging whatever seems interesting in the interviews
-2. Developing/adopting frameworks: Organizing codes into hierarchies, possibly informed by prior research (for example, Paulo's four rationales for CS, reserach on inclusion/exclusion in CS, etc. 
-3. Analytical memos: Paragraph-length writing in which we start to process the patterns we're seeing into interpretive claims
-4. Supporting interpretive claims with quantitative analyses of codes and 
+The `--coder` argument supports keeping track of multiple coders on a project,
+and there are options to filter on coder where relevant. Analytical tools, such
+as correlations (on multiple units of analysis) and inter-rater reliatbility are
+coming. 
 
-## Coding tools
+## Commands
 
-The `src/codes.py` script contains a bunch of useful tools. The tools are configured in `src/settings.py`. 
-Run the script with no arguments for help. You can get help for a specific command by:
+Use `--help` for a full list of available options for each command.
 
-    ./codes.py rename --help
+### init
+Initializes a new coding project, as described above.
+
+    $ qc init
+
+### check
+Checks that all required files and directories are in place. 
+
+    $ qc check
+
+### code
+Opens a split-screen vim window with a corpus file and the corresponding code
+file. The name of the coder is a required positional argument. 
+Use `--pattern` to glob-match the corpus file you want to code. If
+multiple are matched, you will be prompted to choose. The `--first-without-codes` option is
+particularly 
+
+    $ qc code chris -f
 
 ### codebook (cb)
 Scans through all the code files and adds new codes to the codebook. 
 
-    ./codes.py codebook
+    $ qc codebook
 
 ### list (ls)
 Lists all the codes currently in use. By default, lists them as a tree. The `--expanded` option 
 will instead flatten the list of codes, and list each as something like `subjects:math:algebra`.
 
-    ./codes.py list --expanded
+    $ qc list --expanded
 
 ### rename
 Goes through all the code files and replaces one code with another. Removes the old code from the codebook.
 
-    ./codes.py rename funy funny
+    $ qc rename funy funny
 
 ### find
 Displays all occurences of the provided code(s). With the `--recursive` option, also includes child
@@ -78,7 +110,7 @@ codes in the codebook's tree of codes. Note that a code may appear multiple time
 the `--recursive` option will search for all children of all instances. When you want to grab text for a quotation,
 use the `--textonly` option. The `--files` option lets you filter which corpus files to search.
 
-    ./codes.py find math science art --recursive
+    $ qc find math science art --recursive
 
 ### stats
 Displays frequency of usage for each code. Note that counts include all usages of children.
@@ -87,31 +119,4 @@ List code names to show only certain codes. Filter code results with
 tree representation. Arguments to `--format` may be any supported by [tabulate](https://bitbucket.org/astanin/python-tabulate).
 The `--files` option lets you filter which corpus files to use in computing stats.
 
-    ./codes.py stats curriculum math algebra --depth 0
-    ./codes.py stats --max 1
-
-## Command-line tools
-
-### Search for any text 
-
-    grep -r "professional" interviews/*.txt
-
-### Split a text file at 80 characters
-
-    fold -w 80 -s file.txt > file.txt
-
-## Roadmap
-I plan to keep developing this set of tools, for this and other qualitative coding projects. The following tools are coming:
-
-- inter-rater reliability
-- Show stats for particular coders or particular texts
-- add autocomplete for codes
-- glob matching for filtering which corpus files to consider
-- distribute as a separate library, `qc`, and provide a default configuration without settings. (By default, name.txt is a corpus file 
-  and name.codes.coderlabel.txt is a corresponding code file.
-    - Add filter options on codefiles, so that you can use only a later coding if you like. Does this
-      put too much responsibility on the user to set up an appropriate naming scheme?
-- Add search and filter options on list as well. These should be abstracted out as separate functions.
-- In find, show codes in hierarchy when listing which codes will be shown
-    - In the class, have a queryset for codes which is lazily evaluated, so that filters can be chain-applied. Probably this is a class.
-- In `find`, wrap code text at a set number of lines, and leave whitespace on the text side until all the codes for a line have been displayed.
+    $ qc stats curriculum math algebra --depth 1

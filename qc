@@ -40,6 +40,7 @@ find.add_argument("-C", "--after", help="Number of lines after the code to show"
 find.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
 find.add_argument("-t", "--textonly", help="Show text but not codes", action="store_true")
 find.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
+find.add_argument("-l", "--list", help="List files containing code", action="store_true", dest="list_files")
 
 stats = subparsers.add_parser("stats", help="Show statistics about code usage")
 stats.add_argument("code", help="Code(s) to display", nargs="*")
@@ -51,7 +52,7 @@ stats.add_argument("-m", "--format", help="Output format. For values, see docume
 stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
 
 memo = subparsers.add_parser("memo", help="write a memo")
-memo.add_argument("-c", "--coder", help="id of memo author")
+memo.add_argument("coder", help="id of memo author")
 memo.add_argument("-m", "--message", help="short message, title of memo file")
 memo.add_argument("-l", "--list", help="list all memos in order", action="store_true", dest="list_memos")
 
@@ -91,7 +92,8 @@ def main(args):
             after=args.after, 
             recursive=args.recursive,
             textonly=args.textonly, 
-            filepattern=args.files
+            filepattern=args.files,
+            list_files=args.list_files
         )
     if args.command == "stats":
         viewer.show_stats(

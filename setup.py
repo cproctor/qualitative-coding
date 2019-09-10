@@ -18,7 +18,7 @@ setuptools.setup(
         "License :: OSI Approved :: GNU Affero General Public License v3",
         "Operating System :: OS Independent",
     ],
-    requires=[
+    install_requires=[
         "PyYAML",
         "tabulate"
     ],

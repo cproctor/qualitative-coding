@@ -79,8 +79,8 @@ class QCCorpusViewer:
 
     def report_files_matching_pattern(self, pattern):
         print("From files:")
-        for f in self.corpus.iter_corpus(pattern=filepattern):
-            print(f"- {f}")
+        for f in self.corpus.iter_corpus(pattern=pattern):
+            print("- {}".format(f.relative_to(self.corpus.corpus_dir)))
     
     def get_child_nodes(self, code, names=False, expanded=False, depth=None):
         "Finds all children of the given code (which may occur multiple times in the code tree)"
@@ -95,7 +95,8 @@ class QCCorpusViewer:
             textonly=False, 
             textwidth=80, 
             coder=None,
-            filepattern=None
+            filepattern=None,
+            list_files=False,
         ):
         "Search through all text files and show all text matching the codes"
         if recursive:
@@ -115,8 +116,11 @@ class QCCorpusViewer:
                 lines = list(f)
             ranges = merge_ranges([range(n-before, n+after+1) for n in matchingLines], clamp=[0, len(lines)])
             if any(ranges):
+                if list_files:
+                    print(corpus_file.relative_to(self.corpus.corpus_dir))
+                    continue
                 print("")
-                print("{} ({})".format(corpus_file, len(matchingLines)))
+                print("{} ({})".format(corpus_file.relative_to(self.corpus.corpus_dir), len(matchingLines)))
                 print("=" * textwidth)
             for r in ranges:
                 print("")
@@ -129,7 +133,7 @@ class QCCorpusViewer:
                                 " | " + ", ".join(sorted(corpusCodes[i])))
             
     def open_for_coding(self, pattern, coder, first_without_codes=False):
-        corpus_files = list(self.corpus.iter_corpus(pattern))
+        corpus_files = sorted(list(self.corpus.iter_corpus(pattern)))
         if not any(corpus_files):
             raise ValueError("No corpus files matched.")
         if len(corpus_files) == 1:
@@ -140,7 +144,6 @@ class QCCorpusViewer:
                 for cf in corpus_files:
                     if len(self.corpus.get_codes(cf, coder=coder)) == 0:
                         f = cf
-                        print("OK", f)
                         break 
                 if f is None:
                     raise ValueError(f"All {len(corpus_files)} matching files have codes")
