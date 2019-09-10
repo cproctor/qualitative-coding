@@ -57,10 +57,13 @@ memo.add_argument("-m", "--message", help="short message, title of memo file")
 memo.add_argument("-l", "--list", help="list all memos in order", action="store_true", dest="list_memos")
 
 def main(args):
-    if args.command == "init" and not Path(args.settings).exists():
-        QCCorpus.initialize(args.settings)
-        return 
-        
+    if args.command == "init":
+        if not Path(args.settings).exists():
+            QCCorpus.initialize(args.settings)
+            return 
+        else:
+            QCCorpus.initialize(args.settings)
+
     corpus = QCCorpus(args.settings)
     viewer = QCCorpusViewer(corpus)
 

@@ -24,7 +24,7 @@ from qualitative_coding.helpers import prepare_corpus_text
 DEFAULT_SETTINGS = {
     'corpus_dir': 'corpus',
     'codes_dir': 'codes',
-    'logs_dir': 'qc.log',
+    'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
 }
@@ -41,27 +41,22 @@ class QCCorpus:
             Path(settings_file).write_text(yaml.dump(DEFAULT_SETTINGS))
             return
         settings_path = Path(settings_file)
-        settings = yaml.safe_load(setting_path.read_text())
-        log = get_logger(__name__, settings['logs_dir'])
+        settings = yaml.safe_load(settings_path.read_text())
         for required_setting in DEFAULT_SETTINGS.keys():
             path = Path(settings[required_setting])
             path = path if path.is_absolute() else settings_path.parent / path
             if required_setting.endswith("dir"):
                 if path.exists():
                     if not path.is_dir():
-                        log.error(f"Expected {path} to be a directory")
                         raise ValueError(f"Expected {path} to be a directory")
                 else:
                     path.mkdir(parents=True)
-                    log.debug(f"Created {path}")
             else:
                 if path.exists():
                     if path.is_dir():
-                        log.error(f"Expected {path} to be a file, not a directory")
                         raise ValueError(f"Expected {path} to be a file, not a directory")
                 else:
                     path.touch()
-                    log.debug(f"Created {path}")
 
     def __init__(self, settings_file="settings.yaml"):
         """
