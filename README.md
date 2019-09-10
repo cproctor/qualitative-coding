@@ -15,8 +15,11 @@ the data in well-structured ways. Concepts from computer science, such as trees,
 sorting, and filtering, could also be applied to qualitative coding analysis if
 the interface supported it. 
 
-Qualitative Coding, or `qc`, was designed to address these issues. The impetus
-was my own dissertation work. 
+Qualitative Coding, or `qc`, was designed to address these issues. I have used
+`qc` as a primary coding tool in a [SIGCSE
+paper](http://chrisproctor.net/publications/proctor_2019_defining_cs.html) on
+how K-12 schools define and design computer science courses. The impetus for
+packaging and releasing a stable version was my own dissertation work. 
 
 ## Limitations
 
@@ -62,7 +65,7 @@ codes, use `rename`.
 
 The `--coder` argument supports keeping track of multiple coders on a project,
 and there are options to filter on coder where relevant. Analytical tools, such
-as correlations (on multiple units of analysis) and inter-rater reliatbility are
+as correlations (on multiple units of analysis) and inter-rater reliability are
 coming. 
 
 ## Tutorial
