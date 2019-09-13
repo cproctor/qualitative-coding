@@ -14,6 +14,7 @@ from tabulate import tabulate
 from collections import defaultdict
 from subprocess import run
 from datetime import datetime
+from random import shuffle
 
 class QCCorpusViewer:
 
@@ -132,25 +133,32 @@ class QCCorpusViewer:
                         print(lines[i].strip()[:textwidth].ljust(textwidth) + 
                                 " | " + ", ".join(sorted(corpusCodes[i])))
             
-    def open_for_coding(self, pattern, coder, first_without_codes=False):
+    def open_for_coding(self, pattern, coder, choice=None):
         corpus_files = sorted(list(self.corpus.iter_corpus(pattern)))
         if not any(corpus_files):
             raise ValueError("No corpus files matched.")
         if len(corpus_files) == 1:
             f = corpus_files[0]
         else:
-            if first_without_codes:
+            if choice is not None:
+                if choice == 'first':
+                    files_to_search = corpus_files
+                elif choice == 'random':
+                    shuffle(corpus_files)
+                    files_to_search = corpus_files
+                else:
+                    raise ValueError("Choice argument must be 'first' or 'random'")
                 f = None
-                for cf in corpus_files:
+                for cf in files_to_search:
                     if len(self.corpus.get_codes(cf, coder=coder)) == 0:
                         f = cf
                         break 
                 if f is None:
                     raise ValueError(f"All {len(corpus_files)} matching files have codes")
             else:
-                choice = prompt_for_choice("Multiple files matched:", 
+                story_index = prompt_for_choice("Multiple files matched:", 
                         [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
-                f = corpus_files[choice]
+                f = corpus_files[story_index]
         code_file = self.corpus.get_code_file_path(f, coder)
         self.log.debug(f"{coder} opened {f} for coding")
         self.open_editor([f, code_file])
