@@ -22,8 +22,8 @@ check = subparsers.add_parser("check", help="Check settings")
 code = subparsers.add_parser("code", help="Open a file for coding")
 code.add_argument("coder", help="Name of coder")
 code.add_argument('-p', "--pattern", help="pattern to match for which files to format")
-code.add_argument("-f", "--first-without-codes", help="Open the first file without codes", action="store_true")
-code.add_argument("-r", "--random-story", help="Open a random file without codes", action="store_true")
+code.add_argument("-f", "--first", help="Open the first file without codes", action="store_true")
+code.add_argument("-r", "--random", help="Open a random file without codes", action="store_true")
 
 codebook = subparsers.add_parser("codebook", help="Update the codebook", aliases=["cb"])
 
@@ -72,11 +72,11 @@ def main(args):
         corpus.validate()
 
     if args.command == "code":
-        if args.first_without_codes and args.random_story:
-            raise ValueError("Incompatible flags. Can't choose first without codes and random story")
-        if args.first_without_codes:
+        if args.first and args.random:
+            raise ValueError("Incompatible flags. Can't choose first and random")
+        if args.first:
             choice = "first"
-        elif args.random_story:
+        elif args.random:
             choice = "random"
         else:
             choice = None
