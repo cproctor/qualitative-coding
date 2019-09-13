@@ -44,7 +44,7 @@ packaging and releasing a stable version was my own dissertation work.
   files. This may be relative to `settings.yaml` or absolute. Similarly, specify
   directories for `codes_dir` `logs_dir`, `memos_dir`, and the YAML file where you want
   to store your codebook. Unless you're particular, the default settings are fine. 
-- Run `qc init --prepare_corpus --prepare_codes --coder yourname`. This will
+- Run `qc init --prepare-corpus --prepare-codes --coder yourname`. This will
   hard-wrap all the text in your corpus at 80 characters and create blank coding
   files. 
 
