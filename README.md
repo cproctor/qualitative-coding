@@ -1,6 +1,6 @@
 # Qualitative Coding
 
-Qualitative coding for comptuer scientists. 
+Qualitative coding for computer scientists. 
 
 Qualitative coding is a form of feature extraction in which text (or images,
 video, etc.) is tagged with features of interest. Sometimes the codebook is
@@ -63,8 +63,11 @@ distribution of your codes. If you want to move codes into a tree, make these
 changes directly in the codebook's YAML. If you realize you have redundant
 codes, use `rename`. 
 
+After you finish coding, you may want to use your codes for analysis. Tools 
+are provided for viewing statistics and examples of codes, with many options for
+selecting and filtering. 
 The `--coder` argument supports keeping track of multiple coders on a project,
-and there are options to filter on coder where relevant. Analytical tools, such
+and there are options to filter on coder where relevant. More analytical tools, such
 as correlations (on multiple units of analysis) and inter-rater reliability are
 coming. 
 
@@ -80,6 +83,12 @@ Create a new directory somewhere. We will create a virtual environment, intstall
     $ qc init
     $ curl -o corpus/what_is_coding.txt "https://en.wikipedia.org/w/index.php?title=Coding_%28social_sciences%29&action=raw"
     $ qc init --prepare-corpus --prepare-codes --coder chris
+
+Why run `qc init` three times? The first time creates a prepopulated
+`settings.py` file. You could then change any settings. The second time 
+reads `settings.py` and creates the specified files and directories. 
+And the third run, with the flags, processes the corpus file and creates a
+corresponding coding file.
 
 Now we're ready to start coding. This next command will open a split-window vim session. 
 Add comma-separated codes to the blank file on the right. I usually page-up (control+u) 
