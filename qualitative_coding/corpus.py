@@ -104,7 +104,10 @@ class QCCorpus:
                 file_len = len(list(inf))                
             code_path = self.get_code_file_path(f, coder)
             code_path.parent.mkdir(parents=True, exist_ok=True)
-            code_path.write_text("\n" * file_len)
+            if code_path.exists():
+                print("Skipping {} because it already exists".format(code_path))
+            else:
+                code_path.write_text("\n" * file_len)
 
     def iter_corpus(self, pattern=None):
         "Iterates over files in the corpus"
