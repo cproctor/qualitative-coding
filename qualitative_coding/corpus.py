@@ -41,7 +41,12 @@ class QCCorpus:
             Path(settings_file).write_text(yaml.dump(DEFAULT_SETTINGS))
             return
         settings_path = Path(settings_file)
-        settings = yaml.safe_load(settings_path.read_text())
+        try: 
+            settings = yaml.safe_load(settings_path.read_text())
+        except FileNotFoundError as e:
+            message = "Settings file {} was not found. qc must be run from its project directory. If you are starting a new qc project, run `qc init`.".format(settings_file)
+            print(message)
+            raise e
         for required_setting in DEFAULT_SETTINGS.keys():
             path = Path(settings[required_setting])
             path = path if path.is_absolute() else settings_path.parent / path
