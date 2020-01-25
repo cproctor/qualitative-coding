@@ -43,10 +43,9 @@ class QCCorpus:
         settings_path = Path(settings_file)
         try: 
             settings = yaml.safe_load(settings_path.read_text())
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             message = "Settings file {} was not found. qc must be run from its project directory. If you are starting a new qc project, run `qc init`.".format(settings_file)
-            print(message)
-            raise e
+            raise FileNotFoundError(message)
         for required_setting in DEFAULT_SETTINGS.keys():
             path = Path(settings[required_setting])
             path = path if path.is_absolute() else settings_path.parent / path
@@ -69,7 +68,11 @@ class QCCorpus:
         provides a default (portable) working directory for relative links
         """
         self.settings_file = Path(settings_file)
-        self.settings = yaml.safe_load(self.settings_file.read_text())
+        try: 
+            self.settings = yaml.safe_load(self.settings_file.read_text())
+        except FileNotFoundError:
+            message = "Settings file {} was not found. qc must be run from its project directory. If you are starting a new qc project, run `qc init`.".format(settings_file)
+            raise FileNotFoundError(message)
         self.log = get_logger(__name__, self.settings['logs_dir'], self.settings.get('debug'))
 
         for required_setting in DEFAULT_SETTINGS.keys():
