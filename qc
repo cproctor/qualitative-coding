@@ -5,7 +5,7 @@ from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.viewer import QCCorpusViewer
 from pathlib import Path
 
-parser = argparse.ArgumentParser(prog="python codes.py")
+parser = argparse.ArgumentParser(prog="qc")
 parser.add_argument('-s', '--settings', default='settings.yaml')
 subparsers = parser.add_subparsers(help="command", dest="command")
 subparsers.required = True
