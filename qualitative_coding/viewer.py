@@ -37,16 +37,18 @@ class QCCorpusViewer:
         depth=None, 
         expanded=False, 
         format=None,
-        filepattern=None
+        file_pattern=None,
+        file_list=None,
+        invert_files=False,
     ):
         """
         Displays statistics about how codes are used.
         """
         # Assign counts to nodes
-        if filepattern:
-            self.report_files_matching_pattern(filepattern) 
+        if file_pattern:
+            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert_files) 
             
-        counts = self.corpus.get_code_counts(pattern=filepattern)
+        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, invert=invert_files)
         rootNode = self.corpus.get_codebook()
         for node in rootNode.flatten():
             node.count = counts[node.name]
@@ -78,9 +80,9 @@ class QCCorpusViewer:
                 results.append((formattedName,  n.sum("count")))
         print(tabulate(results, ["Code", "Count"], tablefmt=format))
 
-    def report_files_matching_pattern(self, pattern):
+    def report_files_matching_pattern(self, pattern, file_list=None, invert=False):
         print("From files:")
-        for f in self.corpus.iter_corpus(pattern=pattern):
+        for f in sorted(self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert)):
             print("- {}".format(f.relative_to(self.corpus.corpus_dir)))
     
     def get_child_nodes(self, code, names=False, expanded=False, depth=None):
@@ -96,19 +98,27 @@ class QCCorpusViewer:
             textonly=False, 
             textwidth=80, 
             coder=None,
-            filepattern=None,
+            file_pattern=None,
+            file_list=None,
             list_files=False,
+            list_files_inverse=False,
+            invert_files=False,
+            show_codes=True,
         ):
         "Search through all text files and show all text matching the codes"
+        if list_files and list_files_inverse:
+            raise ValueError("Incompatible options: list_files, list_files_inverse")
+
         if recursive:
             codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
             codes = set(codes)
-        print("Showing results for codes: ", ", ".join(sorted(codes)))
-        if filepattern:
-            self.report_files_matching_pattern(filepattern)
+        if show_codes:
+            print("Showing results for codes: ", ", ".join(sorted(codes)))
+        if file_pattern and not (list_files or list_files_inverse):
+            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert_files)
         
-        for corpus_file in self.corpus.iter_corpus(pattern=filepattern):
+        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert_files):
             corpusCodes = defaultdict(set)
             for line_num, code in self.corpus.get_codes(corpus_file, coder=coder, merge=True):
                 corpusCodes[line_num].add(code)
@@ -116,22 +126,23 @@ class QCCorpusViewer:
             with open(corpus_file) as f:
                 lines = list(f)
             ranges = merge_ranges([range(n-before, n+after+1) for n in matchingLines], clamp=[0, len(lines)])
-            if any(ranges):
-                if list_files:
+            if list_files or list_files_inverse:
+                if (list_files and len(ranges) > 0) or (list_files_inverse and len(ranges) == 0):
                     print(corpus_file.relative_to(self.corpus.corpus_dir))
-                    continue
-                print("")
-                print("{} ({})".format(corpus_file.relative_to(self.corpus.corpus_dir), len(matchingLines)))
-                print("=" * textwidth)
-            for r in ranges:
-                print("")
-                print("[{}:{}]".format(r.start, r.stop))
-                if textonly:
-                    print(" ".join(lines[i].strip() for i in r))
-                else:
-                    for i in r:
-                        print(lines[i].strip()[:textwidth].ljust(textwidth) + 
-                                " | " + ", ".join(sorted(corpusCodes[i])))
+            else:
+                if len(ranges) > 0:
+                    print("")
+                    print("{} ({})".format(corpus_file.relative_to(self.corpus.corpus_dir), len(matchingLines)))
+                    print("=" * textwidth)
+                for r in ranges:
+                    print("")
+                    print("[{}:{}]".format(r.start, r.stop))
+                    if textonly:
+                        print(" ".join(lines[i].strip() for i in r))
+                    else:
+                        for i in r:
+                            print(lines[i].strip()[:textwidth].ljust(textwidth) + 
+                                    " | " + ", ".join(sorted(corpusCodes[i])))
             
     def open_for_coding(self, pattern, coder, choice=None):
         corpus_files = sorted(list(self.corpus.iter_corpus(pattern)))

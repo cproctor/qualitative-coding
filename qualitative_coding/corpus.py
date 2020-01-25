@@ -117,18 +117,25 @@ class QCCorpus:
             else:
                 code_path.write_text("\n" * file_len)
 
-    def iter_corpus(self, pattern=None):
+    def iter_corpus(self, pattern=None, file_list=None, invert=False):
         "Iterates over files in the corpus"
         if pattern:
             glob = '*' + pattern + '*.txt'
         else:
             glob = '*.txt'
-        for f in Path(self.corpus_dir).rglob(glob):
-            yield f
+        if not invert:
+            for f in Path(self.corpus_dir).rglob(glob):
+                if file_list is None or str(f.relative_to(self.corpus_dir)) in file_list:
+                    yield f
+        else:
+            matches = set(self.iter_corpus(pattern=pattern, file_list=file_list))
+            for f in Path(self.corpus_dir).rglob(glob):
+                if f not in matches:
+                    yield f
 
-    def iter_corpus_codes(self, pattern=None, coder=None, merge=False):
+    def iter_corpus_codes(self, pattern=None, file_list=None, invert=False, coder=None, merge=False):
         "Iterates over (f, codes) for code files"
-        for f in self.iter_corpus(pattern):
+        for f in self.iter_corpus(pattern, file_list=file_list, invert=invert):
             yield f, self.get_codes(f, coder=coder, merge=merge)
 
     def iter_code_files(self, coder=None):
@@ -187,10 +194,10 @@ class QCCorpus:
                 all_codes.add(code)
         return all_codes
 
-    def get_code_counts(self, pattern=None, coder=None):
+    def get_code_counts(self, pattern=None, file_list=None, invert=False, coder=None):
         "Returns a defaultdict of {code: number of uses in codefiles}"
         all_codes = defaultdict(int)
-        for f, codes in self.iter_corpus_codes(pattern=pattern, coder=coder, merge=True):
+        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, coder=coder, merge=True):
             for line_num, code in codes:
                 all_codes[code] += 1
         return all_codes

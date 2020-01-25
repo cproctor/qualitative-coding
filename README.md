@@ -13,7 +13,8 @@ Most of the tools available for qualitative coding and subsequent analysis were
 designed for non-programmers. They are GUI-based, proprietary, and don't expose 
 the data in well-structured ways. Concepts from computer science, such as trees,
 sorting, and filtering, could also be applied to qualitative coding analysis if
-the interface supported it. 
+the interface supported it. Furthermore, a command-line based tool can be
+combined with other utilities into flexible pipelines. 
 
 Qualitative Coding, or `qc`, was designed to address these issues. I have used
 `qc` as a primary coding tool in a [SIGCSE
@@ -25,7 +26,7 @@ packaging and releasing a stable version was my own dissertation work.
 
 - Due to its nature as a command-line program, `qc` is only well-suited to coding textual data. 
 - `qc` uses line numbers as a fundamental unit. Therefore, it requires text files in your corpus to be 
-  hard-wrapped at 80 characters. The `init` task will handle this for you. 
+  hard-wrapped at 80 characters. The `init` task can handle this for you. 
 - Currently, the only interface for actually doing the coding is a split-screen
   in vim, with the corpus text on one side and comma-separated codes adjacent. This works well 
   for me, but might not work well for you. I have other ideas in the pipeline,
@@ -136,7 +137,7 @@ process. Let's see some statistics on the codes:
     themes                    2
 
 `stats` has lots of useful filtering and formatting options. For example, `qc
-stats --files wiki --depth 1 --min 10 --format latex` would only consider files
+stats --pattern wiki --depth 1 --min 10 --format latex` would only consider files
 having "wiki" in the filename. Within these files, it would show only
 top-level categories of codes having at least ten instances, and would output a
 table suitable for inclusion in a LaTeX document. Use `--help` on any command to
@@ -144,7 +145,7 @@ see available options.
 
 Next, we might want to see examples of what we have coded. 
 
-    $ qc code analysis
+    $ qc find analysis
     Showing results for codes:  analysis
     
     what_is_coding.txt (2)
@@ -225,7 +226,8 @@ Goes through all the code files and replaces one code with another. Removes the 
 Displays all occurences of the provided code(s). With the `--recursive` option, also includes child
 codes in the codebook's tree of codes. Note that a code may appear multiple times in the codebook; in this case, 
 the `--recursive` option will search for all children of all instances. When you want to grab text for a quotation,
-use the `--textonly` option. The `--files` option lets you filter which corpus files to search.
+use the `--textonly` option. The `--pattern` option lets you filter which corpus files to search, and `--invert`
+can invert the selection.
 
     $ qc find math science art --recursive
 
@@ -234,6 +236,6 @@ Displays frequency of usage for each code. Note that counts include all usages o
 List code names to show only certain codes. Filter code results with 
 `--depth`, `--max`, and `--min`. Use the `--expanded` option to show the full name of each code, rather than the 
 tree representation. Arguments to `--format` may be any supported by [tabulate](https://bitbucket.org/astanin/python-tabulate).
-The `--files` option lets you filter which corpus files to use in computing stats.
+The `--pattern` option lets you filter which corpus files to use in computing stats.
 
     $ qc stats curriculum math algebra --depth 1

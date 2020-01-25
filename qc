@@ -21,7 +21,7 @@ check = subparsers.add_parser("check", help="Check settings")
 
 code = subparsers.add_parser("code", help="Open a file for coding")
 code.add_argument("coder", help="Name of coder")
-code.add_argument('-p', "--pattern", help="pattern to match for which files to format")
+code.add_argument('-p', "--pattern", help="pattern to match for which files to code")
 code.add_argument("-f", "--first", help="Open the first file without codes", action="store_true")
 code.add_argument("-r", "--random", help="Open a random file without codes", action="store_true")
 
@@ -41,8 +41,12 @@ find.add_argument("-B", "--before", help="Number of lines before the code to sho
 find.add_argument("-C", "--after", help="Number of lines after the code to show", default=2, type=int)
 find.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
 find.add_argument("-t", "--textonly", help="Show text but not codes", action="store_true")
-find.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
-find.add_argument("-l", "--list", help="List files containing code", action="store_true", dest="list_files")
+find.add_argument("-p", "--pattern", help="Pattern to filter corpus filenames (glob-style)")
+find.add_argument("-f", "--filenames", help="File path containing a list of filenames to use")
+find.add_argument("-l", "--list", help="List files containing code(s)", action="store_true", dest="list_files")
+find.add_argument("-x", "--inverse-list", help="List files not containing code(s)", action="store_true", dest="list_files_inverse")
+find.add_argument("-i", "--invert", help="Invert file selection", action="store_true")
+find.add_argument("-s", "--suppress-codes", help="Do not show matching codes", action="store_true")
 
 stats = subparsers.add_parser("stats", help="Show statistics about code usage")
 stats.add_argument("code", help="Code(s) to display", nargs="*")
@@ -51,7 +55,9 @@ stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
 stats.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
 stats.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
 stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
-stats.add_argument("-f", "--files", help="Filter corpus filenames to use (glob-style)")
+stats.add_argument("-p", "--pattern", help="Pattern to filter corpus filenames (glob-style)")
+stats.add_argument("-f", "--filenames", help="File path containing a list of filenames to use")
+stats.add_argument("-i", "--invert", help="Invert file selection", action="store_true")
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="id of memo author")
@@ -98,16 +104,22 @@ def main(args):
     if args.command == "rename":
         corpus.rename_code(args.old_code, args.new_code)
     if args.command == "find":
+        files = Path(args.filenames).read_text().split("\n") if args.filenames else None
         viewer.show_coded_text(
             args.code, 
             before=args.before, 
             after=args.after, 
             recursive=args.recursive,
             textonly=args.textonly, 
-            filepattern=args.files,
-            list_files=args.list_files
+            file_pattern=args.pattern,
+            file_list=files,
+            list_files=args.list_files,
+            list_files_inverse=args.list_files_inverse,
+            invert_files=args.invert,
+            show_codes=not args.suppress_codes,
         )
     if args.command == "stats":
+        files = Path(args.filenames).read_text().split("\n") if args.filenames else None
         viewer.show_stats(
             args.code, 
             max_count=args.max, 
@@ -115,7 +127,9 @@ def main(args):
             depth=args.depth, 
             expanded=args.expanded, 
             format=args.format, 
-            filepattern=args.files
+            file_pattern=args.pattern,
+            file_list=files,
+            invert_files=args.invert,
         )
 
     if args.command == "memo":
