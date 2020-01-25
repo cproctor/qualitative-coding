@@ -121,13 +121,16 @@ class TreeNode:
         else:
             return self.name
 
-    def __str__(self, depth=0):
+    def __str__(self, max_depth=None, current_depth=0):
+        "String representation of tree, limited to `max_depth` if provided. `current_depth` is used internally for recursion."
         if self.is_root():
-            return "".join([str(c) for c in sorted(self.children)])
+            return "".join([c.__str__(max_depth=max_depth - 1, current_depth=current_depth) for c in sorted(self.children)])
         else:
-            return (self.indent * depth + self.list_marker + self.name + "\n" + 
-                    "".join([c.__str__(depth+1) for c in sorted(self.children)]))
-
+            string_rep = self.indent * current_depth + self.list_marker + self.name + "\n"
+            if max_depth is None or current_depth < max_depth:
+                string_rep += "".join([c.__str__(max_depth=max_depth, current_depth=current_depth+1) for c in sorted(self.children)])
+            return string_rep
+            
     def is_root(self):
         return self.name == self.root
 

@@ -22,14 +22,14 @@ class QCCorpusViewer:
         self.corpus = corpus
         self.log = get_logger(__name__, self.corpus.settings['logs_dir'], self.corpus.settings.get('debug'))
 
-    def list_codes(self, expanded=False):
+    def list_codes(self, expanded=False, depth=None):
         "Prints all the codes in the codebook"
         code_tree = self.corpus.get_codebook()
         if expanded:
-            for code in code_tree.flatten(names=True, expanded=True):
+            for code in code_tree.flatten(names=True, expanded=expanded, depth=depth):
                 print(code)
         else:
-            print(code_tree)
+            print(code_tree.__str__(max_depth=depth))
 
     def show_stats(self, codes, 
         max_count=None, 

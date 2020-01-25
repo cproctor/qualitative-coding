@@ -29,6 +29,7 @@ codebook = subparsers.add_parser("codebook", help="Update the codebook", aliases
 
 ls = subparsers.add_parser("list", help="List codes", aliases=["ls"])
 ls.add_argument("-e", "--expanded", action="store_true")
+ls.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
 
 rename = subparsers.add_parser("rename", help="Rename a code")
 rename.add_argument("old_code")
@@ -93,7 +94,7 @@ def main(args):
     if args.command in ["codebook", "cb"]:
         corpus.update_codebook()
     if args.command in ["list", "ls"]:
-        viewer.list_codes(args.expanded)
+        viewer.list_codes(args.expanded, depth=args.depth)
     if args.command == "rename":
         corpus.rename_code(args.old_code, args.new_code)
     if args.command == "find":
