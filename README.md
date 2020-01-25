@@ -212,6 +212,7 @@ Scans through all the code files and adds new codes to the codebook.
 ### list (ls)
 Lists all the codes currently in use. By default, lists them as a tree. The `--expanded` option 
 will instead flatten the list of codes, and list each as something like `subjects:math:algebra`.
+The tree can be truncated with the `--depth` option.
 
     $ qc list --expanded
 
