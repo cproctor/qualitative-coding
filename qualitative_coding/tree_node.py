@@ -125,7 +125,8 @@ class TreeNode:
         "String representation of tree, limited to `max_depth` if provided. `current_depth` is used internally for recursion."
         if self.is_root():
             if max_depth is None or max_depth > 0:
-                return "".join([c.__str__(max_depth=max_depth - 1, current_depth=current_depth) for c in sorted(self.children)])
+                md = None if max_depth is None else max_depth - 1
+                return "".join([c.__str__(max_depth=md, current_depth=current_depth) for c in sorted(self.children)])
             else:
                 return ""
         else:
