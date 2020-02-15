@@ -58,7 +58,7 @@ stats.add_argument("-m", "--format", help="Output format. For values, see docume
 stats.add_argument("-p", "--pattern", help="Pattern to filter corpus filenames (glob-style)")
 stats.add_argument("-f", "--filenames", help="File path containing a list of filenames to use")
 stats.add_argument("-i", "--invert", help="Invert file selection", action="store_true")
-stats.add_argument("-u", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
+stats.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="id of memo author")
