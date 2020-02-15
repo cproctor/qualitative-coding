@@ -40,6 +40,7 @@ class QCCorpusViewer:
         file_pattern=None,
         file_list=None,
         invert_files=False,
+        unit='line',
     ):
         """
         Displays statistics about how codes are used.
@@ -48,7 +49,8 @@ class QCCorpusViewer:
         if file_pattern:
             self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert_files) 
             
-        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, invert=invert_files)
+        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
+                invert=invert_files, unit=unit)
         rootNode = self.corpus.get_codebook()
         for node in rootNode.flatten():
             node.count = counts[node.name]

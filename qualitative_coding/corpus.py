@@ -194,12 +194,21 @@ class QCCorpus:
                 all_codes.add(code)
         return all_codes
 
-    def get_code_counts(self, pattern=None, file_list=None, invert=False, coder=None):
+    def get_code_counts(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
         "Returns a defaultdict of {code: number of uses in codefiles}"
+        if unit not in ['line', 'document']:
+            raise NotImplementedError("Unit of analysis not supported: {}".format(unit))
+
         all_codes = defaultdict(int)
-        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, coder=coder, merge=True):
+        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, 
+                coder=coder, merge=True):
+            codes_in_doc = defaultdict(int)
             for line_num, code in codes:
-                all_codes[code] += 1
+                codes_in_doc[code] += 1
+            if unit == 'document':
+                codes_in_doc = {code: 1 for code in codes_in_doc.keys()}
+            for code, count in codes_in_doc.items():
+                all_codes[code] += count
         return all_codes
 
     def get_coder_from_code_path(self, code_file_path):
