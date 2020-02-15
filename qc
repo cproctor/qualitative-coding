@@ -34,6 +34,7 @@ ls.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
 rename = subparsers.add_parser("rename", help="Rename a code")
 rename.add_argument("old_code")
 rename.add_argument("new_code")
+rename.add_argument("-c", "--coder", help="Name of coder")
 
 find = subparsers.add_parser("find", help="Find all coded text")
 find.add_argument("code", help="Code(s) to find", nargs="+")
@@ -103,7 +104,7 @@ def main(args):
     if args.command in ["list", "ls"]:
         viewer.list_codes(args.expanded, depth=args.depth)
     if args.command == "rename":
-        corpus.rename_code(args.old_code, args.new_code)
+        corpus.rename_code(args.old_code, args.new_code, coder=args.coder)
     if args.command == "find":
         files = Path(args.filenames).read_text().split("\n") if args.filenames else None
         viewer.show_coded_text(

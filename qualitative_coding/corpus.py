@@ -234,13 +234,13 @@ class QCCorpus:
             code_tree.add_child(new_code)
         TreeNode.write_yaml(self.codebook, code_tree)
 
-    def rename_code(self, old_code, new_code):
+    def rename_code(self, old_code, new_code, coder=None):
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
         """
         for corpus_path in self.iter_corpus():
-            for code_file_path in self.get_code_files_for_corpus_file(corpus_path):
+            for code_file_path in self.get_code_files_for_corpus_file(corpus_path, coder=coder):
                 codes = self.read_codes(code_file_path)
                 codes = [(ln, new_code if code == old_code else code) for ln, code in codes]
                 coder = self.get_coder_from_code_path(code_file_path)
