@@ -9,7 +9,6 @@ from qualitative_coding.helpers import (
     Falsy, 
     _fmt, 
     check_incompatible,
-
 )
 
 parser = argparse.ArgumentParser(prog="qc")
@@ -26,15 +25,16 @@ def add_datasource_filtering_options(command, coder_required=False):
     else:
         command.add_argument("-c", "--coder", help="Name of coder")
 
-def add_code_filtering_options(command, with_recursive=True, code_required=True):
+def add_code_filtering_options(command, recursive_counts=True, code_required=True):
     if code_required:
         command.add_argument("code", help="One or more codes", nargs="+")
     else:
         command.add_argument("code", help="One or more codes", nargs="*")
     command.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
     command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
-    if with_recursive:
-        command.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
+    command.add_argument("-r", "--recursive-codes", help="Include child codes", action="store_true")
+    if recursive_counts:
+        command.add_argument("-a", "--recursive-counts", help="Counts for codes include child codes", action="store_true")
     
 def add_table_display_options(command):
     command.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
@@ -67,17 +67,23 @@ rename.add_argument("-c", "--coder", help="Name of coder")
 
 find = subparsers.add_parser("find", help="Find all coded text")
 add_datasource_filtering_options(find)
-add_code_filtering_options(find)
+add_code_filtering_options(find, recursive_counts=False)
 find.add_argument("-B", "--before", help="Number of lines before the code to show", default=2, type=int)
 find.add_argument("-C", "--after", help="Number of lines after the code to show", default=2, type=int)
-find.add_argument("-t", "--no-codes", help="Do not show matching codes", action="store_true")
+find.add_argument("-l", "--no-codes", help="Do not show matching codes", action="store_true")
 
 stats = subparsers.add_parser("stats", help="Show statistics about code usage")
-add_code_filtering_options(stats, with_recursive=False, code_required=False)
+add_code_filtering_options(stats, code_required=False)
 add_datasource_filtering_options(stats)
 add_table_display_options(stats)
 stats.add_argument("-u", "--max", help="Maximum count value to show", type=int)
 stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
+
+crosstab = subparsers.add_parser("crosstab", help="Cross-tabulate code occurrences", aliases=['ct'])
+add_code_filtering_options(crosstab, code_required=False)
+add_datasource_filtering_options(crosstab)
+add_table_display_options(crosstab)
+# Some kind of count/normalize/odds
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="memo author")
@@ -141,7 +147,7 @@ def main(args):
             args.code, 
             before=args.before, 
             after=args.after, 
-            recursive=args.recursive,
+            recursive_codes=args.recursive_codes,
             depth=args.depth,
             unit=args.unit,
             file_pattern=args.pattern,
@@ -150,11 +156,28 @@ def main(args):
             show_codes=not args.no_codes,
         )
     if args.command == "stats":
-        files = Path(args.filenames).read_text().split("\n") if args.filenames else None
+        check_incompatible(args, recursive=False, depth=Truthy())
         viewer.show_stats(
             args.code, 
             max_count=args.max, 
             min_count=args.min, 
+            depth=args.depth, 
+            recursive_codes=args.recursive_codes,
+            recursive_counts=args.recursive_counts,
+            expanded=args.expanded, 
+            format=args.format, 
+            file_pattern=args.pattern,
+            file_list=file_list,
+            invert=args.invert,
+            coder=args.coder,
+            unit=args.unit,
+            outfile=args.outfile,
+        )
+
+    if args.command in ["crosstab", "ct"]:
+        files = Path(args.filenames).read_text().split("\n") if args.filenames else None
+        viewer.crosstab(
+            args.code, 
             depth=args.depth, 
             expanded=args.expanded, 
             format=args.format, 
@@ -165,6 +188,7 @@ def main(args):
             unit=args.unit,
             outfile=args.outfile,
         )
+        
 
     if args.command == "memo":
         if args.list_memos:

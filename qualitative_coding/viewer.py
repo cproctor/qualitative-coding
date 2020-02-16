@@ -15,6 +15,7 @@ from collections import defaultdict
 from subprocess import run
 from datetime import datetime
 from random import shuffle
+import numpy as np
 import csv
 
 class QCCorpusViewer:
@@ -32,10 +33,29 @@ class QCCorpusViewer:
         else:
             print(code_tree.__str__(max_depth=depth))
 
+
+    def code_tree_with_counts(self, 
+        file_pattern=None,
+        file_list=None,
+        invert=False,
+        coder=None,
+        unit='line',
+    ):
+        tree = self.corpus.get_codebook()
+        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
+                invert=invert, coder=coder, unit=unit)
+        for node in tree.flatten():
+            node.count = counts[node.name]
+        for node in tree.flatten():
+            node.total = node.sum("count")
+        return tree
+
     def show_stats(self, codes, 
         max_count=None, 
         min_count=None, 
         depth=None, 
+        recursive_codes=False,
+        recursive_counts=False,
         unit='line',
         expanded=False, 
         format=None,
@@ -48,40 +68,98 @@ class QCCorpusViewer:
         """
         Displays statistics about how codes are used.
         """
+        if file_pattern:
+            self.report_files_matching_pattern(
+                file_pattern=file_pattern, 
+                file_list=file_list, 
+                invert=invert
+            ) 
+        tree = self.code_tree_with_counts(
+            file_pattern=file_pattern, 
+            file_list=file_list,
+            invert=invert, 
+            coder=coder, 
+            unit=unit, 
+        )
+        if codes:
+            nodes = sum([tree.find(c) for c in codes], [])
+            if recursive_codes:
+                nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
+        else:
+            nodes = tree.flatten(depth=depth)
+        if max_count:
+            nodes = filter(lambda n: n.count <= max_count, nodes)
+        if min_count:
+            nodes = filter(lambda n: n.count >= min_count, nodes)
+        nodes = sorted(nodes)
+
+        def namer(node):
+            if expanded:
+                return node.expanded_name()
+            elif recursive_codes and not outfile:
+                return node.indented_name(nodes)
+            else:
+                return node.name
+
+        if recursive_counts:
+            cols = ["Code", "Count", "Total"]
+            results = [(namer(n), n.count, n.total) for n in nodes]
+        else:
+            cols = ["Code", "Count"]
+            results = [(namer(n), n.count) for n in nodes]
+
+        if outfile:
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(results)
+        else:
+            print(tabulate(results, cols, tablefmt=format))
+
+    def crosstab(self, codes, 
+        max_count=None, 
+        min_count=None, 
+        recursive=False,
+        depth=None, 
+        unit='line',
+        expanded=False, 
+        format=None,
+        file_pattern=None,
+        file_list=None,
+        invert=False,
+        coder=None,
+        outfile=None,
+    ):
         # Assign counts to nodes
         if file_pattern:
             self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert) 
             
         counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
                 invert=invert, coder=coder, unit=unit)
+
         rootNode = self.corpus.get_codebook()
         for node in rootNode.flatten():
             node.count = counts[node.name]
 
-        # Filter nodes to show
-        if codes:
-            matches = sum([rootNode.find(c) for c in codes], [])
-            nodes = set(sum([m.flatten(depth=depth) for m in matches], []))
+        if recursive:
+            codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
-            nodes = rootNode.flatten(depth=depth)
-        if max_count:
-            nodes = filter(lambda n: n.sum("count") <= max_count, nodes)
-        if min_count:
-            nodes = filter(lambda n: n.sum("count") >= min_count, nodes)
-        nodes = sorted(nodes)
+            codes = set(codes)
+    
+        code_sets = []
+        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert):
+            if unit == "document":
+                doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')
+                code_sets.append(doc_codes & codes)
+            elif unit == "line":
+                # Need a windowing strategy.
+                raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
+            else:
+                raise NotImplementedError("Unit must be 'line' or 'document'.")
+        cols = sorted(codes)
+        sparse_matrix = np.array([[int(code in cs) for code in cols] for cs in code_sets])
+        print(sparse_matrix)
 
-        # Format for display
-        if outfile:
-            name = lambda n: n.expanded_name() if expanded else n.name
-            results = [(name(n), n.sum("count")) for n in nodes]
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(["Code", "Count"])
-                writer.writerows(results)
-        else:
-            name = lambda n: n.expanded_name() if expanded else n.indented_name(nodes)
-            results = [(name(n), n.sum("count")) for n in nodes]
-            print(tabulate(results, ["Code", "Count"], tablefmt=format))
 
     def report_files_matching_pattern(self, pattern, file_list=None, invert=False):
         print("From files:")
@@ -95,7 +173,7 @@ class QCCorpusViewer:
         return sum([m.flatten(names=names, expanded=expanded, depth=depth) for m in matches], [])
 
     def show_coded_text(self, codes, 
-            recursive=False, 
+            recursive_codes=False, 
             depth=None,
             unit="line",
             before=2, 
@@ -108,7 +186,7 @@ class QCCorpusViewer:
             show_codes=True,
         ):
         "Search through all text files and show all text matching the codes"
-        if recursive:
+        if recursive_codes:
             codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
             codes = set(codes)
