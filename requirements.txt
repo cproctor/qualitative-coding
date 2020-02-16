@@ -1,2 +1,22 @@
+bleach==3.1.0
+certifi==2019.11.28
+chardet==3.0.4
+docutils==0.16
+idna==2.8
+importlib-metadata==1.5.0
+keyring==21.1.0
+numpy==1.18.1
+pkginfo==1.5.0.1
+Pygments==2.5.2
 PyYAML==5.1.2
+-e git+git@github.com:cproctor/qualitative-coding.git@5d0e5893ae114d706e86e51e77503ff8507fc234#egg=qualitative_coding
+readme-renderer==24.0
+requests==2.22.0
+requests-toolbelt==0.9.1
+six==1.14.0
 tabulate==0.8.3
+tqdm==4.42.1
+twine==3.1.1
+urllib3==1.25.8
+webencodings==0.5.1
+zipp==2.2.0
