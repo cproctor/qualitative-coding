@@ -35,22 +35,23 @@ class QCCorpusViewer:
         max_count=None, 
         min_count=None, 
         depth=None, 
+        unit='line',
         expanded=False, 
         format=None,
         file_pattern=None,
         file_list=None,
-        invert_files=False,
-        unit='line',
+        invert=False,
+        coder=None,
     ):
         """
         Displays statistics about how codes are used.
         """
         # Assign counts to nodes
         if file_pattern:
-            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert_files) 
+            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert) 
             
         counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
-                invert=invert_files, unit=unit)
+                invert=invert, coder=coder, unit=unit)
         rootNode = self.corpus.get_codebook()
         for node in rootNode.flatten():
             node.count = counts[node.name]
@@ -71,15 +72,8 @@ class QCCorpusViewer:
         if expanded:
             results = [(n.expanded_name(), n.sum("count")) for n in nodes]
         else:
-            results = []
-            for n in nodes:
-                ancestorTraversal = n.parent.backtrack_to(nodes)
-                if ancestorTraversal is None: # This node goes all the way back to root
-                    formattedName = ":".join(n.name for n in n.ancestors())
-                else: 
-                    ancestorDepth = n.depth() - len(ancestorTraversal) - 1
-                    formattedName = '.' + "  " * ancestorDepth + ":".join(a.name for a in ancestorTraversal+[n])
-                results.append((formattedName,  n.sum("count")))
+            results = [(n.indented_name(nodes), n.sum("count")) for n in nodes]
+
         print(tabulate(results, ["Code", "Count"], tablefmt=format))
 
     def report_files_matching_pattern(self, pattern, file_list=None, invert=False):

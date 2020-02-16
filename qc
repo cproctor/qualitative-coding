@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 
 import argparse
+from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.viewer import QCCorpusViewer
-from pathlib import Path
+from qualitative_coding.helpers import (
+    Truthy, 
+    Falsy, 
+    _fmt, 
+    check_incompatible,
+
+)
 
 parser = argparse.ArgumentParser(prog="qc")
 parser.add_argument('-s', '--settings', default='settings.yaml')
@@ -19,60 +26,19 @@ def add_datasource_filtering_options(command, coder_required=False):
     else:
         command.add_argument("-c", "--coder", help="Name of coder")
 
-def add_code_filtering_options(command):
-    command.add_argument("code", help="One or more codes", nargs="+")
-    command.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
+def add_code_filtering_options(command, with_recursive=True, code_required=True):
+    if code_required:
+        command.add_argument("code", help="One or more codes", nargs="+")
+    else:
+        command.add_argument("code", help="One or more codes", nargs="*")
     command.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
     command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
+    if with_recursive:
+        command.add_argument("-r", "--recursive", help="Include child codes", action="store_true")
     
 def add_table_display_options(command):
     command.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
     command.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
-
-def _fmt(opts, _and=True):
-    if len(opts) == 1:
-        return opts[0]
-    else:
-        return "{} {} {}".format(", ".join(opts[:-1]), "and" if _and else "or", opts[-1])
-
-class IncompatibleOptions(ValueError):
-    pass
-
-class Truthy:
-    "Like True, but when used in comparison, coerces the other object to bool."
-    val = True
-    def __eq__(self, other):
-        return bool(other) == self.val
-
-    def __bool__(self):
-        return self.val
-
-    def __str__(self):
-        return str(self.val) 
-
-class Falsy(Truthy):
-    "Like Truthy, but Falsy."
-    val = False
-
-def check_incompatible(args, **conditions):
-    problem = all(val == getattr(args, opt, None) for opt, val in conditions.items())
-    if problem:
-        opts = ["--{}".format(k) for k in conditions.keys()]
-        if all(conditions.values()):
-                message = "{} may not {} be used.".format(_fmt(opts), "both" if len(conditions) == 2 else "all")
-        elif not any(conditions.values()):
-                message = "One of {} is required.".format(_fmt(opts, _and=False))
-        else:
-            present = ["--{}".format(o) for o, req in conditions.items() if req]
-            absent = ["--{}".format(o) for o, req in conditions.items() if not req]
-            message = "{}{} must be used when {} {} used.".format(
-                "One of " if len(absent) > 1 else "",
-                _fmt(absent), 
-                _fmt(present), 
-                "is" if len(present) == 1 else "are"
-            )
-        print(args)
-        raise IncompatibleOptions(message)
 
 init = subparsers.add_parser("init", help="Initialize the qc project")
 add_datasource_filtering_options(init)
@@ -106,19 +72,15 @@ find.add_argument("-C", "--after", help="Number of lines after the code to show"
 find.add_argument("-t", "--no-codes", help="Do not show matching codes", action="store_true")
 
 stats = subparsers.add_parser("stats", help="Show statistics about code usage")
-stats.add_argument("code", help="Code(s) to display", nargs="*")
+add_code_filtering_options(stats, with_recursive=False, code_required=False)
+add_datasource_filtering_options(stats)
 stats.add_argument("-u", "--max", help="Maximum count value to show", type=int)
 stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
-stats.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
 stats.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
 stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
-stats.add_argument("-p", "--pattern", help="Pattern to filter corpus filenames (glob-style)")
-stats.add_argument("-f", "--filenames", help="File path containing a list of filenames to use")
-stats.add_argument("-i", "--invert", help="Invert file selection", action="store_true")
-stats.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
 
 memo = subparsers.add_parser("memo", help="write a memo")
-memo.add_argument("coder", help="id of memo author")
+memo.add_argument("coder", help="memo author")
 memo.add_argument("-m", "--message", help="short message, title of memo file")
 memo.add_argument("-l", "--list", help="list all memos in order", action="store_true", dest="list_memos")
 
@@ -198,7 +160,8 @@ def main(args):
             format=args.format, 
             file_pattern=args.pattern,
             file_list=files,
-            invert_files=args.invert,
+            invert=args.invert,
+            coder=args.coder,
             unit=args.unit
         )
 
