@@ -39,6 +39,7 @@ def add_code_filtering_options(command, with_recursive=True, code_required=True)
 def add_table_display_options(command):
     command.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
     command.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
+    command.add_argument("-o", "--outfile", help="Filename for CSV export")
 
 init = subparsers.add_parser("init", help="Initialize the qc project")
 add_datasource_filtering_options(init)
@@ -74,10 +75,9 @@ find.add_argument("-t", "--no-codes", help="Do not show matching codes", action=
 stats = subparsers.add_parser("stats", help="Show statistics about code usage")
 add_code_filtering_options(stats, with_recursive=False, code_required=False)
 add_datasource_filtering_options(stats)
+add_table_display_options(stats)
 stats.add_argument("-u", "--max", help="Maximum count value to show", type=int)
 stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
-stats.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
-stats.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="memo author")
@@ -162,7 +162,8 @@ def main(args):
             file_list=files,
             invert=args.invert,
             coder=args.coder,
-            unit=args.unit
+            unit=args.unit,
+            outfile=args.outfile,
         )
 
     if args.command == "memo":

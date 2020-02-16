@@ -15,6 +15,7 @@ from collections import defaultdict
 from subprocess import run
 from datetime import datetime
 from random import shuffle
+import csv
 
 class QCCorpusViewer:
 
@@ -42,6 +43,7 @@ class QCCorpusViewer:
         file_list=None,
         invert=False,
         coder=None,
+        outfile=None,
     ):
         """
         Displays statistics about how codes are used.
@@ -69,12 +71,17 @@ class QCCorpusViewer:
         nodes = sorted(nodes)
 
         # Format for display
-        if expanded:
-            results = [(n.expanded_name(), n.sum("count")) for n in nodes]
+        if outfile:
+            name = lambda n: n.expanded_name() if expanded else n.name
+            results = [(name(n), n.sum("count")) for n in nodes]
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(["Code", "Count"])
+                writer.writerows(results)
         else:
-            results = [(n.indented_name(nodes), n.sum("count")) for n in nodes]
-
-        print(tabulate(results, ["Code", "Count"], tablefmt=format))
+            name = lambda n: n.expanded_name() if expanded else n.indented_name(nodes)
+            results = [(name(n), n.sum("count")) for n in nodes]
+            print(tabulate(results, ["Code", "Count"], tablefmt=format))
 
     def report_files_matching_pattern(self, pattern, file_list=None, invert=False):
         print("From files:")
