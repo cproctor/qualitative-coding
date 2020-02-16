@@ -99,6 +99,19 @@ class TreeNode:
         else:
             return self.name
 
+    def indented_name(self, nodes, sep=":", indent_length=2, indent_start='.'):
+        "Returns indented name, like '.    pippin'"
+        ancestor_traversal = self.parent.backtrack_to(nodes)
+        if ancestor_traversal is None: # This node goes all the way back to root
+            return ":".join(n.name for n in self.ancestors())
+        else: 
+            ancestor_depth = self.depth() - len(ancestor_traversal) - 1
+            return (
+                indent_start + 
+                ' ' * indent_length * ancestor_depth + 
+                ":".join(a.name for a in ancestor_traversal+[self])
+            )
+
     def find(self, name):
         "Returns all child nodes (including self) with matching name"
         result = [self] if self.name == name else []
