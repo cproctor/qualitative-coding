@@ -96,18 +96,18 @@ class QCCorpus:
         if any(errors):
             raise ValueError("\n".join(errors))
 
-    def prepare_texts(self, pattern=None, preformatted=False):
+    def prepare_corpus(self, pattern=None, file_list=None, invert=False, preformatted=False):
         "Wraps texts at 80 characters"
-        for f in self.iter_corpus(pattern):
+        for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             f.write_text(prepare_corpus_text(f.read_text(), width=80, preformatted=preformatted))
 
     def get_code_file_path(self, corpus_file_path, coder):
         text_path = corpus_file_path.relative_to(self.corpus_dir) 
         return self.codes_dir / (str(text_path) + "." + coder + ".codes")
 
-    def prepare_code_files(self, coder, pattern=None):
+    def prepare_code_files(self, pattern=None, file_list=None, invert=False):
         "For each text in corpus, creates a blank file of equivalent length"
-        for f in self.iter_corpus(pattern):
+        for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             with open(f) as inf:
                 file_len = len(list(inf))                
             code_path = self.get_code_file_path(f, coder)
@@ -150,19 +150,34 @@ class QCCorpus:
         name_parts = text_path.name.split('.')
         return self.codes_dir.glob(str(text_path) + '.' + (coder or '*') + '.codes')
 
-    def get_codes(self, corpus_text_path, coder=None, merge=False):
+    def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
         """
         Returns codes pertaining to a corpus text.
         Returns a dict like {coder_id: [(line_num, code)...]}. 
         If merge or coder, there is no ambiguity;instead returns a list of [(line_num, code)...]
+        If unit is 'document', returns a set of codes when coder or merge is given, otherwise
+        returns a dict mapping coders to sets of codes.
         """
-        codes = {}
-        for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
-            codes[self.get_coder_from_code_path(f)] = self.read_codes(f)
-        if coder or merge:
-            return sum(codes.values(), [])
-        else:
+        if unit == 'document':
+            if coder or merge:
+                codes = set()
+                for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
+                    codes |= set([code for i, code in self.read_codes(f)])
+            else:
+                codes = defaultdict(set)
+                for f in self.get_code_files_for_corpus_file(corpus_text_path):
+                    codes[self.get_coder_from_code_path(f)] |= set([code for i, code in self.read_codes(f)])
             return codes
+        elif unit == 'line':
+            codes = {}
+            for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
+                codes[self.get_coder_from_code_path(f)] = self.read_codes(f)
+            if coder or merge:
+                return sum(codes.values(), [])
+            else:
+                return codes
+        else:
+            raise NotImplementedError("Unit must be 'line' or 'document'.")
 
     def write_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"

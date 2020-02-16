@@ -94,60 +94,67 @@ class QCCorpusViewer:
         return sum([m.flatten(names=names, expanded=expanded, depth=depth) for m in matches], [])
 
     def show_coded_text(self, codes, 
+            recursive=False, 
+            depth=None,
+            unit="line",
             before=2, 
             after=2, 
-            recursive=False, 
-            textonly=False, 
             textwidth=80, 
             coder=None,
             file_pattern=None,
             file_list=None,
-            list_files=False,
-            list_files_inverse=False,
-            invert_files=False,
+            invert=False,
             show_codes=True,
         ):
         "Search through all text files and show all text matching the codes"
-        if list_files and list_files_inverse:
-            raise ValueError("Incompatible options: list_files, list_files_inverse")
-
         if recursive:
             codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
             codes = set(codes)
+
         if show_codes:
             print("Showing results for codes: ", ", ".join(sorted(codes)))
-        if file_pattern and not (list_files or list_files_inverse):
-            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert_files)
+        if file_pattern and unit == "line":
+            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert)
         
-        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert_files):
-            corpusCodes = defaultdict(set)
-            for line_num, code in self.corpus.get_codes(corpus_file, coder=coder, merge=True):
-                corpusCodes[line_num].add(code)
-            matchingLines = [i for i, lineCodes in corpusCodes.items() if any(lineCodes & codes)]
-            with open(corpus_file) as f:
-                lines = list(f)
-            ranges = merge_ranges([range(n-before, n+after+1) for n in matchingLines], clamp=[0, len(lines)])
-            if list_files or list_files_inverse:
-                if (list_files and len(ranges) > 0) or (list_files_inverse and len(ranges) == 0):
-                    print(corpus_file.relative_to(self.corpus.corpus_dir))
-            else:
-                if len(ranges) > 0:
-                    print("")
-                    print("{} ({})".format(corpus_file.relative_to(self.corpus.corpus_dir), len(matchingLines)))
-                    print("=" * textwidth)
-                for r in ranges:
-                    print("")
-                    print("[{}:{}]".format(r.start, r.stop))
-                    if textonly:
-                        print(" ".join(lines[i].strip() for i in r))
+        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert):
+            cf = corpus_file.relative_to(self.corpus.corpus_dir)
+            if unit == "document":
+                doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')
+                if len(doc_codes & codes):
+                    if show_codes:
+                        template = "{:<" + str(textwidth) + "}| {}"
+                        print(template.format(str(cf), ", ".join(sorted(doc_codes & codes))))
                     else:
-                        for i in r:
-                            print(lines[i].strip()[:textwidth].ljust(textwidth) + 
-                                    " | " + ", ".join(sorted(corpusCodes[i])))
+                        print(cf)
+            elif unit == "line":
+                corpusCodes = defaultdict(set)
+                for line_num, code in self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='line'):
+                    corpusCodes[line_num].add(code)
+                matchingLines = [i for i, lineCodes in corpusCodes.items() if len(lineCodes & codes)]
+                with open(corpus_file) as f:
+                    lines = list(f)
+                ranges = merge_ranges([range(n-before, n+after+1) for n in matchingLines], clamp=[0, len(lines)])
+                if len(ranges) > 0:
+                    print("\n{} ({})".format(cf, len(matchingLines)))
+                    print("=" * textwidth)
+                    for r in ranges:
+                        print("\n[{}:{}]".format(r.start, r.stop))
+                        if show_codes:
+                            for i in r:
+                                print(
+                                    lines[i].strip()[:textwidth].ljust(textwidth) + 
+                                    " | " + ", ".join(sorted(corpusCodes[i]))
+                                )
+                        else:
+                            print(" ".join(lines[i].strip() for i in r))
+            else:
+                raise NotImplementedError("Unit must be 'line' or 'document'.")
             
-    def open_for_coding(self, pattern, coder, choice=None):
-        corpus_files = sorted(list(self.corpus.iter_corpus(pattern)))
+    def open_for_coding(self, pattern=None, file_list=None, invert=None, coder=None, choice=None):
+        if coder is None:
+            raise ValueError("Coder is required")
+        corpus_files = sorted(list(self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert)))
         if not any(corpus_files):
             raise ValueError("No corpus files matched.")
         if len(corpus_files) == 1:
