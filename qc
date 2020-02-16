@@ -37,7 +37,7 @@ def add_code_filtering_options(command, recursive_counts=True, code_required=Tru
         command.add_argument("-a", "--recursive-counts", help="Counts for codes include child codes", action="store_true")
     
 def add_table_display_options(command):
-    command.add_argument("-e", "--expanded", help="Show all results in expanded form", action="store_true")
+    command.add_argument("-e", "--expanded", help="Show names of codes in expanded form", action="store_true")
     command.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
     command.add_argument("-o", "--outfile", help="Filename for CSV export")
 
@@ -83,7 +83,8 @@ crosstab = subparsers.add_parser("crosstab", help="Cross-tabulate code occurrenc
 add_code_filtering_options(crosstab, code_required=False)
 add_datasource_filtering_options(crosstab)
 add_table_display_options(crosstab)
-# Some kind of count/normalize/odds
+crosstab.add_argument("-0", "--probs", help="Probabilities instead of counts", action="store_true")
+crosstab.add_argument("-z", "--compact", help="Compact display", action="store_true")
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="memo author")
@@ -91,6 +92,8 @@ memo.add_argument("-m", "--message", help="short message, title of memo file")
 memo.add_argument("-l", "--list", help="list all memos in order", action="store_true", dest="list_memos")
 
 def main(args):
+    check_incompatible(args, invert=True, pattern=None)
+
     if args.command == "init":
         if not Path(args.settings).exists():
             QCCorpus.initialize(args.settings)
@@ -175,20 +178,24 @@ def main(args):
         )
 
     if args.command in ["crosstab", "ct"]:
-        files = Path(args.filenames).read_text().split("\n") if args.filenames else None
+        args.unit = "document"  # Sorry, pardner.
+        check_incompatible(args, code=Truthy(), depth=Truthy(), recursive_codes=False)
         viewer.crosstab(
             args.code, 
             depth=args.depth, 
+            recursive_codes=args.recursive_codes,
+            recursive_counts=args.recursive_counts,
             expanded=args.expanded, 
             format=args.format, 
             file_pattern=args.pattern,
-            file_list=files,
+            file_list=file_list,
             invert=args.invert,
             coder=args.coder,
             unit=args.unit,
             outfile=args.outfile,
+            probs=args.probs,
+            compact=args.compact,
         )
-        
 
     if args.command == "memo":
         if args.list_memos:
@@ -198,4 +205,3 @@ def main(args):
 
 args = parser.parse_args()
 main(args)
-

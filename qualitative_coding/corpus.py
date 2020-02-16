@@ -226,6 +226,22 @@ class QCCorpus:
                 all_codes[code] += count
         return all_codes
 
+    def get_code_tree_with_counts(self, 
+        file_pattern=None,
+        file_list=None,
+        invert=False,
+        coder=None,
+        unit='line',
+    ):
+        tree = self.get_codebook()
+        counts = self.get_code_counts(pattern=file_pattern, file_list=file_list, 
+                invert=invert, coder=coder, unit=unit)
+        for node in tree.flatten():
+            node.count = counts[node.name]
+        for node in tree.flatten():
+            node.total = node.sum("count")
+        return tree
+
     def get_coder_from_code_path(self, code_file_path):
         "Maps Path('some_interview.txt.cp.codes') -> 'cp'"
         parts = code_file_path.name.split('.')

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="qualitative-coding",
-    version="0.0.23",
+    version="0.1.0",
     author="Chris Proctor",
     author_email="pypi.org@accounts.chrisproctor.net",
     description="Qualitative coding tools for computer scientists",
@@ -20,7 +20,8 @@ setuptools.setup(
     ],
     install_requires=[
         "PyYAML",
-        "tabulate"
+        "tabulate",
+        "numpy",
     ],
     scripts=["qc"],
     python_requires='>=3.6',

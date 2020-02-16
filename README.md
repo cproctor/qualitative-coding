@@ -65,12 +65,13 @@ changes directly in the codebook's YAML. If you realize you have redundant
 codes, use `rename`. 
 
 After you finish coding, you may want to use your codes for analysis. Tools 
-are provided for viewing statistics and examples of codes, with many options for
-selecting and filtering. 
+are provided for viewing statistics, cross-tabulation, and examples of codes, 
+with many options for selecting and filtering at various units of analysis. 
+Results can be exported to CSV for downstream analysis.
+
 The `--coder` argument supports keeping track of multiple coders on a project,
-and there are options to filter on coder where relevant. More analytical tools, such
-as correlations (on multiple units of analysis) and inter-rater reliability are
-coming. 
+and there are options to filter on coder where relevant. More analytical tools, 
+such as inter-rater reliability, are coming. 
 
 ## Tutorial
 
@@ -199,11 +200,11 @@ Checks that all required files and directories are in place.
 ### code
 Opens a split-screen vim window with a corpus file and the corresponding code
 file. The name of the coder is a required positional argument. 
-Use `--pattern` to glob-match the corpus file you want to code. If
-multiple are matched, you will be prompted to choose. The `--first-without-codes` option is
-particularly useful for coding the next uncoded text.
+After optionally filtering using common options (below), select a document with
+no existing codes (for this coder) using **--first** (**-1**) or **--random**
+(**-r**)
 
-    $ qc code chris -f
+    $ qc code chris -1
 
 ### codebook (cb)
 Scans through all the code files and adds new codes to the codebook. 
@@ -211,9 +212,7 @@ Scans through all the code files and adds new codes to the codebook.
     $ qc codebook
 
 ### list (ls)
-Lists all the codes currently in use. By default, lists them as a tree. The `--expanded` option 
-will instead flatten the list of codes, and list each as something like `subjects:math:algebra`.
-The tree can be truncated with the `--depth` option.
+Lists all the codes currently in the codebook.
 
     $ qc list --expanded
 
@@ -223,19 +222,59 @@ Goes through all the code files and replaces one code with another. Removes the 
     $ qc rename funy funny
 
 ### find
-Displays all occurences of the provided code(s). With the `--recursive` option, also includes child
-codes in the codebook's tree of codes. Note that a code may appear multiple times in the codebook; in this case, 
-the `--recursive` option will search for all children of all instances. When you want to grab text for a quotation,
-use the `--textonly` option. The `--pattern` option lets you filter which corpus files to search, and `--invert`
-can invert the selection.
+Displays all occurences of the provided code(s). 
 
-    $ qc find math science art --recursive
+    $ qc find math science art
 
 ### stats
 Displays frequency of usage for each code. Note that counts include all usages of children.
-List code names to show only certain codes. Filter code results with 
-`--depth`, `--max`, and `--min`. Use the `--expanded` option to show the full name of each code, rather than the 
-tree representation. Arguments to `--format` may be any supported by [tabulate](https://bitbucket.org/astanin/python-tabulate).
-The `--pattern` option lets you filter which corpus files to use in computing stats.
+List code names to show only certain codes. In addition to the common options below, 
+code results can be filtered with `--max`, and `--min`. 
 
-    $ qc stats curriculum math algebra --depth 1
+    $qc stats --recursive-codes --depth 2
+
+### crosstab (ct)
+Displays a cross-tabulation of code co-occurrence within the unit of analysis,
+as counts or as probabilities (**--probs**, **-0**). Optionally use a compact
+(**--compact**, **-z**) output format to display more columns. 
+In the future, this may also include odds ratios. 
+
+    $qc crosstab planning implementation evaluation --recursive-codes --depth 1 --probs
+
+## Common Options
+
+### Filtering the corpus
+
+- **--pattern** `pattern` (**-p**): Only include corpus files and their codes which match
+  (glob-style) `pattern`.
+- **-invert** (**-i**): Only include corpus files that do not match `pattern`.
+- **--filenames** `filepath` (**-f**): Only include corpus files listed in
+  `filepath` (one per line).
+- **--coder** `coder` (**-c**): Only include codes entered by `coder` (if you
+  use different names for different rounds of coding, you can also use this to
+  filter by round of coding). 
+
+### Filtering code selection
+
+- **code** [codes]: Many commands have an optional positional argument in which
+  you may list codes to consider. If none are given, the root node in the tree
+  of codes is assumed.
+- **--recursive-codes** (**-r**): Include children of selected codes. 
+- **--depth** `depth` (**-d**): Limit the recursive depth of codes to select. 
+- **--unit** `unit` (**-n**): Unit of analysis for reporting. Currently
+  "document" and "line" are supported by most commands.
+- **--recursive-counts** (**-a**): When counting codes, also count instances of
+  codes' children. In contrast to **--recursive-codes**, which controls which
+  codes will be reported, this option controls how the counting is done. 
+
+### Output and formatting
+
+- **--format** `format` (**-m**): Formatting style for output table. Supported
+  values include "html", "latex", "github", and 
+  [many more](https://pypi.org/project/tabulate/). 
+- **--expanded** (**-e**): Show names of codes in expanded form (e.g. 
+  "coding_process:grounded")
+- **--outfile** `outfile` (**-o**): Save tabular results to a csv file instead
+  of displaying.
+
+

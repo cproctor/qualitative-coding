@@ -2,11 +2,6 @@
 # --------------------------------
 # (c) 2019 Chris Proctor
 
-# TODO: Use dataframes instead of tabulate. 
-# - provide an option for exporting as df
-# - Provide support for lines longer than 80. Should 
-# - wrap in view, but still count accurately.
-
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import merge_ranges, prompt_for_choice
@@ -15,6 +10,7 @@ from collections import defaultdict
 from subprocess import run
 from datetime import datetime
 from random import shuffle
+from itertools import count
 import numpy as np
 import csv
 
@@ -33,22 +29,6 @@ class QCCorpusViewer:
         else:
             print(code_tree.__str__(max_depth=depth))
 
-
-    def code_tree_with_counts(self, 
-        file_pattern=None,
-        file_list=None,
-        invert=False,
-        coder=None,
-        unit='line',
-    ):
-        tree = self.corpus.get_codebook()
-        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
-                invert=invert, coder=coder, unit=unit)
-        for node in tree.flatten():
-            node.count = counts[node.name]
-        for node in tree.flatten():
-            node.total = node.sum("count")
-        return tree
 
     def show_stats(self, codes, 
         max_count=None, 
@@ -74,7 +54,7 @@ class QCCorpusViewer:
                 file_list=file_list, 
                 invert=invert
             ) 
-        tree = self.code_tree_with_counts(
+        tree = self.corpus.get_code_tree_with_counts(
             file_pattern=file_pattern, 
             file_list=file_list,
             invert=invert, 
@@ -119,47 +99,65 @@ class QCCorpusViewer:
     def crosstab(self, codes, 
         max_count=None, 
         min_count=None, 
-        recursive=False,
+        recursive_codes=False,
+        recursive_counts=False,
         depth=None, 
         unit='line',
         expanded=False, 
         format=None,
+        compact=False,
         file_pattern=None,
         file_list=None,
         invert=False,
         coder=None,
         outfile=None,
+        probs=False,
     ):
-        # Assign counts to nodes
-        if file_pattern:
-            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert) 
-            
-        counts = self.corpus.get_code_counts(pattern=file_pattern, file_list=file_list, 
-                invert=invert, coder=coder, unit=unit)
 
-        rootNode = self.corpus.get_codebook()
-        for node in rootNode.flatten():
-            node.count = counts[node.name]
-
-        if recursive:
-            codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
+        tree = self.corpus.get_codebook()
+        if codes:
+            nodes = sum([tree.find(c) for c in codes], [])
+            if recursive_codes:
+                nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
         else:
-            codes = set(codes)
-    
-        code_sets = []
+            nodes = tree.flatten(depth=depth)
+
+        if recursive_counts:
+            code_sets = sorted((n.name, set(n.flatten(names=True))) for n in nodes)
+        else:
+            code_sets = sorted((n.name, set([n.name])) for n in nodes)
+
+        rows = []    
         for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert):
             if unit == "document":
                 doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')
-                code_sets.append(doc_codes & codes)
+                rows.append([int(bool(doc_codes & matches)) for code, matches in code_sets])
             elif unit == "line":
                 # Need a windowing strategy.
                 raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
             else:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
-        cols = sorted(codes)
-        sparse_matrix = np.array([[int(code in cs) for code in cols] for cs in code_sets])
-        print(sparse_matrix)
+        rows = np.array(rows)
+        m = frequencies = rows.T @ rows
+        
+        if probs:
+            totals = np.diag(m).reshape((-1, 1))
+            m = m / totals
 
+        if compact:
+            data = [[ix, code, *row] for ix, (code, matches), row in zip(count(), code_sets, m)]
+            cols = ["ix", "code", *range(len(code_sets))]
+        else:
+            data = [[code, *row] for (code, matches), row in zip(code_sets, m)]
+            cols = ["code", *[c for c, m in code_sets]]
+
+        if outfile:
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(data)
+        else:
+            print(tabulate(data, cols, tablefmt=format))
 
     def report_files_matching_pattern(self, pattern, file_list=None, invert=False):
         print("From files:")
