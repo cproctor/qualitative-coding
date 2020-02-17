@@ -165,6 +165,7 @@ def main(args):
             pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
+            coder=args.coder,
             show_codes=not args.no_codes,
         )
     if args.command == "stats":

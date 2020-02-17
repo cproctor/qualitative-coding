@@ -158,26 +158,20 @@ class QCCorpus:
         If unit is 'document', returns a set of codes when coder or merge is given, otherwise
         returns a dict mapping coders to sets of codes.
         """
-        if unit == 'document':
-            if coder or merge:
-                codes = set()
-                for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
-                    codes |= set([code for i, code in self.read_codes(f)])
-            else:
-                codes = defaultdict(set)
-                for f in self.get_code_files_for_corpus_file(corpus_text_path):
-                    codes[self.get_coder_from_code_path(f)] |= set([code for i, code in self.read_codes(f)])
-            return codes
-        elif unit == 'line':
-            codes = {}
-            for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
-                codes[self.get_coder_from_code_path(f)] = self.read_codes(f)
-            if coder or merge:
+        codes = {}
+        for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
+            codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
+        if coder:
+            return codes.get(coder, {})
+        elif merge:
+            if unit == 'line': 
                 return sum(codes.values(), [])
+            elif unit == 'document': 
+                return set().union(*codes.values())
             else:
-                return codes
+                raise NotImplementedError("Unit must be 'line' or 'document'.")
         else:
-            raise NotImplementedError("Unit must be 'line' or 'document'.")
+            return codes
 
     def write_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"
@@ -193,13 +187,20 @@ class QCCorpus:
             for line_num in range(file_len):
                 outf.write(", ".join(lines[line_num]) + "\n")
 
-    def read_codes(self, code_file_path):
-        "When passed a file object, returns a list of (line_num, code)"
+    def read_codes(self, code_file_path, unit='line'):
+        """When passed a file object, returns a list of (line_num, code) if unit is 'line'. 
+        When unit is 'document', Returns a set of codes.
+        """
         codes = []
         with open(code_file_path) as inf:
             for line_num, line in enumerate(inf):
                 codes += [(line_num, code.strip()) for code in line.split(",") if code.strip()]
-        return codes
+        if unit == 'line': 
+            return codes
+        elif unit == 'document': 
+            return set(code for i, code in codes)
+        else:
+            raise NotImplementedError("Unit must be 'line' or 'document'.")
 
     def get_all_codes(self, pattern=None, coder=None):
         "Returns a list of all unique codes used in the corpus"
