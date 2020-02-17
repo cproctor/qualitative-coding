@@ -68,9 +68,9 @@ class QCCorpusViewer:
         else:
             nodes = tree.flatten(depth=depth)
         if max_count:
-            nodes = filter(lambda n: n.count <= max_count, nodes)
+            nodes = filter(lambda n: n.total <= max_count, nodes)
         if min_count:
-            nodes = filter(lambda n: n.count >= min_count, nodes)
+            nodes = filter(lambda n: n.total >= min_count, nodes)
         nodes = sorted(nodes)
 
         def namer(node):
