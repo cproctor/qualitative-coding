@@ -217,9 +217,10 @@ Lists all the codes currently in the codebook.
     $ qc list --expanded
 
 ### rename
-Goes through all the code files and replaces one code with another. Removes the old code from the codebook.
+Goes through all the code files and replaces one or more codes with another. 
+Removes the old codes from the codebook.
 
-    $ qc rename funy funny
+    $ qc rename humorous funy funnny funny
 
 ### find
 Displays all occurences of the provided code(s). 

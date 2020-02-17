@@ -227,14 +227,14 @@ class QCCorpus:
         return all_codes
 
     def get_code_tree_with_counts(self, 
-        file_pattern=None,
+        pattern=None,
         file_list=None,
         invert=False,
         coder=None,
         unit='line',
     ):
         tree = self.get_codebook()
-        counts = self.get_code_counts(pattern=file_pattern, file_list=file_list, 
+        counts = self.get_code_counts(pattern=pattern, file_list=file_list, 
                 invert=invert, coder=coder, unit=unit)
         for node in tree.flatten():
             node.count = counts[node.name]
@@ -265,24 +265,29 @@ class QCCorpus:
             code_tree.add_child(new_code)
         TreeNode.write_yaml(self.codebook, code_tree)
 
-    def rename_code(self, old_code, new_code, coder=None):
+    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
+                update_codebook=False):
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
         """
-        for corpus_path in self.iter_corpus():
+        for corpus_path in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             for code_file_path in self.get_code_files_for_corpus_file(corpus_path, coder=coder):
-                codes = self.read_codes(code_file_path)
-                codes = [(ln, new_code if code == old_code else code) for ln, code in codes]
-                coder = self.get_coder_from_code_path(code_file_path)
-                self.write_codes(corpus_path, coder, codes)
+                line_nums, codes = zip(*self.read_codes(code_file_path))
+                if set(old_codes) & set(codes):
+                    new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
+                    existing_coder = self.get_coder_from_code_path(code_file_path)
+                    self.write_codes(corpus_path, existing_coder, new_codes)
 
-        code_tree = self.get_codebook()
-        code_tree.rename(old_code, new_code)
-        code_tree.remove_children_by_name(old_code)
-        TreeNode.write_yaml(self.codebook, code_tree)
-        self.update_codebook()
-        self.log.info(f"Renamed code {old_code} to {new_code}")
+        global_rename = pattern is None and file_list is None and invert is None and coder is None
+        if global_rename or update_codebook:
+            code_tree = self.get_codebook()
+            for old_code in old_codes:
+                code_tree.rename(old_code, new_code)
+                code_tree.remove_children_by_name(old_code)
+                self.log.info(f"Renamed code {old_code} to {new_code}")
+            TreeNode.write_yaml(self.codebook, code_tree)
+            self.update_codebook()
                 
 
             

@@ -39,7 +39,7 @@ class QCCorpusViewer:
         unit='line',
         expanded=False, 
         format=None,
-        file_pattern=None,
+        pattern=None,
         file_list=None,
         invert=False,
         coder=None,
@@ -48,14 +48,14 @@ class QCCorpusViewer:
         """
         Displays statistics about how codes are used.
         """
-        if file_pattern:
+        if pattern:
             self.report_files_matching_pattern(
-                file_pattern=file_pattern, 
+                pattern=pattern, 
                 file_list=file_list, 
                 invert=invert
             ) 
         tree = self.corpus.get_code_tree_with_counts(
-            file_pattern=file_pattern, 
+            pattern=pattern, 
             file_list=file_list,
             invert=invert, 
             coder=coder, 
@@ -106,7 +106,7 @@ class QCCorpusViewer:
         expanded=False, 
         format=None,
         compact=False,
-        file_pattern=None,
+        pattern=None,
         file_list=None,
         invert=False,
         coder=None,
@@ -128,7 +128,7 @@ class QCCorpusViewer:
             code_sets = sorted((n.name, set([n.name])) for n in nodes)
 
         rows = []    
-        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert):
+        for corpus_file in self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             if unit == "document":
                 doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')
                 rows.append([int(bool(doc_codes & matches)) for code, matches in code_sets])
@@ -178,7 +178,7 @@ class QCCorpusViewer:
             after=2, 
             textwidth=80, 
             coder=None,
-            file_pattern=None,
+            pattern=None,
             file_list=None,
             invert=False,
             show_codes=True,
@@ -191,10 +191,10 @@ class QCCorpusViewer:
 
         if show_codes:
             print("Showing results for codes: ", ", ".join(sorted(codes)))
-        if file_pattern and unit == "line":
-            self.report_files_matching_pattern(file_pattern, file_list=file_list, invert=invert)
+        if pattern and unit == "line":
+            self.report_files_matching_pattern(pattern, file_list=file_list, invert=invert)
         
-        for corpus_file in self.corpus.iter_corpus(pattern=file_pattern, file_list=file_list, invert=invert):
+        for corpus_file in self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             cf = corpus_file.relative_to(self.corpus.corpus_dir)
             if unit == "document":
                 doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')

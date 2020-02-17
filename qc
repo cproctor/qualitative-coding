@@ -60,10 +60,11 @@ ls = subparsers.add_parser("list", help="List codes", aliases=["ls"])
 ls.add_argument("-e", "--expanded", action="store_true")
 ls.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
 
-rename = subparsers.add_parser("rename", help="Rename a code")
-rename.add_argument("old_code")
-rename.add_argument("new_code")
-rename.add_argument("-c", "--coder", help="Name of coder")
+rename = subparsers.add_parser("rename", help="Rename a code", aliases=['rn'])
+add_datasource_filtering_options(rename, coder_required=False)
+rename.add_argument("old_codes", help='code(s) to rename', nargs='+')
+rename.add_argument("new_code", help='code to use as a replacement')
+rename.add_argument("-u", "--update_codebook", help="force update codebook (even if renaming is scoped)", action="store_true")
 
 find = subparsers.add_parser("find", help="Find all coded text")
 add_datasource_filtering_options(find)
@@ -143,8 +144,16 @@ def main(args):
         corpus.update_codebook()
     if args.command in ["list", "ls"]:
         viewer.list_codes(args.expanded, depth=args.depth)
-    if args.command == "rename":
-        corpus.rename_code(args.old_code, args.new_code, coder=args.coder)
+    if args.command in ["rename", "rn"]:
+        corpus.rename_codes(
+            old_codes=args.old_codes, 
+            new_code=args.new_code, 
+            pattern=args.pattern,
+            file_list=file_list,
+            invert=args.invert,
+            coder=args.coder,
+            update_codebook=args.update_codebook,
+        )
     if args.command == "find":
         viewer.show_coded_text(
             args.code, 
@@ -153,7 +162,7 @@ def main(args):
             recursive_codes=args.recursive_codes,
             depth=args.depth,
             unit=args.unit,
-            file_pattern=args.pattern,
+            pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
             show_codes=not args.no_codes,
@@ -169,7 +178,7 @@ def main(args):
             recursive_counts=args.recursive_counts,
             expanded=args.expanded, 
             format=args.format, 
-            file_pattern=args.pattern,
+            pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
             coder=args.coder,
@@ -187,7 +196,7 @@ def main(args):
             recursive_counts=args.recursive_counts,
             expanded=args.expanded, 
             format=args.format, 
-            file_pattern=args.pattern,
+            pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
             coder=args.coder,
