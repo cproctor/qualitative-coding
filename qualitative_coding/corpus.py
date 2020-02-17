@@ -273,6 +273,9 @@ class QCCorpus:
         """
         for corpus_path in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             for code_file_path in self.get_code_files_for_corpus_file(corpus_path, coder=coder):
+                existing_codes = self.read_codes(code_file_path)
+                if len(existing_codes) == 0: 
+                    continue
                 line_nums, codes = zip(*self.read_codes(code_file_path))
                 if set(old_codes) & set(codes):
                     new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
