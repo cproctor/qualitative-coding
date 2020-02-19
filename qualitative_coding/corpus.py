@@ -182,6 +182,7 @@ class QCCorpus:
         file_list=None,
         invert=False,
         coder=None,
+        expanded=False,
     ):
         tree = self.get_codebook()
         if codes:
@@ -207,7 +208,7 @@ class QCCorpus:
                 raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
             else:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
-        return [n.name for n in nodes], np.array(rows)
+        return [n.expanded_name() if expanded else n.name for n in nodes], np.array(rows)
 
     def write_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"

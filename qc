@@ -86,6 +86,7 @@ add_datasource_filtering_options(crosstab)
 add_table_display_options(crosstab)
 crosstab.add_argument("-0", "--probs", help="Probabilities instead of counts", action="store_true")
 crosstab.add_argument("-z", "--compact", help="Compact display", action="store_true")
+crosstab.add_argument("-y", "--tidy", help="Return tidy format", action="store_true")
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="memo author")
@@ -190,22 +191,40 @@ def main(args):
     if args.command in ["crosstab", "ct"]:
         args.unit = "document"  # Sorry, pardner.
         check_incompatible(args, code=Truthy(), depth=Truthy(), recursive_codes=False)
-        viewer.crosstab(
-            args.code, 
-            depth=args.depth, 
-            recursive_codes=args.recursive_codes,
-            recursive_counts=args.recursive_counts,
-            expanded=args.expanded, 
-            format=args.format, 
-            pattern=args.pattern,
-            file_list=file_list,
-            invert=args.invert,
-            coder=args.coder,
-            unit=args.unit,
-            outfile=args.outfile,
-            probs=args.probs,
-            compact=args.compact,
-        )
+        check_incompatible(args, tidy=True, compact=True)
+        if args.tidy:
+            viewer.tidy_codes(
+                args.code, 
+                depth=args.depth, 
+                recursive_codes=args.recursive_codes,
+                recursive_counts=args.recursive_counts,
+                expanded=args.expanded, 
+                format=args.format, 
+                pattern=args.pattern,
+                file_list=file_list,
+                invert=args.invert,
+                coder=args.coder,
+                unit=args.unit,
+                outfile=args.outfile,
+                probs=args.probs,
+            )
+        else:
+            viewer.crosstab(
+                args.code, 
+                depth=args.depth, 
+                recursive_codes=args.recursive_codes,
+                recursive_counts=args.recursive_counts,
+                expanded=args.expanded, 
+                format=args.format, 
+                pattern=args.pattern,
+                file_list=file_list,
+                invert=args.invert,
+                coder=args.coder,
+                unit=args.unit,
+                outfile=args.outfile,
+                probs=args.probs,
+                compact=args.compact,
+            )
 
     if args.command == "memo":
         if args.list_memos:

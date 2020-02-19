@@ -6,7 +6,7 @@ from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import merge_ranges, prompt_for_choice
 from tabulate import tabulate
-from collections import defaultdict
+from collections import defaultdict, Counter
 from subprocess import run
 from datetime import datetime
 from random import shuffle
@@ -120,6 +120,7 @@ class QCCorpusViewer:
             file_list=file_list,
             invert=invert,
             coder=coder,
+            expanded=expanded,
         )
         m = frequencies = matrix.T @ matrix
         if probs:
@@ -131,6 +132,46 @@ class QCCorpusViewer:
         else:
             data = [[code, *row] for code, row in zip(labels, m)]
             cols = ["code", *labels]
+        if outfile:
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(data)
+        else:
+            print(tabulate(data, cols, tablefmt=format))
+
+    def tidy_codes(self, codes, 
+        recursive_codes=False,
+        recursive_counts=False,
+        depth=None, 
+        unit='line',
+        pattern=None,
+        file_list=None,
+        invert=False,
+        coder=None,
+        probs=False,
+        expanded=False, 
+        outfile=None,
+        format=None,
+    ):
+        """Returns a tidy table containing one row for each combination of codes.
+        """
+        labels, matrix = self.corpus.get_code_matrix(
+            codes, 
+            recursive_codes=recursive_codes,
+            recursive_counts=recursive_counts,
+            depth=depth, 
+            unit=unit,
+            pattern=pattern,
+            file_list=file_list,
+            invert=invert,
+            coder=coder,
+            expanded=expanded,
+        )
+        counts = Counter(map(tuple, matrix))
+        data = [(count, *values) for values, count in counts.items()]
+        cols = ("count", *labels)
+
         if outfile:
             with open(outfile, 'w') as fh:
                 writer = csv.writer(fh)
