@@ -11,7 +11,6 @@ from subprocess import run
 from datetime import datetime
 from random import shuffle
 from itertools import count
-import numpy as np
 import csv
 
 class QCCorpusViewer:
@@ -97,60 +96,41 @@ class QCCorpusViewer:
             print(tabulate(results, cols, tablefmt=format))
 
     def crosstab(self, codes, 
-        max_count=None, 
-        min_count=None, 
         recursive_codes=False,
         recursive_counts=False,
         depth=None, 
         unit='line',
-        expanded=False, 
-        format=None,
-        compact=False,
         pattern=None,
         file_list=None,
         invert=False,
         coder=None,
-        outfile=None,
         probs=False,
+        expanded=False, 
+        compact=False,
+        outfile=None,
+        format=None,
     ):
-
-        tree = self.corpus.get_codebook()
-        if codes:
-            nodes = sum([tree.find(c) for c in codes], [])
-            if recursive_codes:
-                nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
-        else:
-            nodes = tree.flatten(depth=depth)
-
-        if recursive_counts:
-            code_sets = sorted((n.name, set(n.flatten(names=True))) for n in nodes)
-        else:
-            code_sets = sorted((n.name, set([n.name])) for n in nodes)
-
-        rows = []    
-        for corpus_file in self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            if unit == "document":
-                doc_codes = self.corpus.get_codes(corpus_file, coder=coder, merge=True, unit='document')
-                rows.append([int(bool(doc_codes & matches)) for code, matches in code_sets])
-            elif unit == "line":
-                # Need a windowing strategy.
-                raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
-            else:
-                raise NotImplementedError("Unit must be 'line' or 'document'.")
-        rows = np.array(rows)
-        m = frequencies = rows.T @ rows
-        
+        labels, matrix = self.corpus.get_code_matrix(
+            codes, 
+            recursive_codes=recursive_codes,
+            recursive_counts=recursive_counts,
+            depth=depth, 
+            unit=unit,
+            pattern=pattern,
+            file_list=file_list,
+            invert=invert,
+            coder=coder,
+        )
+        m = frequencies = matrix.T @ matrix
         if probs:
             totals = np.diag(m).reshape((-1, 1))
             m = m / totals
-
         if compact:
-            data = [[ix, code, *row] for ix, (code, matches), row in zip(count(), code_sets, m)]
+            data = [[ix, code, *row] for ix, code, row in zip(count(), labels, m)]
             cols = ["ix", "code", *range(len(code_sets))]
         else:
-            data = [[code, *row] for (code, matches), row in zip(code_sets, m)]
-            cols = ["code", *[c for c, m in code_sets]]
-
+            data = [[code, *row] for code, row in zip(labels, m)]
+            cols = ["code", *labels]
         if outfile:
             with open(outfile, 'w') as fh:
                 writer = csv.writer(fh)

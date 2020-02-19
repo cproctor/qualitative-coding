@@ -19,7 +19,7 @@ import yaml
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prepare_corpus_text
-
+import numpy as np
 
 DEFAULT_SETTINGS = {
     'corpus_dir': 'corpus',
@@ -172,6 +172,42 @@ class QCCorpus:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
         else:
             return codes
+
+    def get_code_matrix(self, codes, 
+        recursive_codes=False,
+        recursive_counts=False,
+        depth=None, 
+        unit='line',
+        pattern=None,
+        file_list=None,
+        invert=False,
+        coder=None,
+    ):
+        tree = self.get_codebook()
+        if codes:
+            nodes = sum([tree.find(c) for c in codes], [])
+            if recursive_codes:
+                nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
+        else:
+            nodes = tree.flatten(depth=depth)
+
+        if recursive_counts:
+            code_sets = sorted((n.name, set(n.flatten(names=True))) for n in nodes)
+        else:
+            code_sets = sorted((n.name, set([n.name])) for n in nodes)
+
+        rows = []    
+        for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
+            if unit == "document":
+                doc_codes = self.get_codes(corpus_file, coder=coder, merge=True, unit='document')
+                rows.append([int(bool(doc_codes & matches)) for code, matches in code_sets])
+            elif unit == "line":
+                # Need a windowing/chunking strategy.
+                # Perhaps a delimiter (e.g. paragraphs break on blank lines)
+                raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
+            else:
+                raise NotImplementedError("Unit must be 'line' or 'document'.")
+        return [n.name for n in nodes], np.array(rows)
 
     def write_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"
