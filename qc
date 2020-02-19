@@ -87,6 +87,8 @@ add_table_display_options(crosstab)
 crosstab.add_argument("-0", "--probs", help="Probabilities instead of counts", action="store_true")
 crosstab.add_argument("-z", "--compact", help="Compact display", action="store_true")
 crosstab.add_argument("-y", "--tidy", help="Return tidy format", action="store_true")
+crosstab.add_argument("-u", "--max", help="Maximum count value to show", type=int)
+crosstab.add_argument("-l", "--min", help="Minimum count value to show", type=int)
 
 memo = subparsers.add_parser("memo", help="write a memo")
 memo.add_argument("coder", help="memo author")
@@ -192,6 +194,8 @@ def main(args):
         args.unit = "document"  # Sorry, pardner.
         check_incompatible(args, code=Truthy(), depth=Truthy(), recursive_codes=False)
         check_incompatible(args, tidy=True, compact=True)
+        check_incompatible(args, tidy=False, min=Truthy())
+        check_incompatible(args, tidy=False, max=Truthy())
         if args.tidy:
             viewer.tidy_codes(
                 args.code, 
@@ -207,6 +211,8 @@ def main(args):
                 unit=args.unit,
                 outfile=args.outfile,
                 probs=args.probs,
+                minimum=args.min,
+                maximum=args.max,
             )
         else:
             viewer.crosstab(

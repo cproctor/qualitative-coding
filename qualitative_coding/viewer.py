@@ -153,6 +153,8 @@ class QCCorpusViewer:
         expanded=False, 
         outfile=None,
         format=None,
+        minimum=None,
+        maximum=None,
     ):
         """Returns a tidy table containing one row for each combination of codes.
         """
@@ -169,7 +171,8 @@ class QCCorpusViewer:
             expanded=expanded,
         )
         counts = Counter(map(tuple, matrix))
-        data = [(count, *values) for values, count in counts.items()]
+        valid = lambda c: (minimum is None or c >= minimum) and (maximum is None or c <= maximum)
+        data = [(count, *values) for values, count in counts.items() if valid(count)]
         cols = ("count", *labels)
 
         if outfile:
