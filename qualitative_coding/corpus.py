@@ -193,9 +193,9 @@ class QCCorpus:
             nodes = tree.flatten(depth=depth)
 
         if recursive_counts:
-            code_sets = sorted((n.name, set(n.flatten(names=True))) for n in nodes)
+            code_sets = [(n.name, set(n.flatten(names=True))) for n in nodes]
         else:
-            code_sets = sorted((n.name, set([n.name])) for n in nodes)
+            code_sets = [(n.name, set([n.name])) for n in nodes]
 
         rows = []    
         for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
