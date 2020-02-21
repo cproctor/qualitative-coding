@@ -128,7 +128,7 @@ class QCCorpusViewer:
             m = m / totals
         if compact:
             data = [[ix, code, *row] for ix, code, row in zip(count(), labels, m)]
-            cols = ["ix", "code", *range(len(code_sets))]
+            cols = ["ix", "code", *range(len(labels))]
         else:
             data = [[code, *row] for code, row in zip(labels, m)]
             cols = ["code", *labels]
