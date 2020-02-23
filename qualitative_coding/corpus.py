@@ -272,13 +272,38 @@ class QCCorpus:
         unit='line',
     ):
         tree = self.get_codebook()
-        counts = self.get_code_counts(pattern=pattern, file_list=file_list, 
+        story_sets = self.get_code_story_sets(pattern=pattern, file_list=file_list, 
                 invert=invert, coder=coder, unit=unit)
         for node in tree.flatten():
-            node.count = counts[node.name]
+            node.story_set = story_sets[node.name]
+            node.count = len(node.story_set)
+
+        def agg_union(node):
+            for child in node.children:
+                agg_union(child)
+            node.recursive_story_set = set() if node.is_root() else set(node.story_set)
+            for child in node.children:
+                node.recursive_story_set |= child.recursive_story_set
+
+        agg_union(tree)
         for node in tree.flatten():
-            node.total = node.sum("count")
+            node.total = len(node.recursive_story_set)
         return tree
+
+    def get_code_story_sets(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
+        """Returns {code: stories}, where stories is a set of story ids when unit is document 
+        and stories is a set of (story_id, story_line) tuples when unit is line
+        """
+        code_story_sets = defaultdict(set)
+        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, 
+                coder=coder, merge=True):
+            if unit == 'document':
+                for line_num, code in codes:
+                    code_story_sets[code].add(str(f))
+            elif unit == 'line':
+                for line_num, code in codes:
+                    code_story_sets[code].add((str(f), line_num))
+        return code_story_sets
 
     def get_coder_from_code_path(self, code_file_path):
         "Maps Path('some_interview.txt.cp.codes') -> 'cp'"
