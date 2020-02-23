@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="qualitative-coding",
-    version="0.1.7",
+    version="0.1.9",
     author="Chris Proctor",
     author_email="pypi.org@accounts.chrisproctor.net",
     description="Qualitative coding tools for computer scientists",

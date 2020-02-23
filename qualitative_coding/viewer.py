@@ -43,6 +43,7 @@ class QCCorpusViewer:
         invert=False,
         coder=None,
         outfile=None,
+        total_only=False,
     ):
         """
         Displays statistics about how codes are used.
@@ -81,8 +82,12 @@ class QCCorpusViewer:
                 return node.name
 
         if recursive_counts:
-            cols = ["Code", "Count", "Total"]
-            results = [(namer(n), n.count, n.total) for n in nodes]
+            if total_only:
+                cols = ["Code", "Total"]
+                results = [(namer(n), n.total) for n in nodes]
+            else:
+                cols = ["Code", "Count", "Total"]
+                results = [(namer(n), n.count, n.total) for n in nodes]
         else:
             cols = ["Code", "Count"]
             results = [(namer(n), n.count) for n in nodes]

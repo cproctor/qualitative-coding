@@ -79,6 +79,7 @@ add_datasource_filtering_options(stats)
 add_table_display_options(stats)
 stats.add_argument("-u", "--max", help="Maximum count value to show", type=int)
 stats.add_argument("-l", "--min", help="Minimum count value to show", type=int)
+stats.add_argument("-t", "--total-only", help="Show total but not count", action="store_true")
 
 crosstab = subparsers.add_parser("crosstab", help="Cross-tabulate code occurrences", aliases=['ct'])
 add_code_filtering_options(crosstab, code_required=False)
@@ -173,6 +174,7 @@ def main(args):
         )
     if args.command == "stats":
         check_incompatible(args, recursive=False, depth=Truthy())
+        check_incompatible(args, recursive_counts=False, total_only=True)
         viewer.show_stats(
             args.code, 
             max_count=args.max, 
@@ -188,6 +190,7 @@ def main(args):
             coder=args.coder,
             unit=args.unit,
             outfile=args.outfile,
+            total_only=args.total_only,
         )
 
     if args.command in ["crosstab", "ct"]:
