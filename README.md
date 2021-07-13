@@ -166,7 +166,7 @@ Next, we might want to see examples of what we have coded.
 
 Again, there are lots of options for filtering and viewing your coding. At some
 point, you will probably want to revise your codes. You can easily rename a
-code, or collapse codes together, with the `remane` command. This updates your 
+code, or collapse codes together, with the `rename` command. This updates your 
 codebook as well as in all your code files.
 
     $ qc rename grounded_coding grounded
