@@ -27,6 +27,7 @@ DEFAULT_SETTINGS = {
     'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
+    'editor': 'vim'
 }
 
 class QCCorpus:

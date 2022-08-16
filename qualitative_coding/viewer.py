@@ -311,7 +311,7 @@ class QCCorpusViewer:
     def open_editor(self, files):
         if not (isinstance(files, list) or isinstance(files, tuple)):
             files = [files]
-        run(["vim", "-O"] + files)
+        run([self.corpus.settings['editor'], "-O"] + files)
 
 
 
