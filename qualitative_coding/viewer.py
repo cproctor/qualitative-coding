@@ -11,6 +11,7 @@ from subprocess import run
 from datetime import datetime
 from random import shuffle
 from itertools import count
+import numpy as np
 import csv
 
 class QCCorpusViewer:
