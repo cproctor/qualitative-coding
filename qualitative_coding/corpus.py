@@ -32,7 +32,7 @@ DEFAULT_SETTINGS = {
 class QCCorpus:
     
     @classmethod
-    def initialize(cls, settings_file="settings.py"):
+    def initialize(cls, settings_file="settings.yaml"):
         """
         If the settings file does not exist, creates it. Otherwise, uses the settings
         file to initialize the expected directories and files.
