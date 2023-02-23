@@ -155,7 +155,6 @@ class QCCorpusViewer:
         file_list=None,
         invert=False,
         coder=None,
-        probs=False,
         expanded=False, 
         outfile=None,
         format=None,

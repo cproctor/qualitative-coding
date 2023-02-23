@@ -31,7 +31,7 @@ def add_code_filtering_options(command, recursive_counts=True, code_required=Tru
     else:
         command.add_argument("code", help="One or more codes", nargs="*")
     command.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
-    command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
+    command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'paragraph', 'document'], default='line')
     command.add_argument("-r", "--recursive-codes", help="Include child codes", action="store_true")
     if recursive_counts:
         command.add_argument("-a", "--recursive-counts", help="Counts for codes include child codes", action="store_true")
@@ -194,9 +194,9 @@ def main(args):
         )
 
     if args.command in ["crosstab", "ct"]:
-        args.unit = "document"  # Sorry, pardner.
         check_incompatible(args, code=Truthy(), depth=Truthy(), recursive_codes=False)
         check_incompatible(args, tidy=True, compact=True)
+        check_incompatible(args, tidy=True, probs=True)
         check_incompatible(args, tidy=False, min=Truthy())
         check_incompatible(args, tidy=False, max=Truthy())
         if args.tidy:
@@ -213,7 +213,6 @@ def main(args):
                 coder=args.coder,
                 unit=args.unit,
                 outfile=args.outfile,
-                probs=args.probs,
                 minimum=args.min,
                 maximum=args.max,
             )
