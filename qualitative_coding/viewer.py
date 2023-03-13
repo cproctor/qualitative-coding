@@ -5,8 +5,10 @@
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import merge_ranges, prompt_for_choice
+from qualitative_coding.coding_ui import CodingUI
 from tabulate import tabulate
 from collections import defaultdict, Counter
+from pathlib import Path
 from subprocess import run
 from datetime import datetime
 from random import shuffle
@@ -318,9 +320,19 @@ class QCCorpusViewer:
         return "\n\n".join(text)
 
     def open_editor(self, files):
-        if not (isinstance(files, list) or isinstance(files, tuple)):
-            files = [files]
-        run(["vim", "-O"] + files)
+        corpus_file, codes_file = files
+        text = Path(corpus_file).read_text().splitlines()
+        if Path(codes_file).exists():
+            codes = Path(codes_file).read_text().splitlines()
+        else:
+            codes = ["" for line in text]
+        codebook = []
+        ui = CodingUI(text, codes, codebook)
+        ui.run()
+
+        #if not (isinstance(files, list) or isinstance(files, tuple)):
+            #files = [files]
+        #run(["vim", "-O"] + files)
 
 
 
