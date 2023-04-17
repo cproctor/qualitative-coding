@@ -311,7 +311,4 @@ class QCCorpusViewer:
     def open_editor(self, files):
         if not (isinstance(files, list) or isinstance(files, tuple)):
             files = [files]
-        run([self.corpus.settings['editor'], "-O"] + files)
-
-
-
+        run([self.corpus.settings['editor'], "-O", "-c", "vertical resize 81"] + files)
