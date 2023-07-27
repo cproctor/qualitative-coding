@@ -9,6 +9,9 @@ def is_enter(ch):
 def is_control_char(ch):
     return ch in CONTROL_CHARS
 
+def is_arrow_key(ch):
+    return ch in (curses.KEY_RIGHT, curses.KEY_UP, curses.KEY_LEFT, curses.KEY_DOWN)
+
 def is_escape(ch):
     return ch == curses.ascii.ESC
 
