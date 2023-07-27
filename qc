@@ -142,7 +142,7 @@ def main(args):
                 invert=args.invert,
                 preformatted=args.preformatted)
         if args.prepare_codes:
-            corpus.prepare_code_files(pattern=args.pattern, coder=args.coder)
+            corpus.prepare_code_files(args.coder, pattern=args.pattern)
 
     if args.command in ["codebook", "cb"]:
         corpus.update_codebook()
