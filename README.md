@@ -263,7 +263,8 @@ In the future, this may also include odds ratios.
 - **--recursive-codes** (**-r**): Include children of selected codes. 
 - **--depth** `depth` (**-d**): Limit the recursive depth of codes to select. 
 - **--unit** `unit` (**-n**): Unit of analysis for reporting. Currently
-  "document" and "line" are supported by most commands.
+  "line", "paragraph", and "document" are supported. Paragraphs are delimted
+  by blank lines.
 - **--recursive-counts** (**-a**): When counting codes, also count instances of
   codes' children. In contrast to **--recursive-codes**, which controls which
   codes will be reported, this option controls how the counting is done. 
@@ -277,5 +278,3 @@ In the future, this may also include odds ratios.
   "coding_process:grounded")
 - **--outfile** `outfile` (**-o**): Save tabular results to a csv file instead
   of displaying.
-
-

@@ -11,6 +11,7 @@ from subprocess import run
 from datetime import datetime
 from random import shuffle
 from itertools import count
+import numpy as np
 import csv
 
 class QCCorpusViewer:
@@ -143,7 +144,16 @@ class QCCorpusViewer:
                 writer.writerow(cols)
                 writer.writerows(data)
         else:
-            print(tabulate(data, cols, tablefmt=format))
+            index_cols = 2 if compact else 1
+            data = self.mask_lower_triangle(data, index_cols)
+            print(tabulate(data, cols, tablefmt=format, stralign="right"))
+
+    def mask_lower_triangle(self, data, num_index_cols):
+        "Replaces values in the lower triangle of a 2d Python list with ''"
+        def mask(v, i, j):
+            should_mask = i >= num_index_cols and i - num_index_cols < j
+            return '' if should_mask else v
+        return [[mask(v, i, j) for i, v in enumerate(row)] for j, row in enumerate(data)]
 
     def tidy_codes(self, codes, 
         recursive_codes=False,
@@ -154,7 +164,6 @@ class QCCorpusViewer:
         file_list=None,
         invert=False,
         coder=None,
-        probs=False,
         expanded=False, 
         outfile=None,
         format=None,

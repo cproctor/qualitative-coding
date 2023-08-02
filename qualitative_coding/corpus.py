@@ -33,7 +33,7 @@ DEFAULT_SETTINGS = {
 class QCCorpus:
     
     @classmethod
-    def initialize(cls, settings_file="settings.py"):
+    def initialize(cls, settings_file="settings.yaml"):
         """
         If the settings file does not exist, creates it. Otherwise, uses the settings
         file to initialize the expected directories and files.
@@ -103,8 +103,14 @@ class QCCorpus:
             f.write_text(prepare_corpus_text(f.read_text(), width=80, preformatted=preformatted))
 
     def get_code_file_path(self, corpus_file_path, coder):
-        text_path = corpus_file_path.relative_to(self.corpus_dir) 
-        return self.codes_dir / (str(text_path) + "." + coder + ".codes")
+        "Maps ('corpus/interview.txt', 'cp') -> 'codes/interview.txt.cp.codes' "
+        rel_path = corpus_file_path.relative_to(self.corpus_dir) 
+        return self.codes_dir / (str(rel_path) + "." + coder + ".codes")
+
+    def get_corpus_file_path(self, code_file_path):
+        "Inverse of `get_code_file_path`"
+        rel_path = code_file_path.relative_to(self.codes_dir)
+        return self.corpus_dir / '.'.join(str(rel_path).split('.')[:-2])
 
     def prepare_code_files(self, pattern=None, file_list=None, invert=False):
         "For each text in corpus, creates a blank file of equivalent length"
@@ -154,10 +160,9 @@ class QCCorpus:
     def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
         """
         Returns codes pertaining to a corpus text.
-        Returns a dict like {coder_id: [(line_num, code)...]}. 
-        If merge or coder, there is no ambiguity;instead returns a list of [(line_num, code)...]
-        If unit is 'document', returns a set of codes when coder or merge is given, otherwise
-        returns a dict mapping coders to sets of codes.
+        Returns a dict like {coder_id: [(selection_ix, code)...]}. 
+        If merge or coder, returns a list of [(selection_ix, code)...]
+        The selection indices are guaranteed to be in order.
         """
         codes = {}
         for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
@@ -165,12 +170,8 @@ class QCCorpus:
         if coder:
             return codes.get(coder, {})
         elif merge:
-            if unit == 'line': 
-                return sum(codes.values(), [])
-            elif unit == 'document': 
-                return set().union(*codes.values())
-            else:
-                raise NotImplementedError("Unit must be 'line' or 'document'.")
+            merged_codes = sum(codes.values(), [])
+            return sorted(set(merged_codes))
         else:
             return codes
 
@@ -185,6 +186,11 @@ class QCCorpus:
         coder=None,
         expanded=False,
     ):
+        """Returns a list of codes and a matrix of (codes * selections). 
+        Each code represents its code set, consisting of itself and 
+        matching child codes, if `recursive_codes` is set. 
+        Selections are each unit within each matching corpus file.
+        """
         tree = self.get_codebook()
         if codes:
             nodes = sum([tree.find(c) for c in codes], [])
@@ -200,16 +206,15 @@ class QCCorpus:
 
         rows = []    
         for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            if unit == "document":
-                doc_codes = self.get_codes(corpus_file, coder=coder, merge=True, unit='document')
-                rows.append([int(bool(doc_codes & matches)) for code, matches in code_sets])
-            elif unit == "line":
-                # Need a windowing/chunking strategy.
-                # Perhaps a delimiter (e.g. paragraphs break on blank lines)
-                raise NotImplementedError("Crosstab with unit='line' not yet implemented.")
-            else:
-                raise NotImplementedError("Unit must be 'line' or 'document'.")
-        return [n.expanded_name() if expanded else n.name for n in nodes], np.array(rows)
+            codes = self.get_codes(corpus_file, coder=coder, merge=True, unit=unit)
+            grouped_codes = defaultdict(set)
+            for ix, code in codes:
+                grouped_codes[ix].add(code)
+            for ix in sorted(grouped_codes.keys()):
+                codes = grouped_codes[ix]
+                rows.append([int(bool(codes & matches)) for c, matches in code_sets])
+        labels = [n.expanded_name() if expanded else n.name for n in nodes] 
+        return labels, np.array(rows)
 
     def write_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"
@@ -226,8 +231,11 @@ class QCCorpus:
                 outf.write(", ".join(lines[line_num]) + "\n")
 
     def read_codes(self, code_file_path, unit='line'):
-        """When passed a file object, returns a list of (line_num, code) if unit is 'line'. 
-        When unit is 'document', Returns a set of codes.
+        """Reads codes from a code file as a list of (ix, code).
+        ix is the selection index and code is a string.
+        When unit is 'line', selection index is the line number.
+        When unit is 'paragraph', selection index is the paragraph number.
+        When unit is 'document', selection index is 0.
         """
         codes = []
         with open(code_file_path) as inf:
@@ -235,10 +243,38 @@ class QCCorpus:
                 codes += [(line_num, code.strip()) for code in line.split(",") if code.strip()]
         if unit == 'line': 
             return codes
+        elif unit == 'paragraph':
+            corpus_file_path = self.get_corpus_file_path(code_file_path)
+            para_starts = self.get_paragraph_start_lines(corpus_file_path)
+            return [(self.get_paragraph_index(para_starts, line), code) for line, code in codes]
         elif unit == 'document': 
-            return set(code for i, code in codes)
+            return [(0, c) for c in set(code for i, code in codes)]
         else:
             raise NotImplementedError("Unit must be 'line' or 'document'.")
+
+    def get_paragraph_start_lines(self, corpus_file_path):
+        """Returns a list of lines on which paragraphs start
+        """
+        paras = []
+        in_paragraph = False
+        with open(corpus_file_path) as inf:
+            for ix, line in enumerate(inf):
+                if in_paragraph and line.strip() == '':
+                    in_paragraph = False
+                elif not in_paragraph and line.strip() != '':
+                    paras.append(ix)
+        return paras
+
+    def get_paragraph_index(self, para_starts, line_num):
+        """Maps a line number to a paragraph index. 
+        para_starts is a list of starting lines for paragraphs. 
+        Note that -1 is a valid return value, if codes are applied 
+        to lines preceding the first paragraph.
+        """
+        for para_ix, para_start in enumerate(para_starts):
+            if line_num < para_start:
+                return para_ix
+        return len(para_starts) - 1
 
     def get_all_codes(self, pattern=None, coder=None):
         "Returns a list of all unique codes used in the corpus"
@@ -273,38 +309,38 @@ class QCCorpus:
         unit='line',
     ):
         tree = self.get_codebook()
-        story_sets = self.get_code_story_sets(pattern=pattern, file_list=file_list, 
+        coded_selections = self.get_coded_selections(pattern=pattern, file_list=file_list, 
                 invert=invert, coder=coder, unit=unit)
         for node in tree.flatten():
-            node.story_set = story_sets[node.name]
-            node.count = len(node.story_set)
+            node.selections = coded_selections[node.name]
+            node.count = len(node.selections)
 
         def agg_union(node):
             for child in node.children:
                 agg_union(child)
-            node.recursive_story_set = set() if node.is_root() else set(node.story_set)
+            node.recursive_selections = set() if node.is_root() else set(node.selections)
             for child in node.children:
-                node.recursive_story_set |= child.recursive_story_set
+                node.recursive_selections |= child.recursive_selections
 
         agg_union(tree)
         for node in tree.flatten():
-            node.total = len(node.recursive_story_set)
+            node.total = len(node.recursive_selections)
         return tree
 
-    def get_code_story_sets(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
-        """Returns {code: stories}, where stories is a set of story ids when unit is document 
-        and stories is a set of (story_id, story_line) tuples when unit is line
+    def get_coded_selections(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
+        """Returns a dict like {code: selections}.
+        Selections is a set of (file_path, selection_ix).
         """
-        code_story_sets = defaultdict(set)
-        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, 
-                coder=coder, merge=True):
-            if unit == 'document':
-                for line_num, code in codes:
-                    code_story_sets[code].add(str(f))
-            elif unit == 'line':
-                for line_num, code in codes:
-                    code_story_sets[code].add((str(f), line_num))
-        return code_story_sets
+        coded_selections = defaultdict(set)
+        for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
+            codes = self.get_codes(corpus_file, coder=coder, merge=True, unit=unit)
+            grouped_codes = defaultdict(set)
+            for ix, code in codes:
+                grouped_codes[ix].add(code)
+            for ix in sorted(grouped_codes.keys()):
+                for code in grouped_codes[ix]:
+                    coded_selections[code].add((str(corpus_file), ix))
+        return coded_selections
 
     def get_coder_from_code_path(self, code_file_path):
         "Maps Path('some_interview.txt.cp.codes') -> 'cp'"
