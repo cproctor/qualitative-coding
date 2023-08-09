@@ -169,7 +169,7 @@ def main(args):
             pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
-            coder="mara",
+            coder=None,
             show_codes=not args.no_codes,
         )
     if args.command == "stats":
