@@ -212,7 +212,7 @@ class QCCorpus:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
         return [n.expanded_name() if expanded else n.name for n in nodes], np.array(rows)
 
-    def write_codes(self, corpus_text_path, coder, codes):
+    def write_codes(self, corpus_text_path, codes):
         "Writes a list of (line_num, code) to file"
         with open(corpus_text_path) as f:
             file_len = len(list(f))
@@ -220,7 +220,7 @@ class QCCorpus:
         for line_num, code in codes:
             lines[line_num] += [code]
         text_path = corpus_text_path.relative_to(self.corpus_dir)
-        codes_path = Path(str(self.codes_dir / text_path) + '.' + coder + '.codes')
+        codes_path = Path(str(self.codes_dir / text_path) + '.codes')
         codes_path.parent.mkdir(parents=True, exist_ok=True)
         with open(codes_path, 'w') as outf:
             for line_num in range(file_len):
@@ -344,10 +344,9 @@ class QCCorpus:
                 line_nums, codes = zip(*self.read_codes(code_file_path))
                 if set(old_codes) & set(codes):
                     new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
-                    existing_coder = self.get_coder_from_code_path(code_file_path)
-                    self.write_codes(corpus_path, existing_coder, new_codes)
+                    self.write_codes(corpus_path, new_codes)
 
-        global_rename = pattern is None and file_list is None and invert is None and coder is None
+        global_rename = pattern is None and file_list is None and invert is False and coder is None
         if global_rename or update_codebook:
             code_tree = self.get_codebook()
             for old_code in old_codes:
