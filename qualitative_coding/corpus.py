@@ -149,7 +149,7 @@ class QCCorpus:
         "Returns an iterator over code files pertaining to a corpus file"
         text_path = corpus_text_path.relative_to(self.corpus_dir)
         name_parts = text_path.name.split('.')
-        return self.codes_dir.glob(str(text_path) + '.' + (coder or '*') + '.codes')
+        return self.codes_dir.glob(str(text_path) + '.codes')
 
     def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
         """
@@ -160,6 +160,7 @@ class QCCorpus:
         returns a dict mapping coders to sets of codes.
         """
         codes = {}
+
         for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
             codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
         if coder:
