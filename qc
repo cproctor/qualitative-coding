@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/opt/python@3.10/bin/python3.10
 
 import argparse
 from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.viewer import QCCorpusViewer
 from qualitative_coding.helpers import (
-    Truthy, 
-    Falsy, 
-    _fmt, 
+    Truthy,
+    Falsy,
+    _fmt,
     check_incompatible,
 )
 
@@ -31,11 +31,11 @@ def add_code_filtering_options(command, recursive_counts=True, code_required=Tru
     else:
         command.add_argument("code", help="One or more codes", nargs="*")
     command.add_argument("-d", "--depth", help="Maximum depth in code tree", type=int)
-    command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'paragraph', 'document'], default='line')
+    command.add_argument("-n", "--unit", help="Unit of analysis", choices=['line', 'document'], default='line')
     command.add_argument("-r", "--recursive-codes", help="Include child codes", action="store_true")
     if recursive_counts:
         command.add_argument("-a", "--recursive-counts", help="Counts for codes include child codes", action="store_true")
-    
+
 def add_table_display_options(command):
     command.add_argument("-e", "--expanded", help="Show names of codes in expanded form", action="store_true")
     command.add_argument("-m", "--format", help="Output format. For values, see documentation for tabulate")
@@ -50,7 +50,7 @@ init.add_argument("-w", "--preformatted", help="Wrap, but respect prior formatti
 check = subparsers.add_parser("check", help="Check settings")
 
 code = subparsers.add_parser("code", help="Open a file for coding")
-add_datasource_filtering_options(code, coder_required=True)
+add_datasource_filtering_options(code)
 code.add_argument("-1", "--first", help="Open the first file without codes", action="store_true")
 code.add_argument("-r", "--random", help="Open a random file without codes", action="store_true")
 
@@ -102,7 +102,7 @@ def main(args):
     if args.command == "init":
         if not Path(args.settings).exists():
             QCCorpus.initialize(args.settings)
-            return 
+            return
         else:
             QCCorpus.initialize(args.settings)
     corpus = QCCorpus(args.settings)
@@ -124,25 +124,25 @@ def main(args):
         else:
             choice = None
         viewer.open_for_coding(
-            pattern=args.pattern, 
+            pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
-            coder=args.coder, 
+            coder="mara",
             choice=choice
         )
 
     if args.command == "init":
         check_incompatible(args, prepare_corpus=False, preformatted=True)
-        check_incompatible(args, prepare_codes=True, coder=None)
-        check_incompatible(args, prepare_codes=False, coder=True)
+        #check_incompatible(args, prepare_codes=True, coder=None)
+        #check_incompatible(args, prepare_codes=False, coder=True)
         if args.prepare_corpus:
             corpus.prepare_corpus(
-                pattern=args.pattern, 
+                pattern=args.pattern,
                 file_list=file_list,
                 invert=args.invert,
                 preformatted=args.preformatted)
         if args.prepare_codes:
-            corpus.prepare_code_files(pattern=args.pattern, coder=args.coder)
+            corpus.prepare_code_files(pattern=args.pattern)
 
     if args.command in ["codebook", "cb"]:
         corpus.update_codebook()
@@ -150,84 +150,85 @@ def main(args):
         viewer.list_codes(args.expanded, depth=args.depth)
     if args.command in ["rename", "rn"]:
         corpus.rename_codes(
-            old_codes=args.old_codes, 
-            new_code=args.new_code, 
+            old_codes=args.old_codes,
+            new_code=args.new_code,
             pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
-            coder=args.coder,
+            coder=None,
             update_codebook=args.update_codebook,
         )
     if args.command == "find":
         viewer.show_coded_text(
-            args.code, 
-            before=args.before, 
-            after=args.after, 
+            args.code,
+            before=args.before,
+            after=args.after,
             recursive_codes=args.recursive_codes,
             depth=args.depth,
             unit=args.unit,
             pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
-            coder=args.coder,
+            coder=None,
             show_codes=not args.no_codes,
         )
     if args.command == "stats":
         check_incompatible(args, recursive=False, depth=Truthy())
         check_incompatible(args, recursive_counts=False, total_only=True)
         viewer.show_stats(
-            args.code, 
-            max_count=args.max, 
-            min_count=args.min, 
-            depth=args.depth, 
+            args.code,
+            max_count=args.max,
+            min_count=args.min,
+            depth=args.depth,
             recursive_codes=args.recursive_codes,
             recursive_counts=args.recursive_counts,
-            expanded=args.expanded, 
-            format=args.format, 
+            expanded=args.expanded,
+            format=args.format,
             pattern=args.pattern,
             file_list=file_list,
             invert=args.invert,
-            coder=args.coder,
+            coder=None,
             unit=args.unit,
             outfile=args.outfile,
             total_only=args.total_only,
         )
 
     if args.command in ["crosstab", "ct"]:
+        args.unit = "document"  # Sorry, pardner.
         check_incompatible(args, code=Truthy(), depth=Truthy(), recursive_codes=False)
         check_incompatible(args, tidy=True, compact=True)
-        check_incompatible(args, tidy=True, probs=True)
         check_incompatible(args, tidy=False, min=Truthy())
         check_incompatible(args, tidy=False, max=Truthy())
         if args.tidy:
             viewer.tidy_codes(
-                args.code, 
-                depth=args.depth, 
+                args.code,
+                depth=args.depth,
                 recursive_codes=args.recursive_codes,
                 recursive_counts=args.recursive_counts,
-                expanded=args.expanded, 
-                format=args.format, 
+                expanded=args.expanded,
+                format=args.format,
                 pattern=args.pattern,
                 file_list=file_list,
                 invert=args.invert,
-                coder=args.coder,
+                coder=None,
                 unit=args.unit,
                 outfile=args.outfile,
+                probs=args.probs,
                 minimum=args.min,
                 maximum=args.max,
             )
         else:
             viewer.crosstab(
-                args.code, 
-                depth=args.depth, 
+                args.code,
+                depth=args.depth,
                 recursive_codes=args.recursive_codes,
                 recursive_counts=args.recursive_counts,
-                expanded=args.expanded, 
-                format=args.format, 
+                expanded=args.expanded,
+                format=args.format,
                 pattern=args.pattern,
                 file_list=file_list,
                 invert=args.invert,
-                coder=args.coder,
+                coder=None,
                 unit=args.unit,
                 outfile=args.outfile,
                 probs=args.probs,
@@ -238,7 +239,7 @@ def main(args):
         if args.list_memos:
             print(viewer.list_memos())
         else:
-            viewer.memo(args.coder, args.message)
+            viewer.memo("mara", args.message)
 
 args = parser.parse_args()
 main(args)
