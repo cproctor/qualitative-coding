@@ -1,4 +1,3 @@
-import argparse
 from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.viewer import QCCorpusViewer
