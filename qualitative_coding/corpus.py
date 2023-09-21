@@ -1,6 +1,6 @@
 # Qualitative Coding corpus
 # -------------------------
-# (c) 2019 Chris Proctor
+# (c) 2023 Chris Proctor
 
 # Expects codes files to be named something like [^\.]+(\.[^\.]+)?\.txt
 # Corpus and codes are separated because maybe you want to keep your raw data
@@ -10,7 +10,10 @@
 
 # TODO
 # - add logging
-# ensure uniqueness of corpus text paths
+
+# Data storage format: csv.
+# This is (somewhat) human readable, can be checked into git, 
+# and time-efficient. Not very space-efficient, but I don't really care.
 
 from itertools import chain
 from collections import defaultdict
