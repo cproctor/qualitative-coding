@@ -1,6 +1,6 @@
 # Qualitative Coding corpus
 # -------------------------
-# (c) 2019 Chris Proctor
+# (c) 2023 Chris Proctor
 
 # Expects codes files to be named something like [^\.]+(\.[^\.]+)?\.txt
 # Corpus and codes are separated because maybe you want to keep your raw data
@@ -10,7 +10,10 @@
 
 # TODO
 # - add logging
-# ensure uniqueness of corpus text paths
+
+# Data storage format: csv.
+# This is (somewhat) human readable, can be checked into git, 
+# and time-efficient. Not very space-efficient, but I don't really care.
 
 from itertools import chain
 from collections import defaultdict
@@ -111,7 +114,7 @@ class QCCorpus:
         rel_path = code_file_path.relative_to(self.codes_dir)
         return self.corpus_dir / '.'.join(str(rel_path).split('.')[:-2])
 
-    def prepare_code_files(self, pattern=None, file_list=None, invert=False):
+    def prepare_code_files(self, coder, pattern=None, file_list=None, invert=False):
         "For each text in corpus, creates a blank file of equivalent length"
         for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             with open(f) as inf:
