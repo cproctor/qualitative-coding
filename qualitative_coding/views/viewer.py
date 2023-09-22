@@ -4,14 +4,15 @@
 
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
-from qualitative_coding.helpers import merge_ranges, prompt_for_choice
-from qualitative_coding.coding_ui import CodingUI
+from qualitative_coding.helpers import prompt_for_choice
+from qualitative_coding.views.coding_ui import CodingUI
+from qualitative_coding.exceptions import QCError
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
 from subprocess import run
 from datetime import datetime
-from random import shuffle
+from random import choice
 from itertools import count
 import numpy as np
 import csv
@@ -20,6 +21,7 @@ class QCCorpusViewer:
 
     def __init__(self, corpus):
         self.corpus = corpus
+        self.settings = self.corpus.settings
         self.log = get_logger(__name__, self.corpus.settings['logs_dir'], self.corpus.settings.get('debug'))
 
     def list_codes(self, expanded=False, depth=None):
@@ -251,7 +253,10 @@ class QCCorpusViewer:
                 matchingLines = [i for i, lineCodes in corpusCodes.items() if len(lineCodes & codes)]
                 with open(corpus_file) as f:
                     lines = list(f)
-                ranges = merge_ranges([range(n-before, n+after+1) for n in matchingLines], clamp=[0, len(lines)])
+                ranges = self.merge_ranges(
+                    [range(n-before, n+after+1) for n in matchingLines], 
+                    clamp=[0, len(lines)]
+                )
                 if len(ranges) > 0:
                     print("\n{} ({})".format(cf, len(matchingLines)))
                     print("=" * textwidth)
@@ -268,37 +273,33 @@ class QCCorpusViewer:
             else:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
             
-    def open_for_coding(self, pattern=None, file_list=None, invert=None, coder=None, choice=None):
-        if coder is None:
-            raise ValueError("Coder is required")
-        corpus_files = sorted(list(self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert)))
-        if not any(corpus_files):
-            raise ValueError("No corpus files matched.")
-        if len(corpus_files) == 1:
-            f = corpus_files[0]
+    def select_file(self, coder, pattern=None, file_list=None, invert=None, uncoded=False, 
+            first=False, random=False):
+        """Selects a single file from the corpus.
+        Pattern, file_list, and invert are optionally used to filter the corpus.
+        If uncoded, filters out previously-coded files.
+        Then, returns returns a random matching file if random,
+        the first matching file if first, and otherwise prompts to choose a matching file.
+        """
+        if first and random:
+            raise ValueError("First and random must not both be True")
+        corpus_files = sorted(list(self.corpus.iter_corpus(pattern=pattern, 
+                file_list=file_list, invert=invert)))
+        if uncoded:
+            corpus_files = [cf for cf in corpus_files if self.corpus.is_coded(cf, coder)]
+        if len(corpus_files) == 0:
+            raise QCError("No corpus files matched.")
+        elif len(corpus_files) == 1:
+            return corpus_files[0]
         else:
-            if choice is not None:
-                if choice == 'first':
-                    files_to_search = corpus_files
-                elif choice == 'random':
-                    shuffle(corpus_files)
-                    files_to_search = corpus_files
-                else:
-                    raise ValueError("Choice argument must be 'first' or 'random'")
-                f = None
-                for cf in files_to_search:
-                    if len(self.corpus.get_codes(cf, coder=coder)) == 0:
-                        f = cf
-                        break 
-                if f is None:
-                    raise ValueError(f"All {len(corpus_files)} matching files have codes")
+            if first:
+                return corpus_files[0]
+            elif random:
+                return choice(corpus_files)
             else:
-                story_index = prompt_for_choice("Multiple files matched:", 
+                ix = self.prompt_for_choice("Multiple files matched:", 
                         [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
-                f = corpus_files[story_index]
-        code_file = self.corpus.get_code_file_path(f, coder)
-        self.log.debug(f"{coder} opened {f} for coding")
-        self.open_editor([f, code_file])
+                return corpus_files[ix]
 
     def memo(self, coder, message=""):
         "Opens a memo file for coding"
@@ -312,7 +313,7 @@ class QCCorpusViewer:
         else:
             path.write_text(f"# Memo by {coder} on {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n") 
         self.log.info(f"{coder} wrote memo {message}")
-        self.open_editor(path)
+        run(f"{self.settings['editor']} {path}", check=True, shell=True)
 
     def list_memos(self):
         "Concatenates all memo text"
@@ -333,6 +334,37 @@ class QCCorpusViewer:
         #if not (isinstance(files, list) or isinstance(files, tuple)):
             #files = [files]
         #run(["vim", "-O"] + files)
+
+    def prompt_for_choice(self, prompt, options):
+        "Asks for a prompt, returns an index"
+        print(prompt)
+        for i, opt in enumerate(options):
+            print(f"{i+1}. {opt}")
+        while True:
+            raw_choice = input("> ")
+            if raw_choice.isdigit() and int(raw_choice) in range(1, len(options)+1):
+                return int(raw_choice)
+            print("Sorry, that's not a valid choice.")
+
+    def merge_ranges(self, ranges, clamp=None):
+        "Overlapping ranges? Let's fix that. Optionally supply clamp=[0, 100]"
+        if any(filter(lambda r: r.step != 1, ranges)): 
+            raise ValueError("Ranges must have step=1")
+        endpoints = [(r.start, r.stop) for r in sorted(ranges, key=lambda r: r.start)]
+        results = []
+        if any(endpoints):
+            a, b = endpoints[0]
+            for start, stop in endpoints:
+                if start <= b:
+                    b = max(b, stop)
+                else:
+                    results.append(range(a, b))
+                    a, b = start, stop
+            results.append(range(a, b))
+        if clamp is not None:
+            lo, hi = clamp
+            results = [range(max(lo, r.start), min(hi, r.stop)) for r in results]
+        return results
 
 
 

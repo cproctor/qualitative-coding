@@ -1,5 +1,16 @@
 # Next steps
 
+# 2023
+
+- qc cb mis-populates "$ROOT$" when there are no codes.
+
+
+## New API
+
+- init
+  - looks for settings.
+  - create directories
+
 I want to publish this tool. What's needed? 
 
 - Add interrater reliability

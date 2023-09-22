@@ -81,7 +81,7 @@ class TreeNode:
         If expanded, return expanded name, like 'fruits:apples:pippin'
         If depth is not None, limits the depth of recursion
         """
-        result = [self] if not self.is_root() else []
+        result = [] if self.is_root() else [self]
         if depth is None or depth > 0:
             for child in self.children: 
                 result += child.flatten(depth=depth if depth is None else depth - 1)

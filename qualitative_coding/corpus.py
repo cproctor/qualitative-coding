@@ -6,11 +6,6 @@
 # Corpus and codes are separated because maybe you want to keep your raw data
 # and your analysis separate.
 
-# Decided not to make a separate codebook because the codebook and the codes are tightly bound.
-
-# TODO
-# - add logging
-
 # Data storage format: csv.
 # This is (somewhat) human readable, can be checked into git, 
 # and time-efficient. Not very space-efficient, but I don't really care.
@@ -22,6 +17,7 @@ import yaml
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prepare_corpus_text
+from qualitative_coding.exceptions import QCError
 import numpy as np
 
 DEFAULT_SETTINGS = {
@@ -29,7 +25,8 @@ DEFAULT_SETTINGS = {
     'codes_dir': 'codes',
     'logs_dir': 'logs',
     'memos_dir': 'memos',
-    'codebook': 'codebook.yaml',
+    'codebook_file': 'codebook.yaml',
+    'editor': 'nano',
 }
 
 class QCCorpus:
@@ -37,31 +34,27 @@ class QCCorpus:
     @classmethod
     def initialize(cls, settings_file="settings.yaml"):
         """
-        If the settings file does not exist, creates it. Otherwise, uses the settings
+        If the settings file does not exist, creates it. Uses the settings
         file to initialize the expected directories and files.
         """
-        if not Path(settings_file).exists():
-            Path(settings_file).write_text(yaml.dump(DEFAULT_SETTINGS))
-            return
         settings_path = Path(settings_file)
-        try: 
-            settings = yaml.safe_load(settings_path.read_text())
-        except FileNotFoundError:
-            message = "Settings file {} was not found. qc must be run from its project directory. If you are starting a new qc project, run `qc init`.".format(settings_file)
-            raise FileNotFoundError(message)
-        for required_setting in DEFAULT_SETTINGS.keys():
-            path = Path(settings[required_setting])
-            path = path if path.is_absolute() else settings_path.parent / path
-            if required_setting.endswith("dir"):
+        if not settings_path.exists():
+            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
+        settings = yaml.safe_load(settings_path.read_text())
+        for key, val in settings.items():
+            path = Path(val)
+            if key.endswith("dir"):
                 if path.exists():
                     if not path.is_dir():
-                        raise ValueError(f"Expected {path} to be a directory")
+                        msg = f"Expected {key} ({val}) to be a directory"
+                        raise ValueError(msg)
                 else:
                     path.mkdir(parents=True)
-            else:
+            elif key.endswith("file"):
                 if path.exists():
                     if path.is_dir():
-                        raise ValueError(f"Expected {path} to be a file, not a directory")
+                        msg = f"Expected {key} ({val}) to be a file"
+                        raise ValueError(msg)
                 else:
                     path.touch()
 
@@ -74,10 +67,21 @@ class QCCorpus:
         try: 
             self.settings = yaml.safe_load(self.settings_file.read_text())
         except FileNotFoundError:
-            message = "Settings file {} was not found. qc must be run from its project directory. If you are starting a new qc project, run `qc init`.".format(settings_file)
-            raise FileNotFoundError(message)
-        self.log = get_logger(__name__, self.settings['logs_dir'], self.settings.get('debug'))
-
+            message = (
+                f"Settings file {settings_file} was not found. " + 
+                "qc must be run from its project directory. If you are " + 
+                "starting a new qc project, run qc init."
+            )
+            raise QCError(message)
+        try:
+            self.log = get_logger(
+                __name__, 
+                self.settings['logs_dir'], 
+                self.settings.get('debug')
+            )
+        except FileNotFoundError:
+            logsdir = self.settings['logs_dir']
+            raise QCError(f"Logs dir ({logsdir}) is missing")
         for required_setting in DEFAULT_SETTINGS.keys():
             path = Path(self.settings[required_setting])
             path = path if path.is_absolute() else self.settings_file.resolve().parent / path
@@ -85,19 +89,24 @@ class QCCorpus:
 
     def validate(self):
         "Checks that files are as they should be"
-        # TODO: Verify code file lengths are correct
         errors = []
         for attr in DEFAULT_SETTINGS.keys():
-            if not getattr(self, attr).exists():
-                errors.append("settings['{}'] ({}) does not exist".format(attr, getattr(self, attr)))
-            if attr.endswith('dir') and not getattr(self, attr).is_dir():
-                errors.append("settings['{}'] ({}) is not a directory".format(attr, getattr(self, attr)))
-            if not attr.endswith('dir') and getattr(self, attr).is_dir():
-                errors.append(("settings['{}'] ({}) is a directory".format(attr, getattr(self, attr))))
-        for error in errors:
-            self.log.error(error)
-        if any(errors):
-            raise ValueError("\n".join(errors))
+            if attr not in self.settings:
+                errors.append(f"settings['{attr}'] is missing")
+            elif attr.endswith('dir'):
+                path = Path(self.settings[attr])
+                if not path.exists():
+                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
+                elif not path.is_dir():
+                    errors.append(f"settings['{attr}'] ({path}) is not a directory")
+            elif attr.endswith('file'):
+                path = Path(self.settings[attr])
+                if not path.exists():
+                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
+                elif path.is_dir():
+                    errors.append(f"settings['{attr}'] ({path}) is a directory")
+        if errors:
+            raise QCError("\n".join(errors))
 
     def prepare_corpus(self, pattern=None, file_list=None, invert=False, preformatted=False):
         "Wraps texts at 80 characters"
@@ -254,6 +263,11 @@ class QCCorpus:
         else:
             raise NotImplementedError("Unit must be 'line' or 'document'.")
 
+    def is_coded(self, corpus_file_path, coder):
+        """Returns True when coder has entered codes for corpus_file_path
+        """
+        raise NotImplementedError("TODO")
+
     def get_paragraph_start_lines(self, corpus_file_path):
         """Returns a list of lines on which paragraphs start
         """
@@ -353,7 +367,7 @@ class QCCorpus:
         """
         Reads a tree of codes from the codebook file.
         """
-        return TreeNode.read_yaml(self.codebook)
+        return TreeNode.read_yaml(self.settings['codebook_file'])
 
     def update_codebook(self):
         """
@@ -365,7 +379,7 @@ class QCCorpus:
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
             code_tree.add_child(new_code)
-        TreeNode.write_yaml(self.codebook, code_tree)
+        TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
 
     def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
                 update_codebook=False):
@@ -391,7 +405,7 @@ class QCCorpus:
                 code_tree.rename(old_code, new_code)
                 code_tree.remove_children_by_name(old_code)
                 self.log.info(f"Renamed code {old_code} to {new_code}")
-            TreeNode.write_yaml(self.codebook, code_tree)
+            TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
             self.update_codebook()
                 
 
