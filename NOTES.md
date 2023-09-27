@@ -4,6 +4,12 @@
 
 - qc cb mis-populates "$ROOT$" when there are no codes.
 
+## Not yet implemented, but could be implemented
+
+- cli import:
+  - transcription
+  - auto-fieldnotes?
+
 
 ## New API
 

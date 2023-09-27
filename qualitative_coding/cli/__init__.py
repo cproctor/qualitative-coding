@@ -1,6 +1,7 @@
 import click
 from qualitative_coding.cli.click_aliases import ClickAliasedGroup
 from qualitative_coding.cli.init import init
+from qualitative_coding.cli.import_media import import_media
 from qualitative_coding.cli.version import version
 from qualitative_coding.cli.check import check
 from qualitative_coding.cli.codebook import codebook
@@ -17,6 +18,7 @@ def cli():
     "Qualitative coding for computer scientists"
 
 cli.add_command(init)
+cli.add_command(import_media)
 cli.add_command(version)
 cli.add_command(check)
 cli.add_command(codebook, aliases=["cb"])

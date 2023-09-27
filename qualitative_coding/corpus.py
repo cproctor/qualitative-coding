@@ -16,7 +16,6 @@ from pathlib import Path
 import yaml
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
-from qualitative_coding.helpers import prepare_corpus_text
 from qualitative_coding.exceptions import QCError
 import numpy as np
 
@@ -108,16 +107,29 @@ class QCCorpus:
         if errors:
             raise QCError("\n".join(errors))
 
-    def prepare_corpus(self, pattern=None, file_list=None, invert=False, preformatted=False):
-        "Wraps texts at 80 characters"
-        for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            f.write_text(prepare_corpus_text(f.read_text(), width=80, preformatted=preformatted))
+    def prepare_corpus_text(self, text, width=80, preformatted=False):
+        "Splits corpus text at blank lines and wraps it."
+        if preformatted:
+            outlines = []
+            lines = text.split("\n")
+            for line in lines:
+                while True:
+                    outlines.append(line[:width])
+                    if len(line) < 80:
+                        break
+                    line = line[width:]
+            return "\n".join(outlines)
+        else:
+            paragraphs = text.split("\n\n")
+            return "\n\n".join(fill(p, width=width) for p in paragraphs)
 
+    # Deprecated.
     def get_code_file_path(self, corpus_file_path, coder):
         "Maps ('corpus/interview.txt', 'cp') -> 'codes/interview.txt.cp.codes' "
         rel_path = corpus_file_path.relative_to(self.corpus_dir) 
         return self.codes_dir / (str(rel_path) + "." + coder + ".codes")
 
+    # Deprecated.
     def get_corpus_file_path(self, code_file_path):
         "Inverse of `get_code_file_path`"
         rel_path = code_file_path.relative_to(self.codes_dir)
