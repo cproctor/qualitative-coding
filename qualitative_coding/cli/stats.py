@@ -32,6 +32,7 @@ from tabulate import tabulate_formats
 @handle_qc_errors
 def stats(code, settings, pattern, filenames, invert, coder, depth, unit, recursive_codes, 
         recursive_counts, expanded, _format, outfile, _max, _min, total_only):
+    "Show statistics about codes"
     if invert and not (pattern or filenames):
         msg = "--invert may only be used when --pattern or --filenames is given"
         raise IncompatibleOptions(msg)

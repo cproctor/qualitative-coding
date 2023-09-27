@@ -16,6 +16,7 @@ from qualitative_coding.corpus import QCCorpus
 @click.option("-i", "--invert", is_flag=True, help="Invert file selection")
 def rename(old_codes, new_code, settings, update_codebook, coder,
         pattern, filenames, invert):
+    "Rename one or more codes"
     if invert and not (pattern or filenames):
         msg = "--invert may only be used when --pattern or --filenames is given."
         raise IncompatibleOptions(msg)

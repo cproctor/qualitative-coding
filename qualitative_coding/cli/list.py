@@ -8,6 +8,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 @click.option("-e", "--expanded", is_flag=True, help="Show names of parent codes")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 def _list(settings, expanded, depth):
+    "List all codes"
     corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
     viewer.list_codes(expanded=expanded, depth=depth)
