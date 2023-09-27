@@ -31,12 +31,12 @@ def import_media(file_path, settings, recursive, corpus_root, importer):
     imp = media_importers[importer]()
     if recursive:
         for dir_path, dir_names, filenames in os.walk(path):
-            corpus_dir_path = corpus_root_path / dir_path
+            corpus_dir_path = corpus_root_path / Path(dir_path).relative_to(path)
             corpus_dir_path.mkdir(parents=True, exist_ok=True)
             for fn in filenames:
                 cfn = (corpus_dir_path / fn).with_suffix(".txt")
-                imp.import_media(fn, cfn)
+                imp.import_media(Path(dir_path) / fn, cfn)
     else:
         if path.is_dir():
-            raise IncompatibleOptions(f"{path} is a dir. Use --recursive.")
+            raise InvalidParameter(f"{path} is a dir. Use --recursive.")
         imp.import_media(path, (corpus_root_path / path.name).with_suffix(".txt"))
