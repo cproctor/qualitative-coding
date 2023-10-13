@@ -28,11 +28,12 @@ from tabulate import tabulate_formats
 @click.option("-o", "--outfile", help="Filename for CSV export")
 @click.option("-u", "--max", "_max", help="Maximum count value to show", type=int)
 @click.option("-l", "--min", "_min", help="Minimum count value to show", type=int)
+@click.option("-z", "--zeros", is_flag=True, help="Include codes with zero occurrences")
 @click.option("-t", "--total-only", is_flag=True,
         help="Show total but not count")
 @handle_qc_errors
 def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
-        recursive_counts, expanded, _format, outfile, _max, _min, total_only):
+        recursive_counts, expanded, _format, outfile, _max, _min, zeros, total_only):
     "Show statistics about codes"
     if depth and not recursive_codes: # Why is this required?
         msg = "--depth requires --recursive-codes"
@@ -62,5 +63,6 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
         unit=unit,
         outfile=outfile,
         total_only=total_only,
+        zeros=zeros,
     )
 

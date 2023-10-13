@@ -323,7 +323,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
     def count_codes_by_line(self, pattern=None, file_list=None, coder=None):
         query = select(Code.name, func.count(CodedLine.id)).join(CodedLine.code)
         query = query.group_by(Code.name)
-        query = self.filter_query_by_document(query, pattern, file_list)
+        query = self.filter_coded_line_query_by_document(query, pattern, file_list)
         if coder:
             query = query.join(Coder.coded_lines).where(Coder.name == coder)
         result = self.get_session().execute(query).all()
@@ -337,15 +337,15 @@ class QCCorpus(CorpusTestingMethodsMixin):
             query = query.where(Document.file_path.in_(file_list))
         return self.get_session().scalars(query).all()
 
-    def filter_query_by_document(self, query, pattern=None, file_list=None):
+    def filter_coded_line_query_by_document(self, query, pattern=None, file_list=None):
         """Filters a query by which documents match.
         """
         if pattern or file_list:
             query = (
                 query
-                .join(Location.coded_lines)
-                .join(DocumentIndex.locations)
-                .join(Document.indices)
+                .join(CodedLine.locations)
+                .join(Location.document_index)
+                .join(DocumentIndex.document)
             )
         if pattern:
             query = query.where(Document.file_path.contains(pattern))

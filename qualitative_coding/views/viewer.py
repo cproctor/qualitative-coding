@@ -47,6 +47,7 @@ class QCCorpusViewer:
         coder=None,
         outfile=None,
         total_only=False,
+        zeros=False,
     ):
         """
         Displays statistics about how codes are used.
@@ -73,6 +74,8 @@ class QCCorpusViewer:
             nodes = filter(lambda n: n.total <= max_count, nodes)
         if min_count:
             nodes = filter(lambda n: n.total >= min_count, nodes)
+        if not zeros:
+            nodes = filter(lambda n: n.count > 0, nodes)
         nodes = sorted(nodes)
 
         def namer(node):
@@ -82,7 +85,6 @@ class QCCorpusViewer:
                 return node.indented_name(nodes)
             else:
                 return node.name
-
         if recursive_counts:
             if total_only:
                 cols = ["Code", "Total"]
@@ -93,7 +95,6 @@ class QCCorpusViewer:
         else:
             cols = ["Code", "Count"]
             results = [(namer(n), n.count) for n in nodes]
-
         if outfile:
             with open(outfile, 'w') as fh:
                 writer = csv.writer(fh)
