@@ -325,7 +325,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
         query = query.group_by(Code.name)
         query = self.filter_coded_line_query_by_document(query, pattern, file_list)
         if coder:
-            query = query.join(Coder.coded_lines).where(Coder.name == coder)
+            query = query.join(CodedLine.coder).where(Coder.name == coder)
         result = self.get_session().execute(query).all()
         return dict(result)
 
