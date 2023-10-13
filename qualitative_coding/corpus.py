@@ -2,34 +2,74 @@
 # -------------------------
 # (c) 2023 Chris Proctor
 
-# Expects codes files to be named something like [^\.]+(\.[^\.]+)?\.txt
-# Corpus and codes are separated because maybe you want to keep your raw data
-# and your analysis separate.
-
-# Data storage format: csv.
-# This is (somewhat) human readable, can be checked into git, 
-# and time-efficient. Not very space-efficient, but I don't really care.
-
 from itertools import chain
 from collections import defaultdict
+from contextlib import contextmanager
 from pathlib import Path
 import yaml
+import numpy as np
+from hashlib import sha1
+from pathlib import Path
+from sqlalchemy import (
+    create_engine,
+    select,
+    not_,
+    func,
+)
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.orm import (
+    Session,
+    aliased,
+    sessionmaker,
+)
+from sqlalchemy.dialects.sqlite import insert
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.exceptions import QCError
-import numpy as np
+from qualitative_coding.database.models import (
+    Base,
+    Document, 
+    DocumentIndex,
+    Location,
+    Code, 
+    Coder, 
+    CodedLine,
+)
+from qualitative_coding.testing import CorpusTestingMethodsMixin
 
 DEFAULT_SETTINGS = {
     'corpus_dir': 'corpus',
-    'codes_dir': 'codes',
+    'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook_file': 'codebook.yaml',
     'editor': 'nano',
 }
 
-class QCCorpus:
+def iter_paragraph_lines(fh):
+    p_start = 0
+    in_whitespace = False
+    for i, line in enumerate(fh):
+        if line.strip() == "":
+            in_whitespace = True
+        elif in_whitespace:
+            yield p_start, i
+            p_start = i
+            in_whitespace = False
+    yield p_start, i + 1
+
+class QCCorpus(CorpusTestingMethodsMixin):
+    """Provides data access to the corpus of documents and codes. 
+    QCCorpus methods which access the database must be called from within
+    the session context manager:
+
+    corpus = QCCorpus()
+    with corpus.session():
+        corpus.get_or_create_code("interesting")
+    """
     
+    units = ["line", "paragraph", "document"]
+
     @classmethod
     def initialize(cls, settings_file="settings.yaml"):
         """
@@ -56,35 +96,47 @@ class QCCorpus:
                         raise ValueError(msg)
                 else:
                     path.touch()
+        if not Path(settings['database']).exists():
+            engine = create_engine(f"sqlite:///{settings['database']}")
+            Base.metadata.create_all(engine)
 
-    def __init__(self, settings_file="settings.yaml"):
+    def __init__(self, settings):
         """
         We need the actual settings file instead of just settings because it also
         provides a default (portable) working directory for relative links
         """
-        self.settings_file = Path(settings_file)
-        try: 
-            self.settings = yaml.safe_load(self.settings_file.read_text())
-        except FileNotFoundError:
-            message = (
-                f"Settings file {settings_file} was not found. " + 
-                "qc must be run from its project directory. If you are " + 
-                "starting a new qc project, run qc init."
+        self.settings = settings
+        self.validate()
+        self.log = get_logger(
+            __name__, 
+            self.settings['logs_dir'], 
+            self.settings.get('debug')
+        )
+        self.engine = create_engine(f"sqlite:///{self.settings['database']}")
+
+    class NotInSession(Exception):
+        def __init__(self, *args, **kwargs):
+            msg = (
+                "QCCorpus methods accessing the database must be called within "
+                "a QCCOrpus.session() context manager."
             )
-            raise QCError(message)
+            return super().__init__(msg)
+
+    @contextmanager
+    def session(self):
+        "A context manager which holds open a Session"
+        session_context_manager = Session(self.engine)
+        self.session = session_context_manager.__enter__()
+        yield
+        del self.session
+        session_context_manager.__exit__(None, None, None)
+
+    def get_session(self):
+        "A context manager for sa's Session"
         try:
-            self.log = get_logger(
-                __name__, 
-                self.settings['logs_dir'], 
-                self.settings.get('debug')
-            )
-        except FileNotFoundError:
-            logsdir = self.settings['logs_dir']
-            raise QCError(f"Logs dir ({logsdir}) is missing")
-        for required_setting in DEFAULT_SETTINGS.keys():
-            path = Path(self.settings[required_setting])
-            path = path if path.is_absolute() else self.settings_file.resolve().parent / path
-            setattr(self, required_setting, path)
+            return self.session
+        except AttributeError:
+            raise self.NotInSession()
 
     def validate(self):
         "Checks that files are as they should be"
@@ -105,47 +157,209 @@ class QCCorpus:
                 elif path.is_dir():
                     errors.append(f"settings['{attr}'] ({path}) is a directory")
         if errors:
-            raise QCError("\n".join(errors))
+            raise QCError("Invalid settings:\n" + "\n".join([f"- {err}" for err in errors]))
 
-    def prepare_corpus_text(self, text, width=80, preformatted=False):
-        "Splits corpus text at blank lines and wraps it."
-        if preformatted:
-            outlines = []
-            lines = text.split("\n")
-            for line in lines:
-                while True:
-                    outlines.append(line[:width])
-                    if len(line) < 80:
-                        break
-                    line = line[width:]
-            return "\n".join(outlines)
-        else:
-            paragraphs = text.split("\n\n")
-            return "\n\n".join(fill(p, width=width) for p in paragraphs)
+    def check_corpus_document_hashes(self):
+        "Checks that corpus document hashes match those in the database"
+        raise NotImplementedError()
 
-    # Deprecated.
-    def get_code_file_path(self, corpus_file_path, coder):
-        "Maps ('corpus/interview.txt', 'cp') -> 'codes/interview.txt.cp.codes' "
-        rel_path = corpus_file_path.relative_to(self.corpus_dir) 
-        return self.codes_dir / (str(rel_path) + "." + coder + ".codes")
+    def get_code_tree_with_counts(self, 
+        pattern=None,
+        file_list=None,
+        coder=None,
+        unit='line',
+    ):
+        tree = self.get_codebook()
+        code_counts = self.count_codes(
+            pattern=pattern,
+            file_list=file_list, 
+            coder=coder,
+            unit=unit,
+        )
+        # I'll need selections for other use cases, but not cor generating stats.
+        #coded_selections = self.get_coded_selections(pattern=pattern, file_list=file_list, 
+                #invert=invert, coder=coder, unit=unit)
+        for node in tree.flatten():
+            #node.selections = code_counts[node.name]
+            #node.count = len(node.selections)
+            node.count = code_counts.get(node.name, 0)
 
-    # Deprecated.
-    def get_corpus_file_path(self, code_file_path):
-        "Inverse of `get_code_file_path`"
-        rel_path = code_file_path.relative_to(self.codes_dir)
-        return self.corpus_dir / '.'.join(str(rel_path).split('.')[:-2])
+        def agg_union(node):
+            for child in node.children:
+                agg_union(child)
+            node.recursive_selections = set() if node.is_root() else set(node.selections)
+            for child in node.children:
+                node.recursive_selections |= child.recursive_selections
 
-    def prepare_code_files(self, coder, pattern=None, file_list=None, invert=False):
-        "For each text in corpus, creates a blank file of equivalent length"
-        for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            with open(f) as inf:
-                file_len = len(list(inf))                
-            code_path = self.get_code_file_path(f, coder)
-            code_path.parent.mkdir(parents=True, exist_ok=True)
-            if code_path.exists():
-                print("Skipping {} because it already exists".format(code_path))
+        def recursive_count(node):
+            for child in node.children:
+                recursive_count(child)
+            node.count = code_counts.get(node.name, 0)
+            node.total = node.count + sum(c.count for c in node.children)
+
+        recursive_count(tree)
+
+        #agg_union(tree)
+        #for node in tree.flatten():
+            #node.total = len(node.recursive_selections)
+        return tree
+
+
+    def get_or_create_coder(self, coder_name):
+        try:
+            q = select(Coder).where(Coder.name == coder_name)
+            return self.get_session().execute(q).scalar_one()
+        except NoResultFound:
+            coder = Coder(name=coder_name)
+            self.get_session().add(coder)
+            self.get_session().commit()
+            return coder
+
+    def get_or_create_code(self, code_name):
+        try:
+            q = select(Code).where(Code.name == code_name)
+            return self.get_session().execute(q).scalar_one()
+        except NoResultFound:
+            code = Code(name=code_name)
+            self.get_session().add(code)
+            self.get_session().commit()
+            return code
+
+    def get_codebook(self):
+        "Reads a tree of codes from the codebook file."
+        return TreeNode.read_yaml(self.settings['codebook_file'])
+
+    def get_document(self, corpus_path):
+        relpath = self.get_relative_corpus_path(corpus_path)
+        q = select(Document).where(Document.file_path == relpath)
+        return self.get_session().scalars(q).first()
+
+    def get_paragraph(self, document, line, index_name="paragraphs"):
+        """Gets the paragraph Location for the given document and the given line.
+        """
+        q = (
+            select(Location)
+            .join(Location.document_index)
+            .join(DocumentIndex.document)
+            .where(Document.file_path == document.file_path)
+            .where(DocumentIndex.name == index_name)
+            .where(Location.start_line <= line)
+            .where(Location.end_line > line)
+        )
+        return self.get_session().execute(q).scalar_one()
+
+    def create_coded_lines_if_needed(self, document, coded_line_data):
+        """Inserts or ignores data for coded lines, associating them with the Document
+        through paragraphs.
+        """
+        stmt = (
+            insert(CodedLine)
+            .values(coded_line_data)
+            .on_conflict_do_nothing()
+            .returning(CodedLine)
+        )
+        result = self.get_session().scalars(stmt)
+        for coded_line in result:
+            paragraph = self.get_paragraph(document, coded_line.line)
+            coded_line.locations.append(paragraph)
+        self.get_session().commit()
+
+    def get_relative_corpus_path(self, corpus_path):
+        """Given a Path or str, tries to return a string representation of the
+        path relative to the corpus directory, suitable for Document.file_path.
+        """
+        try:
+            relative_path = Path(corpus_path).relative_to(self.settings['corpus_dir'])
+            return str(relative_path)
+        except ValueError:
+            if Path(corpus_path).is_absolute():
+                raise ValueError(
+                    f"{corpus_path} is absolute and is not relative to corpus directory "
+                    f"{self.settings['corpus_dir']}"
+                )
             else:
-                code_path.write_text("\n" * file_len)
+                return str(corpus_path)
+
+    def hash_file(self, corpus_path):
+        """Computes the hash of a document at a corpus path.
+        """
+        return sha1(Path(corpus_path).read_bytes()).hexdigest()
+
+    def register_document(self, corpus_path):
+        """Adds database entries for a document.
+        Document contents are stored in files under the corpus_dir
+        """
+        doc = self.get_document(corpus_path)
+        if doc:
+            raise Document.AlreadyExists(doc)
+        relpath = self.get_relative_corpus_path(corpus_path)
+        document = Document(
+            file_path=relpath,
+            file_hash=self.hash_file(corpus_path),
+        )
+        self.get_session().add(document)
+        index = DocumentIndex(
+            name="paragraphs",
+            document=document,
+        )
+        self.get_session().add(index)
+        with open(corpus_path) as fh:
+            for p_start, p_end in iter_paragraph_lines(fh):
+                self.get_session().add(Location(
+                    start_line=p_start, 
+                    end_line=p_end,
+                    document_index=index,
+                ))
+        self.get_session().commit()
+
+    def count_codes(self, pattern=None, file_list=None, coder=None, unit="line"):
+        """Returns a dict of {code:count}.
+        """
+        if unit == "line": 
+            return self.count_codes_by_line(pattern=pattern, file_list=file_list, coder=coder)
+        else:
+            raise ValueError(f"Unrecognized unit of analysis: {unit}")
+
+    def count_codes_by_line(self, pattern=None, file_list=None, coder=None):
+        query = select(Code.name, func.count(CodedLine.id)).join(CodedLine.code)
+        query = query.group_by(Code.name)
+        query = self.filter_query_by_document(query, pattern, file_list)
+        if coder:
+            query = query.join(Coder.coded_lines).where(Coder.name == coder)
+        result = self.get_session().execute(query).all()
+        return dict(result)
+
+    def get_documents(self, pattern=None, file_list=None):
+        query = select(Document)
+        if pattern:
+            query = query.where(Document.file_path.contains(pattern))
+        if file_list:
+            query = query.where(Document.file_path.in_(file_list))
+        return self.get_session().scalars(query).all()
+
+    def filter_query_by_document(self, query, pattern=None, file_list=None):
+        """Filters a query by which documents match.
+        """
+        if pattern or file_list:
+            query = (
+                query
+                .join(Location.coded_lines)
+                .join(DocumentIndex.locations)
+                .join(Document.indices)
+            )
+        if pattern:
+            query = query.where(Document.file_path.contains(pattern))
+        if file_list:
+            query = query.where(Document.file_path.in_(file_list))
+        return query
+
+
+
+
+
+
+
+# ======== EVERYTHING BELOW HERE IS QUESTIONABLE ===============
 
     def iter_corpus(self, pattern=None, file_list=None, invert=False):
         "Iterates over files in the corpus"
@@ -329,32 +543,6 @@ class QCCorpus:
                 all_codes[code] += count
         return all_codes
 
-    def get_code_tree_with_counts(self, 
-        pattern=None,
-        file_list=None,
-        invert=False,
-        coder=None,
-        unit='line',
-    ):
-        tree = self.get_codebook()
-        coded_selections = self.get_coded_selections(pattern=pattern, file_list=file_list, 
-                invert=invert, coder=coder, unit=unit)
-        for node in tree.flatten():
-            node.selections = coded_selections[node.name]
-            node.count = len(node.selections)
-
-        def agg_union(node):
-            for child in node.children:
-                agg_union(child)
-            node.recursive_selections = set() if node.is_root() else set(node.selections)
-            for child in node.children:
-                node.recursive_selections |= child.recursive_selections
-
-        agg_union(tree)
-        for node in tree.flatten():
-            node.total = len(node.recursive_selections)
-        return tree
-
     def get_coded_selections(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
         """Returns a dict like {code: selections}.
         Selections is a set of (file_path, selection_ix).
@@ -374,12 +562,6 @@ class QCCorpus:
         "Maps Path('some_interview.txt.cp.codes') -> 'cp'"
         parts = code_file_path.name.split('.')
         return parts[-2]
-
-    def get_codebook(self):
-        """
-        Reads a tree of codes from the codebook file.
-        """
-        return TreeNode.read_yaml(self.settings['codebook_file'])
 
     def update_codebook(self):
         """

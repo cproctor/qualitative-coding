@@ -1,5 +1,13 @@
 # Next steps
 
+What's the problem here? The problem is I'm thinking about where to create the interface
+boundary on QCCorpus, specifically who should handle its sessions. This is an implementation
+detail I can't really hide within methods, because that would mean that a session would be
+scoped to that session, and I would lose many of the benefits of the ORM.
+
+OK, so given that I need the client of QCCorpus to manage the session, shall I expose the 
+context manager? This seems best.
+
 # 2023
 
 - qc cb mis-populates "$ROOT$" when there are no codes.
@@ -10,6 +18,20 @@
   - transcription
   - auto-fieldnotes?
 
+- Why data structure as separate coder files? It's efficient, and 
+  then you can also see who's coding in the git logs. Basically, 
+  the data structure is compatible with the use case, while using 
+  widely-used data formats.
+
+## Storage mechanism
+
+Storage is distributed across three locations: 
+- courpus text files
+- codes.yaml
+- the sqlite database
+
+For text files and the code tree, direct file access is the most graceful user interface. 
+For coding, the relational database is designed for the kinds of queries we have.
 
 ## New API
 

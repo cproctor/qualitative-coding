@@ -13,5 +13,5 @@ def handle_qc_errors(f):
         try:
             return f(*args, **kwargs)
         except QCError as e:
-            click.echo(error(str(e)))
+            click.echo(error(str(e), preformatted=True))
     return update_wrapper(command, f)

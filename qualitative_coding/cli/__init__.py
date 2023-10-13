@@ -12,6 +12,7 @@ from qualitative_coding.cli.rename import rename
 from qualitative_coding.cli.find import find
 from qualitative_coding.cli.stats import stats
 from qualitative_coding.cli.crosstab import crosstab
+from qualitative_coding.cli.upgrade import upgrade
 
 @click.group(cls=ClickAliasedGroup)
 def cli():
@@ -29,4 +30,5 @@ cli.add_command(rename, aliases=["rn"])
 cli.add_command(find)
 cli.add_command(stats)
 cli.add_command(crosstab, aliases=["ct"])
+cli.add_command(upgrade)
 

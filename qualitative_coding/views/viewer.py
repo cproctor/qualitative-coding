@@ -33,7 +33,6 @@ class QCCorpusViewer:
         else:
             print(code_tree.__str__(max_depth=depth))
 
-
     def show_stats(self, codes, 
         max_count=None, 
         min_count=None, 
@@ -45,7 +44,6 @@ class QCCorpusViewer:
         format=None,
         pattern=None,
         file_list=None,
-        invert=False,
         coder=None,
         outfile=None,
         total_only=False,
@@ -56,16 +54,15 @@ class QCCorpusViewer:
         if pattern:
             self.report_files_matching_pattern(
                 pattern=pattern, 
-                file_list=file_list, 
-                invert=invert
+                file_list=file_list
             ) 
-        tree = self.corpus.get_code_tree_with_counts(
-            pattern=pattern, 
-            file_list=file_list,
-            invert=invert, 
-            coder=coder, 
-            unit=unit, 
-        )
+        with self.corpus.session():
+            tree = self.corpus.get_code_tree_with_counts(
+                pattern=pattern, 
+                file_list=file_list,
+                coder=coder, 
+                unit=unit, 
+            )
         if codes:
             nodes = sum([tree.find(c) for c in codes], [])
             if recursive_codes:
@@ -201,10 +198,13 @@ class QCCorpusViewer:
         else:
             print(tabulate(data, cols, tablefmt=format))
 
-    def report_files_matching_pattern(self, pattern, file_list=None, invert=False):
+    def report_files_matching_pattern(self, pattern, file_list=None):
+        with self.corpus.session():
+            docs = self.corpus.get_documents(pattern=pattern, file_list=file_list)
+            file_paths = [doc.file_path for doc in docs]
         print("From files:")
-        for f in sorted(self.corpus.iter_corpus(pattern=pattern, file_list=file_list, invert=invert)):
-            print("- {}".format(f.relative_to(self.corpus.corpus_dir)))
+        for fp in file_paths:
+            print(f"- {fp}")
     
     def get_child_nodes(self, code, names=False, expanded=False, depth=None):
         "Finds all children of the given code (which may occur multiple times in the code tree)"

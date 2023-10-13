@@ -1,4 +1,6 @@
 import click
+import yaml
+from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
@@ -11,7 +13,6 @@ from tabulate import tabulate_formats
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
         help="File path containing a list of filenames to use")
-@click.option("-i", "--invert", is_flag=True, help="Invert file selection")
 @click.option("-c", "--coder", help="Coder")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 @click.option("-n", "--unit", default="line", help="Unit of analysis",
@@ -30,12 +31,9 @@ from tabulate import tabulate_formats
 @click.option("-t", "--total-only", is_flag=True,
         help="Show total but not count")
 @handle_qc_errors
-def stats(code, settings, pattern, filenames, invert, coder, depth, unit, recursive_codes, 
+def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
         recursive_counts, expanded, _format, outfile, _max, _min, total_only):
     "Show statistics about codes"
-    if invert and not (pattern or filenames):
-        msg = "--invert may only be used when --pattern or --filenames is given"
-        raise IncompatibleOptions(msg)
     if depth and not recursive_codes: # Why is this required?
         msg = "--depth requires --recursive-codes"
         raise IncompatibleOptions(msg)
@@ -46,7 +44,8 @@ def stats(code, settings, pattern, filenames, invert, coder, depth, unit, recurs
         file_list = Path(filenames).read_text().split("\n")
     else:
         file_list = None
-    corpus = QCCorpus(settings)
+    s = yaml.safe_load(Path(settings).read_text())
+    corpus = QCCorpus(s)
     viewer = QCCorpusViewer(corpus)
     viewer.show_stats(
         code, 
@@ -59,7 +58,6 @@ def stats(code, settings, pattern, filenames, invert, coder, depth, unit, recurs
         format=_format, 
         pattern=pattern,
         file_list=file_list,
-        invert=invert,
         coder=coder,
         unit=unit,
         outfile=outfile,
