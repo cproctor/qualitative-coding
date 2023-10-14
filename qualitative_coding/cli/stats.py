@@ -4,6 +4,7 @@ from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.exceptions import IncompatibleOptions
 from tabulate import tabulate_formats
 
 @click.command()
@@ -35,7 +36,7 @@ from tabulate import tabulate_formats
 def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
         recursive_counts, expanded, _format, outfile, _max, _min, zeros, total_only):
     "Show statistics about codes"
-    if depth and not recursive_codes: # Why is this required?
+    if depth and not recursive_codes: 
         msg = "--depth requires --recursive-codes"
         raise IncompatibleOptions(msg)
     if total_only and recursive_counts:

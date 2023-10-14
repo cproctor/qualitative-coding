@@ -15,6 +15,7 @@ from sqlalchemy import (
     select,
     not_,
     func,
+    distinct,
 )
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
@@ -324,10 +325,14 @@ class QCCorpus(CorpusTestingMethodsMixin):
     def count_codes(self, pattern=None, file_list=None, coder=None, unit="line"):
         """Returns a dict of {code:count}.
         """
+        print("UNIT", unit)
         if unit == "line": 
             return self.count_codes_by_line(pattern=pattern, file_list=file_list, coder=coder)
         elif unit == "paragraph":
             return self.count_codes_by_paragraph(pattern=pattern, 
+                    file_list=file_list, coder=coder)
+        elif unit == "document":
+            return self.count_codes_by_document(pattern=pattern,
                     file_list=file_list, coder=coder)
         else:
             raise ValueError(f"Unrecognized unit of analysis: {unit}")
@@ -342,13 +347,33 @@ class QCCorpus(CorpusTestingMethodsMixin):
         return dict(result)
 
     def count_codes_by_paragraph(self, pattern=None, file_list=None, coder=None):
-        query = select(Code.name, func.count(Location.id)).join(Code.coded_lines)
-        query = query.where(DocumentIndex.name == "paragraph")
+        query = select(Code.name, func.count(distinct(Location.id))).join(Code.coded_lines)
+        query = query.where(DocumentIndex.name == "paragraphs")
         query = query.group_by(Code.name)
         if pattern or file_list:
             query = self.filter_coded_line_query_by_document(query, pattern, file_list)
         else:
             query = query.join(CodedLine.locations).join(Location.document_index)
+        if coder:
+            query = query.join(CodedLine.coder).where(Coder.name == coder)
+        result = self.get_session().execute(query).all()
+        return dict(result)
+
+    def count_codes_by_document(self, pattern=None, file_list=None, coder=None):
+        query = (
+            select(Code.name, func.count(distinct(Document.file_path)))
+            .join(Code.coded_lines)
+            .group_by(Code.name)
+        )
+        if pattern or file_list:
+            query = self.filter_coded_line_query_by_document(query, pattern, file_list)
+        else:
+            query = (
+                query
+                .join(CodedLine.locations)
+                .join(Location.document_index)
+                .join(DocumentIndex.document)
+            )
         if coder:
             query = query.join(CodedLine.coder).where(Coder.name == coder)
         result = self.get_session().execute(query).all()
