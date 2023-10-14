@@ -225,6 +225,15 @@ class QCCorpus(CorpusTestingMethodsMixin):
             self.get_session().commit()
             return code
 
+    def get_codes(self, pattern=None, file_list=None, coder=None):
+        "Returns a list of all unique codes used in the corpus"
+        query = select(Code.name).join(Code.coded_lines)
+        query = self.filter_coded_line_query_by_document(query, pattern, file_list)
+        if coder:
+            query = query.join(CodedLine.coder).where(Coder.name == coder)
+        result = self.get_session().scalars(query).all()
+        return set(result)
+
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
         return TreeNode.read_yaml(self.settings['codebook_file'])
@@ -394,23 +403,23 @@ class QCCorpus(CorpusTestingMethodsMixin):
         name_parts = text_path.name.split('.')
         return self.codes_dir.glob(str(text_path) + '.' + (coder or '*') + '.codes')
 
-    def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
-        """
-        Returns codes pertaining to a corpus text.
-        Returns a dict like {coder_id: [(selection_ix, code)...]}. 
-        If merge or coder, returns a list of [(selection_ix, code)...]
-        The selection indices are guaranteed to be in order.
-        """
-        codes = {}
-        for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
-            codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
-        if coder:
-            return codes.get(coder, {})
-        elif merge:
-            merged_codes = sum(codes.values(), [])
-            return sorted(set(merged_codes))
-        else:
-            return codes
+    #def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
+        #"""
+        #Returns codes pertaining to a corpus text.
+        #Returns a dict like {coder_id: [(selection_ix, code)...]}. 
+        #If merge or coder, returns a list of [(selection_ix, code)...]
+        #The selection indices are guaranteed to be in order.
+        #"""
+        #codes = {}
+        #for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
+            #codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
+        #if coder:
+            #return codes.get(coder, {})
+        #elif merge:
+            #merged_codes = sum(codes.values(), [])
+            #return sorted(set(merged_codes))
+        #else:
+            #return codes
 
     def get_code_matrix(self, codes, 
         recursive_codes=False,
@@ -518,13 +527,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 return para_ix
         return len(para_starts) - 1
 
-    def get_all_codes(self, pattern=None, coder=None):
-        "Returns a list of all unique codes used in the corpus"
-        all_codes = set()
-        for f, codes in self.iter_corpus_codes(pattern=pattern, coder=coder, merge=True):
-            for line_num, code in codes:
-                all_codes.add(code)
-        return all_codes
 
     def get_code_counts(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
         "Returns a defaultdict of {code: number of uses in codefiles}"
@@ -568,7 +570,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
         Updates the codebook by adding any new codes used in the codefiles.
         Does not remove unused codes.
         """
-        all_codes = self.get_all_codes()
+        all_codes = self.get_codes()
         code_tree = self.get_codebook()
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
