@@ -1,5 +1,9 @@
 import click
+import yaml
+from pathlib import Path
 from tabulate import tabulate_formats
+from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.views.viewer import QCCorpusViewer
 
 @click.command()
 @click.argument("code", nargs=-1)
@@ -50,7 +54,8 @@ def crosstab(code, settings, pattern, filenames, invert, coder, depth, unit, rec
         file_list = Path(filenames).read_text().split("\n")
     else:
         file_list = None
-    corpus = QCCorpus(settings)
+    s = yaml.safe_load(Path(settings).read_text())
+    corpus = QCCorpus(s)
     viewer = QCCorpusViewer(corpus)
     if tidy:
         viewer.tidy_codes(

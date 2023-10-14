@@ -326,13 +326,29 @@ class QCCorpus(CorpusTestingMethodsMixin):
         """
         if unit == "line": 
             return self.count_codes_by_line(pattern=pattern, file_list=file_list, coder=coder)
+        elif unit == "paragraph":
+            return self.count_codes_by_paragraph(pattern=pattern, 
+                    file_list=file_list, coder=coder)
         else:
             raise ValueError(f"Unrecognized unit of analysis: {unit}")
 
     def count_codes_by_line(self, pattern=None, file_list=None, coder=None):
-        query = select(Code.name, func.count(CodedLine.id)).join(CodedLine.code)
+        query = select(Code.name, func.count(CodedLine.id)).join(Code.coded_lines)
         query = query.group_by(Code.name)
         query = self.filter_coded_line_query_by_document(query, pattern, file_list)
+        if coder:
+            query = query.join(CodedLine.coder).where(Coder.name == coder)
+        result = self.get_session().execute(query).all()
+        return dict(result)
+
+    def count_codes_by_paragraph(self, pattern=None, file_list=None, coder=None):
+        query = select(Code.name, func.count(Location.id)).join(Code.coded_lines)
+        query = query.where(DocumentIndex.name == "paragraph")
+        query = query.group_by(Code.name)
+        if pattern or file_list:
+            query = self.filter_coded_line_query_by_document(query, pattern, file_list)
+        else:
+            query = query.join(CodedLine.locations).join(Location.document_index)
         if coder:
             query = query.join(CodedLine.coder).where(Coder.name == coder)
         result = self.get_session().execute(query).all()
