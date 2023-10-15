@@ -118,18 +118,19 @@ class QCCorpusViewer:
         outfile=None,
         format=None,
     ):
-        labels, matrix = self.corpus.get_code_matrix(
-            codes, 
-            recursive_codes=recursive_codes,
-            recursive_counts=recursive_counts,
-            depth=depth, 
-            unit=unit,
-            pattern=pattern,
-            file_list=file_list,
-            invert=invert,
-            coder=coder,
-            expanded=expanded,
-        )
+        with self.corpus.session():
+            labels, matrix = self.corpus.get_code_matrix(
+                codes, 
+                recursive_codes=recursive_codes,
+                recursive_counts=recursive_counts,
+                depth=depth, 
+                unit=unit,
+                pattern=pattern,
+                file_list=file_list,
+                invert=invert,
+                coder=coder,
+                expanded=expanded,
+            )
         m = frequencies = matrix.T @ matrix
         if probs:
             totals = np.diag(m).reshape((-1, 1))

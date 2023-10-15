@@ -229,7 +229,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
     def get_codes(self, pattern=None, file_list=None, coder=None):
         "Returns a list of all unique codes used in the corpus"
         query = select(Code.name).join(Code.coded_lines)
-        query = self.filter_coded_line_query_by_document(query, pattern, file_list)
+        query = self.filter_query_by_document(query, pattern, file_list)
         if coder:
             query = query.join(CodedLine.coder).where(Coder.name == coder)
         result = self.get_session().scalars(query).all()
@@ -325,57 +325,14 @@ class QCCorpus(CorpusTestingMethodsMixin):
     def count_codes(self, pattern=None, file_list=None, coder=None, unit="line"):
         """Returns a dict of {code:count}.
         """
-        print("UNIT", unit)
-        if unit == "line": 
-            return self.count_codes_by_line(pattern=pattern, file_list=file_list, coder=coder)
-        elif unit == "paragraph":
-            return self.count_codes_by_paragraph(pattern=pattern, 
-                    file_list=file_list, coder=coder)
-        elif unit == "document":
-            return self.count_codes_by_document(pattern=pattern,
-                    file_list=file_list, coder=coder)
-        else:
-            raise ValueError(f"Unrecognized unit of analysis: {unit}")
-
-    def count_codes_by_line(self, pattern=None, file_list=None, coder=None):
-        query = select(Code.name, func.count(CodedLine.id)).join(Code.coded_lines)
-        query = query.group_by(Code.name)
-        query = self.filter_coded_line_query_by_document(query, pattern, file_list)
-        if coder:
-            query = query.join(CodedLine.coder).where(Coder.name == coder)
-        result = self.get_session().execute(query).all()
-        return dict(result)
-
-    def count_codes_by_paragraph(self, pattern=None, file_list=None, coder=None):
-        query = select(Code.name, func.count(distinct(Location.id))).join(Code.coded_lines)
-        query = query.where(DocumentIndex.name == "paragraphs")
-        query = query.group_by(Code.name)
-        if pattern or file_list:
-            query = self.filter_coded_line_query_by_document(query, pattern, file_list)
-        else:
-            query = query.join(CodedLine.locations).join(Location.document_index)
-        if coder:
-            query = query.join(CodedLine.coder).where(Coder.name == coder)
-        result = self.get_session().execute(query).all()
-        return dict(result)
-
-    def count_codes_by_document(self, pattern=None, file_list=None, coder=None):
+        unit_column = self.get_column_to_count(unit)
         query = (
-            select(Code.name, func.count(distinct(Document.file_path)))
+            select(Code.name, func.count(distinct(unit_column)))
             .join(Code.coded_lines)
             .group_by(Code.name)
         )
-        if pattern or file_list:
-            query = self.filter_coded_line_query_by_document(query, pattern, file_list)
-        else:
-            query = (
-                query
-                .join(CodedLine.locations)
-                .join(Location.document_index)
-                .join(DocumentIndex.document)
-            )
-        if coder:
-            query = query.join(CodedLine.coder).where(Coder.name == coder)
+        query = self.filter_query_by_document(query, pattern, file_list, unit=unit)
+        query = self.filter_query_by_coder(query, coder)
         result = self.get_session().execute(query).all()
         return dict(result)
 
@@ -387,80 +344,47 @@ class QCCorpus(CorpusTestingMethodsMixin):
             query = query.where(Document.file_path.in_(file_list))
         return self.get_session().scalars(query).all()
 
-    def filter_coded_line_query_by_document(self, query, pattern=None, file_list=None):
-        """Filters a query by which documents match.
+    def filter_query_by_document(self, query, pattern=None, file_list=None, 
+            unit="line"):
+        """Filters a query by which documents match. 
+        When unit is paragraph or document, ensures that the query is joined to needed
+        tables regardless of whether pattern or file_list are provided.
         """
-        if pattern or file_list:
-            query = (
-                query
-                .join(CodedLine.locations)
-                .join(Location.document_index)
-                .join(DocumentIndex.document)
-            )
+        if pattern or file_list or unit == "paragraph" or unit == "document":
+            query = query.join(CodedLine.locations).join(Location.document_index)
+        if pattern or file_list or unit == "document":
+            query = query.join(DocumentIndex.document)
+        if unit == "paragraph": 
+            query = query.where(DocumentIndex.name == "paragraphs")
         if pattern:
             query = query.where(Document.file_path.contains(pattern))
         if file_list:
             query = query.where(Document.file_path.in_(file_list))
         return query
 
-
-
-
-
-
-
-# ======== EVERYTHING BELOW HERE IS QUESTIONABLE ===============
-
-    def iter_corpus(self, pattern=None, file_list=None, invert=False):
-        "Iterates over files in the corpus"
-        if pattern:
-            glob = '*' + pattern + '*.txt'
+    def filter_query_by_coder(self, query, coder=None):
+        """Filters a query by coder, if coder is given.
+        Joins the query to CodedLine and adds a where clause matching the coder name.
+        """
+        if coder:
+            return query.join(CodedLine.coder).where(Coder.name == coder)
         else:
-            glob = '*.txt'
-        if not invert:
-            for f in Path(self.corpus_dir).rglob(glob):
-                if file_list is None or str(f.relative_to(self.corpus_dir)) in file_list:
-                    yield f
-        else:
-            matches = set(self.iter_corpus(pattern=pattern, file_list=file_list))
-            for f in Path(self.corpus_dir).rglob(glob):
-                if f not in matches:
-                    yield f
+            return query
 
-    def iter_corpus_codes(self, pattern=None, file_list=None, invert=False, coder=None, merge=False):
-        "Iterates over (f, codes) for code files"
-        for f in self.iter_corpus(pattern, file_list=file_list, invert=invert):
-            yield f, self.get_codes(f, coder=coder, merge=merge)
+    def get_column_to_count(self, unit="line"):
+        """Returns the table and column for a given unit of analysis.
+        """
+        return {
+            "line": CodedLine.id,
+            "paragraph": Location.id,
+            "document": Document.file_path,
+        }[unit]
 
-    def iter_code_files(self, coder=None):
-        "Iterates over all files containing codes, optionally filtered by coder"
-        pattern = f"*.{coder}.codes" if coder else "*.codes"
-        for f in self.codes_dir.glob(pattern):
-            yield f
-
-    def get_code_files_for_corpus_file(self, corpus_text_path, coder=None):
-        "Returns an iterator over code files pertaining to a corpus file"
-        text_path = corpus_text_path.relative_to(self.corpus_dir)
-        name_parts = text_path.name.split('.')
-        return self.codes_dir.glob(str(text_path) + '.' + (coder or '*') + '.codes')
-
-    #def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
-        #"""
-        #Returns codes pertaining to a corpus text.
-        #Returns a dict like {coder_id: [(selection_ix, code)...]}. 
-        #If merge or coder, returns a list of [(selection_ix, code)...]
-        #The selection indices are guaranteed to be in order.
-        #"""
-        #codes = {}
-        #for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
-            #codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
-        #if coder:
-            #return codes.get(coder, {})
-        #elif merge:
-            #merged_codes = sum(codes.values(), [])
-            #return sorted(set(merged_codes))
-        #else:
-            #return codes
+    def get_coded_units(self, pattern=None, file_list=None, coder=None, unit="line"):
+        query = select(Code.name, self.get_column_to_count(unit)).join(Code.coded_lines)
+        query = self.filter_query_by_document(query, pattern, file_list)
+        query = self.filter_query_by_coder(query, coder)
+        return self.get_session().execute(query).all()
 
     def get_code_matrix(self, codes, 
         recursive_codes=False,
@@ -478,6 +402,15 @@ class QCCorpus(CorpusTestingMethodsMixin):
         matching child codes, if `recursive_codes` is set. 
         Selections are each unit within each matching corpus file.
         """
+        # The new way I will do this is by relying on SQL for the heavy lifting, as
+        # I should. I'm going to do a cross join from codes to themselves. 
+        # Also, pass in all the codes that I need cross-joined, to pare down the size
+        # of the resulting matrix. 
+        # I will *not* handle the recursive tree structure within SQL though. I'll 
+        # still create the code sets, and use these to select rows and columns 
+        # from the complete matrix. Then to find out the crosstab of two code sets, 
+        # just sum all the values in the sub-matrix.
+        print("CODES:", codes)
         tree = self.get_codebook()
         if codes:
             nodes = sum([tree.find(c) for c in codes], [])
@@ -485,11 +418,30 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
         else:
             nodes = tree.flatten(depth=depth)
-
+        node_names = set([n.name for n in nodes])
+        print("NODE NAMES", node_names)
         if recursive_counts:
             code_sets = [(n.name, set(n.flatten(names=True))) for n in nodes]
         else:
             code_sets = [(n.name, set([n.name])) for n in nodes]
+        row_code = aliased(Code)
+        col_code = aliased(Code)
+        unit_column = self.get_column_to_count(unit)
+        query = (
+            select(row_code.name, col_code.name, func.count(distinct(unit_column)))
+            .where(row_code.name != col_code.name)
+            .where(row_code.name.in_(node_names))
+            .where(col_code.name.in_(node_names))
+        )
+        query = self.filter_query_by_document(query, pattern, file_list)
+        if coder:
+            query = query.join(CodedLine.coder).where(Coder.name == coder)
+        print(self.get_session().execute(query).all())
+        raise ValueError()
+
+
+
+
 
         rows = []    
         for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
@@ -503,7 +455,9 @@ class QCCorpus(CorpusTestingMethodsMixin):
         labels = [n.expanded_name() if expanded else n.name for n in nodes] 
         return labels, np.array(rows)
 
-    def write_codes(self, corpus_text_path, coder, codes):
+# ======== EVERYTHING BELOW HERE IS QUESTIONABLE ===============
+
+    def XXXwrite_codes(self, corpus_text_path, coder, codes):
         "Writes a list of (line_num, code) to file"
         with open(corpus_text_path) as f:
             file_len = len(list(f))
@@ -517,7 +471,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
             for line_num in range(file_len):
                 outf.write(", ".join(lines[line_num]) + "\n")
 
-    def read_codes(self, code_file_path, unit='line'):
+    def XXXread_codes(self, code_file_path, unit='line'):
         """Reads codes from a code file as a list of (ix, code).
         ix is the selection index and code is a string.
         When unit is 'line', selection index is the line number.
@@ -539,12 +493,12 @@ class QCCorpus(CorpusTestingMethodsMixin):
         else:
             raise NotImplementedError("Unit must be 'line' or 'document'.")
 
-    def is_coded(self, corpus_file_path, coder):
+    def XXXis_coded(self, corpus_file_path, coder):
         """Returns True when coder has entered codes for corpus_file_path
         """
         raise NotImplementedError("TODO")
 
-    def get_paragraph_start_lines(self, corpus_file_path):
+    def XXXget_paragraph_start_lines(self, corpus_file_path):
         """Returns a list of lines on which paragraphs start
         """
         paras = []
@@ -557,7 +511,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
                     paras.append(ix)
         return paras
 
-    def get_paragraph_index(self, para_starts, line_num):
+    def XXXget_paragraph_index(self, para_starts, line_num):
         """Maps a line number to a paragraph index. 
         para_starts is a list of starting lines for paragraphs. 
         Note that -1 is a valid return value, if codes are applied 
@@ -567,24 +521,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
             if line_num < para_start:
                 return para_ix
         return len(para_starts) - 1
-
-
-    def get_code_counts(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
-        "Returns a defaultdict of {code: number of uses in codefiles}"
-        if unit not in ['line', 'document']:
-            raise NotImplementedError("Unit of analysis not supported: {}".format(unit))
-
-        all_codes = defaultdict(int)
-        for f, codes in self.iter_corpus_codes(pattern=pattern, file_list=file_list, invert=invert, 
-                coder=coder, merge=True):
-            codes_in_doc = defaultdict(int)
-            for line_num, code in codes:
-                codes_in_doc[code] += 1
-            if unit == 'document':
-                codes_in_doc = {code: 1 for code in codes_in_doc.keys()}
-            for code, count in codes_in_doc.items():
-                all_codes[code] += count
-        return all_codes
 
     def get_coded_selections(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
         """Returns a dict like {code: selections}.
@@ -600,11 +536,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 for code in grouped_codes[ix]:
                     coded_selections[code].add((str(corpus_file), ix))
         return coded_selections
-
-    def get_coder_from_code_path(self, code_file_path):
-        "Maps Path('some_interview.txt.cp.codes') -> 'cp'"
-        parts = code_file_path.name.split('.')
-        return parts[-2]
 
     def update_codebook(self):
         """
