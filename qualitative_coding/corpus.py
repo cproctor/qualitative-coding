@@ -2,7 +2,7 @@
 # -------------------------
 # (c) 2023 Chris Proctor
 
-from itertools import chain
+from itertools import chain, combinations
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
@@ -375,7 +375,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
         """Returns the table and column for a given unit of analysis.
         """
         return {
-            "line": CodedLine.id,
+            "line": aliased(CodedLine).id,
             "paragraph": Location.id,
             "document": Document.file_path,
         }[unit]
@@ -402,15 +402,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
         matching child codes, if `recursive_codes` is set. 
         Selections are each unit within each matching corpus file.
         """
-        # The new way I will do this is by relying on SQL for the heavy lifting, as
-        # I should. I'm going to do a cross join from codes to themselves. 
-        # Also, pass in all the codes that I need cross-joined, to pare down the size
-        # of the resulting matrix. 
-        # I will *not* handle the recursive tree structure within SQL though. I'll 
-        # still create the code sets, and use these to select rows and columns 
-        # from the complete matrix. Then to find out the crosstab of two code sets, 
-        # just sum all the values in the sub-matrix.
-        print("CODES:", codes)
         tree = self.get_codebook()
         if codes:
             nodes = sum([tree.find(c) for c in codes], [])
@@ -419,29 +410,34 @@ class QCCorpus(CorpusTestingMethodsMixin):
         else:
             nodes = tree.flatten(depth=depth)
         node_names = set([n.name for n in nodes])
-        print("NODE NAMES", node_names)
         if recursive_counts:
             code_sets = [(n.name, set(n.flatten(names=True))) for n in nodes]
         else:
             code_sets = [(n.name, set([n.name])) for n in nodes]
-        row_code = aliased(Code)
-        col_code = aliased(Code)
-        unit_column = self.get_column_to_count(unit)
-        query = (
-            select(row_code.name, col_code.name, func.count(distinct(unit_column)))
-            .where(row_code.name != col_code.name)
-            .where(row_code.name.in_(node_names))
-            .where(col_code.name.in_(node_names))
-        )
-        query = self.filter_query_by_document(query, pattern, file_list)
-        if coder:
-            query = query.join(CodedLine.coder).where(Coder.name == coder)
-        print(self.get_session().execute(query).all())
-        raise ValueError()
 
+        code_set_counts = {}
+        CodedLineA = aliased(CodedLine)
+        CodedLineB = aliased(CodedLine)
+        LocationA = aliased(Location)
+        LocationB = aliased(Location)
 
+        cross_tabs = {}
+        for (code_a, code_set_a), (code_b, code_set_b) in combinations(code_sets, 2):
+            query = (
+                select(func.count())
+                .where(CodedLineA.code_id.in_(code_set_a))
+                .where(CodedLineB.code_id.in_(code_set_b))
+                .where(CodedLineA.line == CodedLineB.line)
+                .join(LocationA, CodedLineA.locations)
+                .join(LocationB, CodedLineB.locations)
+                .where(LocationA.document_index_id == LocationB.document_index_id)
+            )
+            coocurrences = self.get_session().scalars(query).first()
+            print(coocurrences)
+            cross_tabs[(code_a, code_b)] = coocurrences
 
-
+        print(cross_tabs)
+        raise ValueError() # THIS IS AS FAR AS I GOT...
 
         rows = []    
         for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
