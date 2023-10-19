@@ -415,41 +415,34 @@ class QCCorpus(CorpusTestingMethodsMixin):
         else:
             code_sets = [(n.name, set([n.name])) for n in nodes]
 
-        code_set_counts = {}
         CodedLineA = aliased(CodedLine)
         CodedLineB = aliased(CodedLine)
         LocationA = aliased(Location)
         LocationB = aliased(Location)
 
-        cross_tabs = {}
-        for (code_a, code_set_a), (code_b, code_set_b) in combinations(code_sets, 2):
+        cooccurrences = np.zeros((len(nodes), len(nodes)), dtype=int)
+        for (ix_a, (c_a, cs_a)), (ix_b, (c_b, cs_b)) in combinations(enumerate(code_sets), 2):
             query = (
                 select(func.count())
-                .where(CodedLineA.code_id.in_(code_set_a))
-                .where(CodedLineB.code_id.in_(code_set_b))
+                .where(CodedLineA.code_id.in_(cs_a))
+                .where(CodedLineB.code_id.in_(cs_b))
                 .where(CodedLineA.line == CodedLineB.line)
                 .join(LocationA, CodedLineA.locations)
                 .join(LocationB, CodedLineB.locations)
                 .where(LocationA.document_index_id == LocationB.document_index_id)
             )
-            coocurrences = self.get_session().scalars(query).first()
-            print(coocurrences)
-            cross_tabs[(code_a, code_b)] = coocurrences
+            if coder:
+                query = (
+                    query
+                    .where(CodedLineA.coder_id == coder)
+                    .where(CodedLineB.coder_id == coder)
+                )
+            ab_count = self.get_session().scalars(query).first()
+            cooccurrences[ix_a][ix_b] = ab_count
+            cooccurrences[ix_b][ix_a] = ab_count
 
-        print(cross_tabs)
-        raise ValueError() # THIS IS AS FAR AS I GOT...
-
-        rows = []    
-        for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            codes = self.get_codes(corpus_file, coder=coder, merge=True, unit=unit)
-            grouped_codes = defaultdict(set)
-            for ix, code in codes:
-                grouped_codes[ix].add(code)
-            for ix in sorted(grouped_codes.keys()):
-                codes = grouped_codes[ix]
-                rows.append([int(bool(codes & matches)) for c, matches in code_sets])
         labels = [n.expanded_name() if expanded else n.name for n in nodes] 
-        return labels, np.array(rows)
+        return labels, cooccurrences
 
 # ======== EVERYTHING BELOW HERE IS QUESTIONABLE ===============
 
