@@ -131,10 +131,13 @@ class QCCorpusViewer:
                 coder=coder,
                 expanded=expanded,
             )
-        m = frequencies = matrix.T @ matrix
+        m = matrix
+        print(matrix)
         if probs:
             totals = np.diag(m).reshape((-1, 1))
             m = m / totals
+            print(totals)
+            print(m)
         if compact:
             data = [[ix, code, *row] for ix, code, row in zip(count(), labels, m)]
             cols = ["ix", "code", *range(len(labels))]
@@ -148,7 +151,8 @@ class QCCorpusViewer:
                 writer.writerows(data)
         else:
             index_cols = 2 if compact else 1
-            data = self.mask_lower_triangle(data, index_cols)
+            if not probs:
+                data = self.mask_lower_triangle(data, index_cols)
             print(tabulate(data, cols, tablefmt=format, stralign="right"))
 
     def mask_lower_triangle(self, data, num_index_cols):

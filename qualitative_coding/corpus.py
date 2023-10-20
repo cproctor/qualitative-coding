@@ -2,7 +2,7 @@
 # -------------------------
 # (c) 2023 Chris Proctor
 
-from itertools import chain, combinations
+from itertools import chain, combinations_with_replacement
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
@@ -185,13 +185,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
             #node.count = len(node.selections)
             node.count = code_counts.get(node.name, 0)
 
-        def agg_union(node):
-            for child in node.children:
-                agg_union(child)
-            node.recursive_selections = set() if node.is_root() else set(node.selections)
-            for child in node.children:
-                node.recursive_selections |= child.recursive_selections
-
         def recursive_count(node):
             for child in node.children:
                 recursive_count(child)
@@ -199,12 +192,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
             node.total = node.count + sum(c.count for c in node.children)
 
         recursive_count(tree)
-
-        #agg_union(tree)
-        #for node in tree.flatten():
-            #node.total = len(node.recursive_selections)
         return tree
-
 
     def get_or_create_coder(self, coder_name):
         try:
@@ -215,6 +203,10 @@ class QCCorpus(CorpusTestingMethodsMixin):
             self.get_session().add(coder)
             self.get_session().commit()
             return coder
+
+    def get_all_coders(self):
+        q = select(Coder.name)
+        return self.get_session().execute(q).scalars()
 
     def get_or_create_code(self, code_name):
         try:
@@ -362,22 +354,23 @@ class QCCorpus(CorpusTestingMethodsMixin):
             query = query.where(Document.file_path.in_(file_list))
         return query
 
-    def filter_query_by_coder(self, query, coder=None):
+    def filter_query_by_coder(self, query, coder=None, coded_line_alias=CodedLine):
         """Filters a query by coder, if coder is given.
         Joins the query to CodedLine and adds a where clause matching the coder name.
         """
         if coder:
-            return query.join(CodedLine.coder).where(Coder.name == coder)
+            return query.where(coded_line_alias.coder_id == coder)
         else:
             return query
 
-    def get_column_to_count(self, unit="line"):
+    def get_column_to_count(self, unit="line", coded_line_alias=CodedLine, 
+            location_alias=Location, document_alias=Document):
         """Returns the table and column for a given unit of analysis.
         """
         return {
-            "line": aliased(CodedLine).id,
-            "paragraph": Location.id,
-            "document": Document.file_path,
+            "line": coded_line_alias.id,
+            "paragraph": location_alias.id,
+            "document": document_alias.file_path,
         }[unit]
 
     def get_coded_units(self, pattern=None, file_list=None, coder=None, unit="line"):
@@ -419,11 +412,13 @@ class QCCorpus(CorpusTestingMethodsMixin):
         CodedLineB = aliased(CodedLine)
         LocationA = aliased(Location)
         LocationB = aliased(Location)
-
+        unit_column = self.get_column_to_count(unit, coded_line_alias=CodedLineA,
+            location_alias=LocationA)
         cooccurrences = np.zeros((len(nodes), len(nodes)), dtype=int)
-        for (ix_a, (c_a, cs_a)), (ix_b, (c_b, cs_b)) in combinations(enumerate(code_sets), 2):
+        combos = combinations_with_replacement(enumerate(code_sets), 2)
+        for (ix_a, (c_a, cs_a)), (ix_b, (c_b, cs_b)) in combos:
             query = (
-                select(func.count())
+                select(func.count(distinct(unit_column)))
                 .where(CodedLineA.code_id.in_(cs_a))
                 .where(CodedLineB.code_id.in_(cs_b))
                 .where(CodedLineA.line == CodedLineB.line)
@@ -431,12 +426,9 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 .join(LocationB, CodedLineB.locations)
                 .where(LocationA.document_index_id == LocationB.document_index_id)
             )
-            if coder:
-                query = (
-                    query
-                    .where(CodedLineA.coder_id == coder)
-                    .where(CodedLineB.coder_id == coder)
-                )
+            query = self.filter_query_by_coder(query, coder, CodedLineA)
+            query = self.filter_query_by_coder(query, coder, CodedLineB)
+
             ab_count = self.get_session().scalars(query).first()
             cooccurrences[ix_a][ix_b] = ab_count
             cooccurrences[ix_b][ix_a] = ab_count
