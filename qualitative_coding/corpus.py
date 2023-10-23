@@ -59,6 +59,12 @@ def iter_paragraph_lines(fh):
             in_whitespace = False
     yield p_start, i + 1
 
+def recursive_count(node):
+    for child in node.children:
+        recursive_count(child)
+    node.count = code_counts.get(node.name, 0)
+    node.total = node.count + sum(c.count for c in node.children)
+
 class QCCorpus(CorpusTestingMethodsMixin):
     """Provides data access to the corpus of documents and codes. 
     QCCorpus methods which access the database must be called from within
@@ -177,20 +183,8 @@ class QCCorpus(CorpusTestingMethodsMixin):
             coder=coder,
             unit=unit,
         )
-        # I'll need selections for other use cases, but not cor generating stats.
-        #coded_selections = self.get_coded_selections(pattern=pattern, file_list=file_list, 
-                #invert=invert, coder=coder, unit=unit)
         for node in tree.flatten():
-            #node.selections = code_counts[node.name]
-            #node.count = len(node.selections)
             node.count = code_counts.get(node.name, 0)
-
-        def recursive_count(node):
-            for child in node.children:
-                recursive_count(child)
-            node.count = code_counts.get(node.name, 0)
-            node.total = node.count + sum(c.count for c in node.children)
-
         recursive_count(tree)
         return tree
 
@@ -373,8 +367,17 @@ class QCCorpus(CorpusTestingMethodsMixin):
             "document": document_alias.file_path,
         }[unit]
 
-    def get_coded_units(self, pattern=None, file_list=None, coder=None, unit="line"):
-        query = select(Code.name, self.get_column_to_count(unit)).join(Code.coded_lines)
+    def get_coded_lines(self, codes=None, pattern=None, file_list=None, coder=None, unit="line"):
+        """Returns (Code.name, CodedLine.line_number, Document.file_path)
+        """
+        query = (
+            select(CodedLine.code_id, CodedLine.line, DocumentIndex.document_id)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .order_by(DocumentIndex.document_id, CodedLine.line)
+        )
+        if codes:
+            query = query.where(CodedLine.code_id.in_(codes))
         query = self.filter_query_by_document(query, pattern, file_list)
         query = self.filter_query_by_coder(query, coder)
         return self.get_session().execute(query).all()

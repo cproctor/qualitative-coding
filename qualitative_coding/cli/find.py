@@ -1,4 +1,6 @@
 import click
+import yaml
+from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
@@ -10,7 +12,6 @@ from qualitative_coding.cli.decorators import handle_qc_errors
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
         help="File path containing a list of filenames to use")
-@click.option("-i", "--invert", is_flag=True, help="Invert file selection")
 @click.option("-c", "--coder", help="Coder")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 @click.option("-n", "--unit", default="line", help="Unit of analysis",
@@ -24,17 +25,15 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 @click.option("-l", "--no-codes", "no_codes", is_flag=True,
         help="Do not show matching codes")
 @handle_qc_errors
-def find(code, settings, pattern, filenames, invert, coder, depth, unit, recursive_codes, 
+def find(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
          before, after, no_codes):
     "Find all coded text"
-    if invert and not (pattern or filenames):
-        msg = "--invert may only be used when --pattern or --filenames is given."
-        raise IncompatibleOptions(msg)
     if filenames:
         file_list = Path(filenames).read_text().split("\n")
     else:
         file_list = None
-    corpus = QCCorpus(settings)
+    s = yaml.safe_load(Path(settings).read_text())
+    corpus = QCCorpus(s)
     viewer = QCCorpusViewer(corpus)
     viewer.show_coded_text(
         code, 
@@ -45,7 +44,6 @@ def find(code, settings, pattern, filenames, invert, coder, depth, unit, recursi
         unit=unit,
         pattern=pattern,
         file_list=file_list,
-        invert=invert,
         coder=coder,
         show_codes=not no_codes,
     )
