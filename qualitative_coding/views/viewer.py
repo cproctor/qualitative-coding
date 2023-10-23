@@ -365,7 +365,7 @@ class QCCorpusViewer:
         if message:
             fname += "_" + message.replace(" ", "_").lower()
         fname += ".md"
-        path = self.corpus.memos_dir / fname
+        path = Path(self.settings['memos_dir']) / fname
         if message:
             path.write_text(f"# {message}\n\n{coder} {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
         else:
