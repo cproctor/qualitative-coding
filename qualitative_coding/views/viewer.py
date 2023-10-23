@@ -236,43 +236,69 @@ class QCCorpusViewer:
             codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
             codes = set(codes)
-        if unit == "document": 
+        if unit == "line": 
+            with self.corpus.session():
+                coded_lines = self.corpus.get_coded_lines(codes=codes, pattern=pattern, 
+                        file_list=file_list, coder=coder)
+            doc_coded_lines = defaultdict(lambda: defaultdict(set))
+            doc_code_counts = defaultdict(int)
+            for code, line_num, doc_path in coded_lines:
+                doc_code_counts[doc_path] += 1
+                doc_coded_lines[doc_path][line_num].add(code)
+            for doc_path, coded_lines in doc_coded_lines.items():
+                with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
+                    lines = [line for line in fh]
+                ranges = self.merge_ranges(
+                    [range(n-before, n+after+1) for n in coded_lines.keys()], 
+                    clamp=[0, len(lines)]
+                )
+                print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
+                print("=" * text_width)
+                for r in ranges:
+                    print("\n[{}:{}]".format(r.start, r.stop))
+                    if show_codes:
+                        self.show_text_with_codes(
+                            [lines[i] for i in r],
+                            [doc_coded_lines[doc_path][i] for i in r],
+                            text_width=text_width,
+                        )
+                    else:
+                        self.show_text(
+                            [lines[i] for i in r],
+                            text_width=text_width,
+                        )
+                        print(" ".join(lines[i].strip() for i in r))
+        elif unit == "paragraph":
+            with self.corpus.session():
+                coded_paragraphs = self.corpus.get_coded_paragraphs(codes=codes, 
+                        pattern=pattern, file_list=file_list, coder=coder)
+            doc_coded_paras = defaultdict(lambda: defaultdict(set))
+            doc_code_counts = defaultdict(int)
+            for code, doc_path, para_start, para_end in coded_paragraphs:
+                doc_code_counts[doc_path] += 1
+                doc_coded_paras[doc_path][(para_start, para_end)].add(code)
+            for doc_path, coded_paras in doc_coded_paras.items():
+                with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
+                    lines = [line for line in fh]
+                print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
+                print("=" * text_width)
+                for (para_start, para_end), codes in coded_paras.items():
+                    r = range(para_start, para_end)
+                    print("\n[{}:{}]".format(r.start, r.stop))
+                    if show_codes:
+                        self.show_text_with_codes(
+                            [lines[i] for i in r],
+                            [codes] + [[] for i in range(para_end - para_start)],
+                            text_width=text_width,
+                        )
+                    else:
+                        self.show_text(
+                            [lines[i] for i in r],
+                            text_width=text_width,
+                        )
+                        print(" ".join(lines[i].strip() for i in r))
+        elif unit == "document": 
             print("DOCUMENT")
-        else:
-            if pattern:
-                self.report_files_matching_pattern(pattern, file_list=file_list)
-            if unit == "line": 
-                with self.corpus.session():
-                    coded_lines = self.corpus.get_coded_lines(codes=codes, pattern=pattern, 
-                            file_list=file_list, coder=coder, unit=unit)
-                    doc_coded_lines = defaultdict(lambda: defaultdict(set))
-                    doc_code_counts = defaultdict(int)
-                for code, line_num, doc_path in coded_lines:
-                    doc_code_counts[doc_path] += 1
-                    doc_coded_lines[doc_path][line_num].add(code)
-                for doc_path, coded_lines in doc_coded_lines.items():
-                    with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
-                        lines = [line for line in fh]
-                    ranges = self.merge_ranges(
-                        [range(n-before, n+after+1) for n in coded_lines.keys()], 
-                        clamp=[0, len(lines)]
-                    )
-                    print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
-                    print("=" * text_width)
-                    for r in ranges:
-                        print("\n[{}:{}]".format(r.start, r.stop))
-                        if show_codes:
-                            self.show_text_with_codes(
-                                [lines[i] for i in r],
-                                [doc_coded_lines[doc_path][i] for i in r],
-                                text_width=text_width,
-                            )
-                        else:
-                            self.show_text(
-                                [lines[i] for i in r],
-                                text_width=text_width,
-                            )
-                            print(" ".join(lines[i].strip() for i in r))
 
     def show_text(self, lines, text_width=80):
         "Prints lines of text from a corpus document"
