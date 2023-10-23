@@ -1,12 +1,8 @@
 # Next steps
 
-What's the problem here? The problem is I'm thinking about where to create the interface
-boundary on QCCorpus, specifically who should handle its sessions. This is an implementation
-detail I can't really hide within methods, because that would mean that a session would be
-scoped to that session, and I would lose many of the benefits of the ORM.
-
-OK, so given that I need the client of QCCorpus to manage the session, shall I expose the 
-context manager? This seems best.
+- The min and max should targed different values depending on whether -a is present. 
+  If -a, then we care about the recursive total codes. If not, then we care about that code
+  exactly.
 
 # 2023
 
