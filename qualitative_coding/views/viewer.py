@@ -14,6 +14,7 @@ from subprocess import run
 from datetime import datetime
 from random import choice
 from itertools import count
+from textwrap import fill
 import numpy as np
 import csv
 
@@ -255,7 +256,7 @@ class QCCorpusViewer:
                 print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
                 print("=" * text_width)
                 for r in ranges:
-                    print("\n[{}:{}]".format(r.start, r.stop))
+                    print("[{}:{}]".format(r.start, r.stop))
                     if show_codes:
                         self.show_text_with_codes(
                             [lines[i] for i in r],
@@ -267,24 +268,23 @@ class QCCorpusViewer:
                             [lines[i] for i in r],
                             text_width=text_width,
                         )
-                        print(" ".join(lines[i].strip() for i in r))
+                    print("")
         elif unit == "paragraph":
             with self.corpus.session():
                 coded_paragraphs = self.corpus.get_coded_paragraphs(codes=codes, 
                         pattern=pattern, file_list=file_list, coder=coder)
             doc_coded_paras = defaultdict(lambda: defaultdict(set))
-            doc_code_counts = defaultdict(int)
             for code, doc_path, para_start, para_end in coded_paragraphs:
-                doc_code_counts[doc_path] += 1
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
                 with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
                     lines = [line for line in fh]
-                print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
+                para_code_count = sum(len(code_set) for code_set in coded_paras.values())
+                print(f"\n{doc_path} ({para_code_count})")
                 print("=" * text_width)
                 for (para_start, para_end), codes in coded_paras.items():
                     r = range(para_start, para_end)
-                    print("\n[{}:{}]".format(r.start, r.stop))
+                    print("[{}:{}]".format(r.start, r.stop))
                     if show_codes:
                         self.show_text_with_codes(
                             [lines[i] for i in r],
@@ -298,7 +298,21 @@ class QCCorpusViewer:
                         )
                         print(" ".join(lines[i].strip() for i in r))
         elif unit == "document": 
-            print("DOCUMENT")
+            with self.corpus.session():
+                coded_documents = self.corpus.get_coded_documents(codes=codes, 
+                        pattern=pattern, file_list=file_list, coder=coder)
+            doc_codes = defaultdict(set)
+            for code, doc_path in coded_documents:
+                doc_codes[doc_path].add(code)
+            if show_codes:
+                self.show_text_with_codes(
+                    doc_codes.keys(),
+                    doc_codes.values(),
+                    text_width=max(len(d) for d in doc_codes.keys()) + 1,
+                )
+            else:
+                for doc_path in doc_codes.keys():
+                    print(doc_path)
 
     def show_text(self, lines, text_width=80):
         "Prints lines of text from a corpus document"
@@ -309,8 +323,12 @@ class QCCorpusViewer:
         "Prints text lines with associated codes"
         for line, code_set in zip(lines, code_sets):
             print(
-                line.strip()[:text_width].ljust(text_width) + 
-                " | " + ", ".join(sorted(code_set))
+                line.strip()[:text_width].ljust(text_width) + " | " + 
+                fill(
+                    ", ".join(sorted(code_set)), 
+                    width=code_width, 
+                    subsequent_indent=" " * text_width + " | "
+                )
             )
             
     def select_file(self, coder, pattern=None, file_list=None, invert=None, uncoded=False, 

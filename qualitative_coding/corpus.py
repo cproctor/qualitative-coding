@@ -401,6 +401,22 @@ class QCCorpus(CorpusTestingMethodsMixin):
         query = self.filter_query_by_coder(query, coder)
         return self.get_session().execute(query).all()
 
+    def get_coded_documents(self, codes=None, pattern=None, file_list=None, coder=None):
+        """Returns (Code.name, Document.file_path)
+        """
+        query = (
+            select(CodedLine.code_id, DocumentIndex.document_id)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.name == "paragraphs")
+            .order_by(DocumentIndex.document_id, CodedLine.line)
+        )
+        if codes:
+            query = query.where(CodedLine.code_id.in_(codes))
+        query = self.filter_query_by_document(query, pattern, file_list)
+        query = self.filter_query_by_coder(query, coder)
+        return self.get_session().execute(query).all()
+
     def get_code_matrix(self, codes, 
         recursive_codes=False,
         recursive_counts=False,
