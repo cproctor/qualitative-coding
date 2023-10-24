@@ -111,7 +111,6 @@ class QCCorpusViewer:
         unit='line',
         pattern=None,
         file_list=None,
-        invert=False,
         coder=None,
         probs=False,
         expanded=False, 
@@ -128,7 +127,6 @@ class QCCorpusViewer:
                 unit=unit,
                 pattern=pattern,
                 file_list=file_list,
-                invert=invert,
                 coder=coder,
                 expanded=expanded,
             )
@@ -170,7 +168,6 @@ class QCCorpusViewer:
         unit='line',
         pattern=None,
         file_list=None,
-        invert=False,
         coder=None,
         expanded=False, 
         outfile=None,
@@ -188,7 +185,6 @@ class QCCorpusViewer:
             unit=unit,
             pattern=pattern,
             file_list=file_list,
-            invert=invert,
             coder=coder,
             expanded=expanded,
         )
@@ -331,7 +327,7 @@ class QCCorpusViewer:
                 )
             )
             
-    def select_file(self, coder, pattern=None, file_list=None, invert=None, uncoded=False, 
+    def select_file(self, coder, pattern=None, file_list=None, uncoded=False, 
             first=False, random=False):
         """Selects a single file from the corpus.
         Pattern, file_list, and invert are optionally used to filter the corpus.
@@ -341,22 +337,26 @@ class QCCorpusViewer:
         """
         if first and random:
             raise ValueError("First and random must not both be True")
-        corpus_files = sorted(list(self.corpus.iter_corpus(pattern=pattern, 
-                file_list=file_list, invert=invert)))
-        if uncoded:
-            corpus_files = [cf for cf in corpus_files if self.corpus.is_coded(cf, coder)]
-        if len(corpus_files) == 0:
+        with self.corpus.session():
+            docs = self.corpus.get_documents(pattern=pattern, file_list=file_list)
+            file_paths = set(doc.file_path for doc in docs)
+            if uncoded:
+                coded_docs = self.corpus.get_coded_documents(pattern=pattern,
+                        file_list=file_list, coder=coder)
+                coded_file_paths = set(fp for code, fp in coded_docs)
+                file_paths = file_paths - coded_file_paths
+            file_paths = sorted(file_paths)
+        if len(file_paths) == 0:
             raise QCError("No corpus files matched.")
-        elif len(corpus_files) == 1:
-            return corpus_files[0]
+        elif len(file_paths) == 1:
+            return file_paths[0]
         else:
             if first:
-                return corpus_files[0]
+                return file_paths[0]
             elif random:
-                return choice(corpus_files)
+                return choice(file_paths)
             else:
-                ix = self.prompt_for_choice("Multiple files matched:", 
-                        [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
+                ix = self.prompt_for_choice("Multiple files matched:", file_paths)
                 return corpus_files[ix]
 
     def memo(self, coder, message=""):
@@ -378,20 +378,15 @@ class QCCorpusViewer:
         text = [f.read_text() for f in sorted(self.corpus.memos_dir.glob("*.md"))]
         return "\n\n".join(text)
 
-    def open_editor(self, files):
-        corpus_file, codes_file = files
-        text = Path(corpus_file).read_text().splitlines()
-        if Path(codes_file).exists():
-            codes = Path(codes_file).read_text().splitlines()
-        else:
-            codes = ["" for line in text]
-        codebook = []
-        ui = CodingUI(text, codes, codebook)
+    def open_editor(self, corpus_file_path, coder):
+        text = (Path(self.settings['corpus_dir']) / corpus_file_path).read_text().splitlines()
+        with self.corpus.session():
+            code_line_docs = self.corpus.get_coded_lines(file_list=[corpus_file_path], 
+                    coder=coder)
+        coded_lines = [(code, line) for code, line, doc in code_line_docs]
+        codes = set(code.name for code in self.corpus.get_codebook().flatten())
+        ui = CodingUI(text, coded_lines, codes)
         ui.run()
-
-        #if not (isinstance(files, list) or isinstance(files, tuple)):
-            #files = [files]
-        #run(["vim", "-O"] + files)
 
     def prompt_for_choice(self, prompt, options):
         "Asks for a prompt, returns an index"

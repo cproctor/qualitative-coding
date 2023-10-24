@@ -35,6 +35,7 @@ from qualitative_coding.database.models import (
     Code, 
     Coder, 
     CodedLine,
+    coded_line_location_association_table
 )
 from qualitative_coding.testing import CorpusTestingMethodsMixin
 
@@ -226,6 +227,8 @@ class QCCorpus(CorpusTestingMethodsMixin):
         return TreeNode.read_yaml(self.settings['codebook_file'])
 
     def get_document(self, corpus_path):
+        """Fetches a document object.
+        """
         relpath = self.get_relative_corpus_path(corpus_path)
         q = select(Document).where(Document.file_path == relpath)
         return self.get_session().scalars(q).first()
@@ -323,6 +326,8 @@ class QCCorpus(CorpusTestingMethodsMixin):
         return dict(result)
 
     def get_documents(self, pattern=None, file_list=None):
+        """Returns matching Document objects.
+        """
         query = select(Document)
         if pattern:
             query = query.where(Document.file_path.contains(pattern))
@@ -474,88 +479,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
         labels = [n.expanded_name() if expanded else n.name for n in nodes] 
         return labels, cooccurrences
 
-# ======== EVERYTHING BELOW HERE IS QUESTIONABLE ===============
-
-    def XXXwrite_codes(self, corpus_text_path, coder, codes):
-        "Writes a list of (line_num, code) to file"
-        with open(corpus_text_path) as f:
-            file_len = len(list(f))
-        lines = defaultdict(list)
-        for line_num, code in codes:
-            lines[line_num] += [code]
-        text_path = corpus_text_path.relative_to(self.corpus_dir)
-        codes_path = Path(str(self.codes_dir / text_path) + '.' + coder + '.codes')
-        codes_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(codes_path, 'w') as outf:
-            for line_num in range(file_len):
-                outf.write(", ".join(lines[line_num]) + "\n")
-
-    def XXXread_codes(self, code_file_path, unit='line'):
-        """Reads codes from a code file as a list of (ix, code).
-        ix is the selection index and code is a string.
-        When unit is 'line', selection index is the line number.
-        When unit is 'paragraph', selection index is the paragraph number.
-        When unit is 'document', selection index is 0.
-        """
-        codes = []
-        with open(code_file_path) as inf:
-            for line_num, line in enumerate(inf):
-                codes += [(line_num, code.strip()) for code in line.split(",") if code.strip()]
-        if unit == 'line': 
-            return codes
-        elif unit == 'paragraph':
-            corpus_file_path = self.get_corpus_file_path(code_file_path)
-            para_starts = self.get_paragraph_start_lines(corpus_file_path)
-            return [(self.get_paragraph_index(para_starts, line), code) for line, code in codes]
-        elif unit == 'document': 
-            return [(0, c) for c in set(code for i, code in codes)]
-        else:
-            raise NotImplementedError("Unit must be 'line' or 'document'.")
-
-    def XXXis_coded(self, corpus_file_path, coder):
-        """Returns True when coder has entered codes for corpus_file_path
-        """
-        raise NotImplementedError("TODO")
-
-    def XXXget_paragraph_start_lines(self, corpus_file_path):
-        """Returns a list of lines on which paragraphs start
-        """
-        paras = []
-        in_paragraph = False
-        with open(corpus_file_path) as inf:
-            for ix, line in enumerate(inf):
-                if in_paragraph and line.strip() == '':
-                    in_paragraph = False
-                elif not in_paragraph and line.strip() != '':
-                    paras.append(ix)
-        return paras
-
-    def XXXget_paragraph_index(self, para_starts, line_num):
-        """Maps a line number to a paragraph index. 
-        para_starts is a list of starting lines for paragraphs. 
-        Note that -1 is a valid return value, if codes are applied 
-        to lines preceding the first paragraph.
-        """
-        for para_ix, para_start in enumerate(para_starts):
-            if line_num < para_start:
-                return para_ix
-        return len(para_starts) - 1
-
-    def get_coded_selections(self, pattern=None, file_list=None, invert=False, coder=None, unit='line'):
-        """Returns a dict like {code: selections}.
-        Selections is a set of (file_path, selection_ix).
-        """
-        coded_selections = defaultdict(set)
-        for corpus_file in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            codes = self.get_codes(corpus_file, coder=coder, merge=True, unit=unit)
-            grouped_codes = defaultdict(set)
-            for ix, code in codes:
-                grouped_codes[ix].add(code)
-            for ix in sorted(grouped_codes.keys()):
-                for code in grouped_codes[ix]:
-                    coded_selections[code].add((str(corpus_file), ix))
-        return coded_selections
-
     def update_codebook(self):
         """
         Updates the codebook by adding any new codes used in the codefiles.
@@ -568,6 +491,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
             code_tree.add_child(new_code)
         TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
 
+    # TODO: Needs to be rewritten for SQL.
     def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
                 update_codebook=False):
         """
@@ -594,12 +518,3 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 self.log.info(f"Renamed code {old_code} to {new_code}")
             TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
             self.update_codebook()
-                
-
-            
-
-        
-
-
-
-
