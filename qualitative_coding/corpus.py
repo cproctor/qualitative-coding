@@ -60,12 +60,6 @@ def iter_paragraph_lines(fh):
             in_whitespace = False
     yield p_start, i + 1
 
-def recursive_count(node):
-    for child in node.children:
-        recursive_count(child)
-    node.count = code_counts.get(node.name, 0)
-    node.total = node.count + sum(c.count for c in node.children)
-
 class QCCorpus(CorpusTestingMethodsMixin):
     """Provides data access to the corpus of documents and codes. 
     QCCorpus methods which access the database must be called from within
@@ -186,6 +180,13 @@ class QCCorpus(CorpusTestingMethodsMixin):
         )
         for node in tree.flatten():
             node.count = code_counts.get(node.name, 0)
+
+        def recursive_count(node):
+            for child in node.children:
+                recursive_count(child)
+            node.count = code_counts.get(node.name, 0)
+            node.total = node.count + sum(c.count for c in node.children)
+
         recursive_count(tree)
         return tree
 
@@ -254,7 +255,11 @@ class QCCorpus(CorpusTestingMethodsMixin):
         stmt = (
             insert(CodedLine)
             .values(coded_line_data)
-            .on_conflict_do_nothing()
+            .on_conflict_do_nothing((
+                CodedLine.line, 
+                CodedLine.code_id, 
+                CodedLine.coder_id
+            ))
             .returning(CodedLine)
         )
         result = self.get_session().scalars(stmt)
