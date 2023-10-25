@@ -12,7 +12,6 @@ from qualitative_coding.views.viewer import QCCorpusViewer
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
         help="File path containing a list of filenames to use")
-@click.option("-i", "--invert", is_flag=True, help="Invert file selection")
 @click.option("-c", "--coder", help="Coder")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 @click.option("-n", "--unit", default="line", help="Unit of analysis",
@@ -32,7 +31,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 @click.option("-y", "--tidy", help="Return tidy format", is_flag=True)
 @click.option("-u", "--max", "_max", help="Maximum count value to show", type=int)
 @click.option("-l", "--min", "_min", help="Minimum count value to show", type=int)
-def crosstab(code, settings, pattern, filenames, invert, coder, depth, unit, recursive_codes,
+def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_codes,
         recursive_counts, expanded, _format, outfile, probs, compact, tidy, _max, _min):
     "Cross-tabulate code occurrences"
     if depth and not recursive_codes: # Why is this required?
@@ -67,7 +66,6 @@ def crosstab(code, settings, pattern, filenames, invert, coder, depth, unit, rec
             format=_format, 
             pattern=pattern,
             file_list=file_list,
-            invert=invert,
             coder=coder,
             unit=unit,
             outfile=outfile,
@@ -84,7 +82,6 @@ def crosstab(code, settings, pattern, filenames, invert, coder, depth, unit, rec
             format=_format, 
             pattern=pattern,
             file_list=file_list,
-            invert=invert,
             coder=coder,
             unit=unit,
             outfile=outfile,
