@@ -1,4 +1,6 @@
 import click
+import yaml
+from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 
@@ -9,6 +11,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 def _list(settings, expanded, depth):
     "List all codes"
-    corpus = QCCorpus(settings)
+    s = yaml.safe_load(Path(settings).read_text())
+    corpus = QCCorpus(s)
     viewer = QCCorpusViewer(corpus)
     viewer.list_codes(expanded=expanded, depth=depth)
