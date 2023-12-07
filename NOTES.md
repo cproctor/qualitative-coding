@@ -1,5 +1,8 @@
 # Next steps
 
+- find should have --output options for csv
+- rename not implemented for database. 
+- Remove qc cb. The codebook should be automatically updated after coding.
 - The min and max should targed different values depending on whether -a is present. 
   If -a, then we care about the recursive total codes. If not, then we care about that code
   exactly.

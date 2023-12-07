@@ -131,7 +131,6 @@ class QCCorpusViewer:
                 expanded=expanded,
             )
         m = matrix
-        print(matrix)
         if probs:
             totals = np.diag(m).reshape((-1, 1))
             m = m / totals

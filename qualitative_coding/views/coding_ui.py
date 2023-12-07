@@ -22,6 +22,17 @@ What's next?
   - Draw line numbers for coding pad too.
   - Store target_cursor_position (for when scrolling through lines which are too short)
 
+Previously, I was keeping track of a global logical line mapping. I was considering this 
+necessary because sometimes a display line takes up more space than one line. Actually, I 
+still need to do this, if I want to take advantage of the pad-scrolling functionality 
+(which I do). Therefore, I need to keep track of the difference between logical lines
+and display lines. Will I allow text lines to overflow the 80-character buffer? Yes, I think 
+so. I can handle them the same way I'll handle representations of codes (comma-separated); 
+when there are too many for one line, then let them overflow onto the next display line.
+
+The only performance implications here are when a code is edited, such that a logical code
+line changes the number of display lines needed. In this case, I'll need to re-index the
+display lines for code sets.
 """
 
 class Pads(Flag):
@@ -36,7 +47,7 @@ class CodingUI:
     Initialized with:
 
     text: an iterable of lines of the text
-    codes: an iterable of code lines, where each is a string of comma-separated codes.
+    codes: an iterable of (code, line) tuples
     codebook: an iterable of all codes.
     """
 
@@ -46,12 +57,9 @@ class CodingUI:
     DEBUG = True
 
     def __init__(self, text, codes, codebook):
-        self.text = self.split_text(text)
-        self.codes = list(codes)
-        self.codebook = list(codebook)
-        self.map_line_numbers()
-        if len(self.text) != len(self.codes):
-            raise ValueError("Text file and code file must have the same number of lines")
+        self.text = text
+        self.codes = codes
+        self.codebook = codebook
 
     def run(self):
         "Starts a UI session"
@@ -126,20 +134,15 @@ class CodingUI:
         "Creates a pad for displaying line numbers, starting with 1"
         pad = curses.newpad(self.pad_height, self.index_width)
         y = 0
-        for logical_line in self.text:
+        for y, line in enumerate(self.text):
             pad.addstr(y, 0, str(y + 1).rjust(self.index_width - 1), curses.color_pair(1))
-            for line in logical_line:
-                y += 1
         return pad
 
     def create_text_pad(self):
         "Creates a pad for showing the text being coded."
         pad = curses.newpad(self.pad_height, self.TEXT_WIDTH)
-        y = 0
-        for logical_line in self.text:
-            for line in logical_line:
-                pad.addstr(y, 0, line)
-                y += 1
+        for y, line in enumerate(self.text):
+            pad.addstr(y, 0, line[:self.TEXT_WIDTH])
         return pad
 
     def create_codes_pad(self):
@@ -171,17 +174,6 @@ class CodingUI:
         self.codes_x0 = self.codes_nums_x0 + self.index_width + 1
         self.codes_width = self.cols - self.codes_x0
         self.codes_x1 = self.codes_x0 + self.codes_width - 1
-
-    def map_line_numbers(self):
-        """Create a list mapping logical line numbers to rows in the text and coding pad.
-        TODO: Updates could be more efficient; I could add an optional `update_from_line`
-        argument to start from a particular line number.
-        """
-        self.line_row_index = []
-        current_row = 0
-        for text_line_rows, codes_line_rows in zip(self.text, self.codes):
-            self.line_row_index.append(current_row)
-            current_row += max(len(text_line_rows), len(codes_line_rows))
 
     def handle_screen_resize(self):
         self.measure_screen()
