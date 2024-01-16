@@ -18,8 +18,7 @@ combined with other utilities into flexible pipelines.
 
 Qualitative Coding, or `qc`, was designed to address these issues. I have used
 `qc` as a primary coding tool in a [SIGCSE
-paper](http://chrisproctor.net/publications/proctor_2019_defining_cs.html) on
-how K-12 schools define and design computer science courses. The impetus for
+paper](https://chrisproctor.net/research/proctor_2019_defining/) on
 packaging and releasing a stable version was my own dissertation work. 
 
 ## Limitations
