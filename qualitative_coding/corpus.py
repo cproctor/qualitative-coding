@@ -331,16 +331,17 @@ class QCCorpus(CorpusTestingMethodsMixin):
         """Returns a (units, codes) matrix where each cell counts the number of code j in unit i.
         The result is sparse: units are only listed if they have at least one responsive code.
         """
-        unit_column = self.get_column_to_count(unit)
-        query = (
-            select(Code.name, unit_column)
-            .join(Code.coded_lines)
-            .group_by(Code.name)
-        )
-        query = self.filter_query_by_document(query, pattern, file_list, unit=unit)
-        query = self.filter_query_by_coder(query, coder)
-        result = self.get_session().execute(query).all()
-        return dict(result)
+        if unit == "line":
+            return self.get_coded_lines(codes=codes, pattern=pattern, file_list=file_list, 
+                    coder=coder)
+        elif unit == "paragraph": 
+            return self.get_coded_paragraphs(codes=codes, pattern=pattern, file_list=file_list, 
+                    coder=coder)
+        elif unit == "document": 
+            return self.get_coded_documents(codes=codes, pattern=pattern, file_list=file_list, 
+                    coder=coder)
+        else:
+            return None
 
     def get_documents(self, pattern=None, file_list=None):
         """Returns matching Document objects.
