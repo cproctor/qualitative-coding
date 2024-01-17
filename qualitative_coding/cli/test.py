@@ -23,21 +23,40 @@ from tabulate import tabulate_formats
         help="Counts for codes include child codes")
 def test(codes, settings, pattern, filenames, coder, unit, recursive_codes, recursive_counts):
     "Tests count_codes_by_unit functionality"
+
+    # This stuff is standard for all tasks...
     s = yaml.safe_load(Path(settings).read_text())
     if filenames:
         file_list = Path(filenames).read_text().split("\n")
     else:
         file_list = None
     corpus = QCCorpus(s)
+
+    # Currently not handled
+    if recursive_codes or recursive_counts:
+        raise NotImplemented(
+            "We don't handle recursive tree traversal in the database. "
+            "Therefore, for recursive_codes, you'll need to get all the child code sets" 
+            "from the code tree (as in crosstab) and pass in the intersection of those sets "
+            "so you look up all needed codes."
+        )
+
+    # Select which pre-existing function we want...
+    if unit == "line": 
+        fn = corpus.get_coded_lines
+    elif unit == "paragraph":
+        fn = corpus.get_coded_paragraphs
+    else:
+        fn = corpus.get_coded_documents
+
+    # And run the query within an ORM session
     with corpus.session():
-        print(corpus.count_codes_by_unit(
-            codes=codes, 
-            recursive_codes=recursive_codes, 
-            recursive_counts=recursive_counts, 
-            pattern=pattern, 
-            file_list=file_list,
+        result = fn(
+            codes=codes,
+            pattern=pattern,
+            file_list=file_list, 
             coder=coder,
-            unit=unit,
-        ))
+        )
 
-
+    # In your function, you'll want to populate a (units, codes) matrix with the results
+    print(result)

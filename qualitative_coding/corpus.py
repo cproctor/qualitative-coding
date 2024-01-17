@@ -326,23 +326,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
         result = self.get_session().execute(query).all()
         return dict(result)
 
-    def count_codes_by_unit(self, codes=None, recursive_codes=False, recursive_counts=False,
-                pattern=None, file_list=None, coder=None, unit="line"):
-        """Returns a (units, codes) matrix where each cell counts the number of code j in unit i.
-        The result is sparse: units are only listed if they have at least one responsive code.
-        """
-        if unit == "line":
-            return self.get_coded_lines(codes=codes, pattern=pattern, file_list=file_list, 
-                    coder=coder)
-        elif unit == "paragraph": 
-            return self.get_coded_paragraphs(codes=codes, pattern=pattern, file_list=file_list, 
-                    coder=coder)
-        elif unit == "document": 
-            return self.get_coded_documents(codes=codes, pattern=pattern, file_list=file_list, 
-                    coder=coder)
-        else:
-            return None
-
     def get_documents(self, pattern=None, file_list=None):
         """Returns matching Document objects.
         """
