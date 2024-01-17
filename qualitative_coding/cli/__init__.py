@@ -14,6 +14,7 @@ from qualitative_coding.cli.find import find
 from qualitative_coding.cli.stats import stats
 from qualitative_coding.cli.crosstab import crosstab
 from qualitative_coding.cli.upgrade import upgrade
+from qualitative_coding.cli.test import test
 
 @click.group(cls=ClickAliasedGroup)
 def cli():
@@ -33,4 +34,5 @@ cli.add_command(find)
 cli.add_command(stats)
 cli.add_command(crosstab, aliases=["ct"])
 cli.add_command(upgrade)
+cli.add_command(test)
 

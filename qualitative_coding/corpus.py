@@ -1,7 +1,3 @@
-# Qualitative Coding corpus
-# -------------------------
-# (c) 2023 Chris Proctor
-
 from itertools import chain, combinations_with_replacement
 from collections import defaultdict
 from contextlib import contextmanager
@@ -128,15 +124,15 @@ class QCCorpus(CorpusTestingMethodsMixin):
     def session(self):
         "A context manager which holds open a Session"
         session_context_manager = Session(self.engine)
-        self.session = session_context_manager.__enter__()
+        self._session = session_context_manager.__enter__()
         yield
-        del self.session
+        del self._session
         session_context_manager.__exit__(None, None, None)
 
     def get_session(self):
         "A context manager for sa's Session"
         try:
-            return self.session
+            return self._session
         except AttributeError:
             raise self.NotInSession()
 
@@ -322,6 +318,22 @@ class QCCorpus(CorpusTestingMethodsMixin):
         unit_column = self.get_column_to_count(unit)
         query = (
             select(Code.name, func.count(distinct(unit_column)))
+            .join(Code.coded_lines)
+            .group_by(Code.name)
+        )
+        query = self.filter_query_by_document(query, pattern, file_list, unit=unit)
+        query = self.filter_query_by_coder(query, coder)
+        result = self.get_session().execute(query).all()
+        return dict(result)
+
+    def count_codes_by_unit(self, codes=None, recursive_codes=False, recursive_counts=False,
+                pattern=None, file_list=None, coder=None, unit="line"):
+        """Returns a (units, codes) matrix where each cell counts the number of code j in unit i.
+        The result is sparse: units are only listed if they have at least one responsive code.
+        """
+        unit_column = self.get_column_to_count(unit)
+        query = (
+            select(Code.name, unit_column)
             .join(Code.coded_lines)
             .group_by(Code.name)
         )

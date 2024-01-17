@@ -1,7 +1,3 @@
-# Qualitative Coding corpus viewer
-# --------------------------------
-# (c) 2019 Chris Proctor
-
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
