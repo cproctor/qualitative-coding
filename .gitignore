@@ -3,3 +3,4 @@
 .DS_Store
 *.swo
 qualitative_coding.egg-info/*
+dist/*

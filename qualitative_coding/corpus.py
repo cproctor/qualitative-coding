@@ -27,6 +27,7 @@ DEFAULT_SETTINGS = {
     'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
+    'editor': 'vim'
 }
 
 class QCCorpus:
@@ -101,16 +102,16 @@ class QCCorpus:
         for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             f.write_text(prepare_corpus_text(f.read_text(), width=80, preformatted=preformatted))
 
-    def get_code_file_path(self, corpus_file_path, coder):
+    def get_code_file_path(self, corpus_file_path):
         text_path = corpus_file_path.relative_to(self.corpus_dir) 
-        return self.codes_dir / (str(text_path) + "." + coder + ".codes")
+        return self.codes_dir / (str(text_path) + ".codes")
 
     def prepare_code_files(self, pattern=None, file_list=None, invert=False):
         "For each text in corpus, creates a blank file of equivalent length"
         for f in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
             with open(f) as inf:
                 file_len = len(list(inf))                
-            code_path = self.get_code_file_path(f, coder)
+            code_path = self.get_code_file_path(f)
             code_path.parent.mkdir(parents=True, exist_ok=True)
             if code_path.exists():
                 print("Skipping {} because it already exists".format(code_path))
@@ -120,9 +121,9 @@ class QCCorpus:
     def iter_corpus(self, pattern=None, file_list=None, invert=False):
         "Iterates over files in the corpus"
         if pattern:
-            glob = '*' + pattern + '*.txt'
+            glob = '*' + pattern + '*.*'
         else:
-            glob = '*.txt'
+            glob = '*.*'
         if not invert:
             for f in Path(self.corpus_dir).rglob(glob):
                 if file_list is None or str(f.relative_to(self.corpus_dir)) in file_list:
@@ -148,7 +149,7 @@ class QCCorpus:
         "Returns an iterator over code files pertaining to a corpus file"
         text_path = corpus_text_path.relative_to(self.corpus_dir)
         name_parts = text_path.name.split('.')
-        return self.codes_dir.glob(str(text_path) + '.' + (coder or '*') + '.codes')
+        return self.codes_dir.glob(str(text_path) + '.codes')
 
     def get_codes(self, corpus_text_path, coder=None, merge=False, unit='line'):
         """
@@ -159,6 +160,7 @@ class QCCorpus:
         returns a dict mapping coders to sets of codes.
         """
         codes = {}
+
         for f in self.get_code_files_for_corpus_file(corpus_text_path, coder=coder):
             codes[self.get_coder_from_code_path(f)] = self.read_codes(f, unit=unit)
         if coder:
@@ -210,7 +212,7 @@ class QCCorpus:
                 raise NotImplementedError("Unit must be 'line' or 'document'.")
         return [n.expanded_name() if expanded else n.name for n in nodes], np.array(rows)
 
-    def write_codes(self, corpus_text_path, coder, codes):
+    def write_codes(self, corpus_text_path, codes):
         "Writes a list of (line_num, code) to file"
         with open(corpus_text_path) as f:
             file_len = len(list(f))
@@ -218,7 +220,7 @@ class QCCorpus:
         for line_num, code in codes:
             lines[line_num] += [code]
         text_path = corpus_text_path.relative_to(self.corpus_dir)
-        codes_path = Path(str(self.codes_dir / text_path) + '.' + coder + '.codes')
+        codes_path = Path(str(self.codes_dir / text_path) + '.codes')
         codes_path.parent.mkdir(parents=True, exist_ok=True)
         with open(codes_path, 'w') as outf:
             for line_num in range(file_len):
@@ -342,10 +344,9 @@ class QCCorpus:
                 line_nums, codes = zip(*self.read_codes(code_file_path))
                 if set(old_codes) & set(codes):
                     new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
-                    existing_coder = self.get_coder_from_code_path(code_file_path)
-                    self.write_codes(corpus_path, existing_coder, new_codes)
+                    self.write_codes(corpus_path, new_codes)
 
-        global_rename = pattern is None and file_list is None and invert is None and coder is None
+        global_rename = pattern is None and file_list is None and invert is False and coder is None
         if global_rename or update_codebook:
             code_tree = self.get_codebook()
             for old_code in old_codes:

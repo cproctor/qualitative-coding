@@ -43,7 +43,7 @@ def prompt_for_choice(prompt, options):
     while True:
         raw_choice = input("> ")
         if raw_choice.isdigit() and int(raw_choice) in range(1, len(options)+1):
-            return int(raw_choice)
+            return int(raw_choice) - 1
         print("Sorry, that's not a valid choice.")
 
 
