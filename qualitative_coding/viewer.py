@@ -285,7 +285,7 @@ class QCCorpusViewer:
                 story_index = prompt_for_choice("Multiple files matched:", 
                         [f.relative_to(self.corpus.corpus_dir) for f in corpus_files])
                 f = corpus_files[story_index]
-        code_file = self.corpus.get_code_file_path(f, coder)
+        code_file = self.corpus.get_code_file_path(f)
         self.log.debug(f"{coder} opened {f} for coding")
         self.open_editor([f, code_file])
 
@@ -311,7 +311,7 @@ class QCCorpusViewer:
     def open_editor(self, files):
         if not (isinstance(files, list) or isinstance(files, tuple)):
             files = [files]
-        run(["vim", "-O"] + files)
+        run([self.corpus.settings['editor'], "-O"] + files)
 
 
 
