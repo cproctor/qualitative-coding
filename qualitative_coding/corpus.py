@@ -16,6 +16,7 @@ from sqlalchemy import (
     not_,
     func,
     distinct,
+    text
 )
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import (
@@ -24,6 +25,7 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.dialects.sqlite import insert
+from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.exceptions import QCError
@@ -45,7 +47,7 @@ DEFAULT_SETTINGS = {
     'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook_file': 'codebook.yaml',
-    'editor': 'nano',
+    'editor': 'code',
 }
 
 def iter_paragraph_lines(fh):
@@ -78,9 +80,14 @@ class QCCorpus(CorpusTestingMethodsMixin):
         If the settings file does not exist, creates it. Uses the settings
         file to initialize the expected directories and files.
         """
+        supported_editors = ["code", "vim", "nvim", "emacs", "Other"]
+        supported_editors_prompt = ["Visual Studio Code (Recommended)", "Vim", "Neovim", "Emacs", "Other"]
         settings_path = Path(settings_file)
         if not settings_path.exists():
-            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
+            choice=prompt_for_choice("Choose your preferred editor", supported_editors_prompt)-1
+            editor = supported_editors[choice]
+            settings_path.write_text(yaml.dump({**DEFAULT_SETTINGS, 'editor':editor}))
+
         settings = yaml.safe_load(settings_path.read_text())
         for key, val in settings.items():
             path = Path(val)
@@ -252,6 +259,9 @@ class QCCorpus(CorpusTestingMethodsMixin):
         """Inserts or ignores data for coded lines, associating them with the Document
         through paragraphs.
         """
+        result = self.get_session().execute(text("select sqlite_version();"))
+        print(list(result))
+
         stmt = (
             insert(CodedLine)
             .values(coded_line_data)

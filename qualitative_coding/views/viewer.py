@@ -2,6 +2,7 @@
 # --------------------------------
 # (c) 2019 Chris Proctor
 
+import subprocess
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
@@ -377,15 +378,56 @@ class QCCorpusViewer:
         text = [f.read_text() for f in sorted(self.corpus.memos_dir.glob("*.md"))]
         return "\n\n".join(text)
 
-    def open_editor(self, corpus_file_path, coder):
-        text = (Path(self.settings['corpus_dir']) / corpus_file_path).read_text().splitlines()
+    def open_editor(self, corpus_file_path, coder_name):
+        temp_codes_file = "codes.txt"
+        full_path = Path(self.settings['corpus_dir']) / corpus_file_path
+        text = full_path.read_text().splitlines()
         with self.corpus.session():
             code_line_docs = self.corpus.get_coded_lines(file_list=[corpus_file_path], 
-                    coder=coder)
+                    coder=coder_name)
         coded_lines = [(code, line) for code, line, doc in code_line_docs]
-        codes = set(code.name for code in self.corpus.get_codebook().flatten())
-        ui = CodingUI(text, coded_lines, codes)
-        ui.run()
+
+        i=0
+        cl=0
+        out=[]
+
+        while(i<len(text)):
+            code_line = ""
+            while cl < len(coded_lines) and i == coded_lines[cl][1]:
+                code_line += coded_lines[cl][0] + ", "
+                cl += 1
+            code_line += "\n"
+            i+=1
+            out.append(code_line)
+
+        temp_code = open(temp_codes_file, "w")
+        temp_code.writelines(out)
+        temp_code.close()
+
+        editor_args = get_editor_args(self.settings['editor'], full_path, temp_codes_file)
+        p = subprocess.run(editor_args)
+        if p.returncode != 0:
+            print(p.stderr)
+
+        code_file_path = Path(temp_codes_file)
+        code_file_lines = code_file_path.read_text().splitlines()
+        coded_lines = []
+        with self.corpus.session():
+            for idx, line in enumerate(code_file_lines):
+                codes = [x.strip() for x in line.split(',')]
+                for code in codes:
+                    if code.strip() != "":
+                        coded_lines.append({
+                            "line": idx + 1,
+                            "coder_id": coder_name, 
+                            "code_id": self.corpus.get_or_create_code(code).name
+                        })
+            # TODO: handle removed codes
+            self.corpus.create_coded_lines_if_needed(corpus_file_path, coded_lines)
+        # TODO: store args (coder, corpus file) somewhere - preferably new db table
+        if p.returncode == 0: # and if insert didn't return errors
+            code_file_path.unlink()
+
 
     def prompt_for_choice(self, prompt, options):
         "Asks for a prompt, returns an index"
@@ -419,4 +461,18 @@ class QCCorpusViewer:
         return results
 
 
+def get_editor_args(editor: str, corpus_file_path: str, codes_file_path: str) -> list[str]:
+    """Returns argument to be provided to `subprocess.run` to open the editor from the command line"""
+    if editor in ["vim", "nvim"]:
+        return [editor, codes_file_path,
+                "-c", ":set scrollbind", "-c", f':83vsplit|view {corpus_file_path}|set scrollbind']
+    elif editor == "emacs":
+        return [editor, "-Q", "--eval",
+             f"(progn (find-file \"{corpus_file_path}\") (split-window-right) (other-window 1) (find-file \"{codes_file_path}\") (scroll-all-mode))"]
+    # Possible enhancements - vscode allows `--install-extension`, can be used
+    # to suggest installing a scroll sync extension and the LSP server
+    elif editor == "vscode":
+        return ["code", corpus_file_path, codes_file_path]
+    else:
+        return ["echo", "Unsupported editor"]
 
