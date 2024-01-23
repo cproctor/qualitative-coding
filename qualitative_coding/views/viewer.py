@@ -418,12 +418,13 @@ class QCCorpusViewer:
                 for code in codes:
                     if code.strip() != "":
                         coded_lines.append({
-                            "line": idx + 1,
+                            "line": idx,
                             "coder_id": coder_name, 
                             "code_id": self.corpus.get_or_create_code(code).name
                         })
             # TODO: handle removed codes
-            self.corpus.create_coded_lines_if_needed(corpus_file_path, coded_lines)
+            document = self.corpus.get_document(corpus_file_path)
+            self.corpus.create_coded_lines_if_needed(document, coded_lines)
         # TODO: store args (coder, corpus file) somewhere - preferably new db table
         if p.returncode == 0: # and if insert didn't return errors
             code_file_path.unlink()

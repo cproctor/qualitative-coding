@@ -259,8 +259,6 @@ class QCCorpus(CorpusTestingMethodsMixin):
         """Inserts or ignores data for coded lines, associating them with the Document
         through paragraphs.
         """
-        result = self.get_session().execute(text("select sqlite_version();"))
-        print(list(result))
 
         stmt = (
             insert(CodedLine)

@@ -2,6 +2,7 @@ import click
 import yaml
 from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.exceptions import IncompatibleOptions
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import (
     handle_qc_errors,
@@ -28,7 +29,7 @@ def code(coder, settings, pattern, filenames, uncoded, first, random):
     corpus = QCCorpus(s)
     viewer = QCCorpusViewer(corpus)
     if filenames:
-        file_list = Path(args.filenames).read_text().split("\n")
+        file_list = Path(filenames).read_text().split("\n")
     else:
         file_list = None
     f = viewer.select_file(
