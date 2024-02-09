@@ -422,9 +422,8 @@ class QCCorpusViewer:
                             "coder_id": coder_name, 
                             "code_id": self.corpus.get_or_create_code(code).name
                         })
-            # TODO: handle removed codes
             document = self.corpus.get_document(corpus_file_path)
-            self.corpus.create_coded_lines_if_needed(document, coded_lines)
+            self.corpus.update_coded_lines(document, coded_lines, coder_name)
         # TODO: store args (coder, corpus file) somewhere - preferably new db table
         if p.returncode == 0: # and if insert didn't return errors
             code_file_path.unlink()
