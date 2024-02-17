@@ -29,7 +29,7 @@ from sqlalchemy.dialects.sqlite import insert
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
-from qualitative_coding.exceptions import QCError
+from qualitative_coding.exceptions import QCError, SettingsError
 from qualitative_coding.database.models import (
     Base,
     Document, 
@@ -41,8 +41,11 @@ from qualitative_coding.database.models import (
     coded_line_location_association_table
 )
 from qualitative_coding.testing import CorpusTestingMethodsMixin
+from qualitative_coding.editors import EDITORS
+from qualitative_coding.helpers import iter_paragraph_lines
 
 DEFAULT_SETTINGS = {
+    'qc_version': '1.0.0',
     'corpus_dir': 'corpus',
     'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',
@@ -50,18 +53,6 @@ DEFAULT_SETTINGS = {
     'codebook_file': 'codebook.yaml',
     'editor': 'code',
 }
-
-def iter_paragraph_lines(fh):
-    p_start = 0
-    in_whitespace = False
-    for i, line in enumerate(fh):
-        if line.strip() == "":
-            in_whitespace = True
-        elif in_whitespace:
-            yield p_start, i
-            p_start = i
-            in_whitespace = False
-    yield p_start, i + 1
 
 class QCCorpus(CorpusTestingMethodsMixin):
     """Provides data access to the corpus of documents and codes. 
@@ -78,37 +69,53 @@ class QCCorpus(CorpusTestingMethodsMixin):
     @classmethod
     def initialize(cls, settings_file="settings.yaml"):
         """
-        If the settings file does not exist, creates it. Uses the settings
-        file to initialize the expected directories and files.
+        Initializes a qc project.
+        If the settings file does not exist, create it.
+        Otherwise, uses the settings file to initialize the expected 
+        directories and files.
         """
-        supported_editors = ["code", "vim", "nvim", "emacs", "Other"]
-        supported_editors_prompt = ["Visual Studio Code (Recommended)", "Vim", "Neovim", "Emacs", "Other"]
         settings_path = Path(settings_file)
-        if not settings_path.exists():
-            choice=prompt_for_choice("Choose your preferred editor", supported_editors_prompt)-1
-            editor = supported_editors[choice]
-            settings_path.write_text(yaml.dump({**DEFAULT_SETTINGS, 'editor':editor}))
+        if settings_path.exists():
+            cls.validate_settings(settings_file)
+            settings = yaml.safe_load(settings_path.read_text())
+            for needed_dir in ["corpus_dir", "logs_dir", "memos_dir"]:
+                dirpath = Path(settings[needed_dir])
+                if dirpath.exists() and not dirpath.is_dir():
+                    raise QCError(f"Cannot create dir {dirpath}; there is a file with that name.")
+                if not dirpath.exists():
+                    dirpath.mkdir()
+            codebook_path = Path(settings["codebook_file"])
+            if codebook_path.exists() and codebook_path.is_dir():
+                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
+            if not codebook_path.exists():
+                codebook_path.touch()
+            db_path = Path(settings["database"])
+            if db_path.exists() and db_path.is_dir():
+                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
+            if not db_path.exists():
+                engine = create_engine(f"sqlite:///{db_path}")
+                Base.metadata.create_all(engine)
+        else:
+            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
 
-        settings = yaml.safe_load(settings_path.read_text())
-        for key, val in settings.items():
-            path = Path(val)
-            if key.endswith("dir"):
-                if path.exists():
-                    if not path.is_dir():
-                        msg = f"Expected {key} ({val}) to be a directory"
-                        raise ValueError(msg)
-                else:
-                    path.mkdir(parents=True)
-            elif key.endswith("file"):
-                if path.exists():
-                    if path.is_dir():
-                        msg = f"Expected {key} ({val}) to be a file"
-                        raise ValueError(msg)
-                else:
-                    path.touch()
-        if not Path(settings['database']).exists():
-            engine = create_engine(f"sqlite:///{settings['database']}")
-            Base.metadata.create_all(engine)
+    @classmethod
+    def validate_settings(cls, settings_file):
+        try:
+            errors = []
+            if not Path(settings_file).exists():
+                errors.append(f"Settings file {settings_file} is missing")
+                raise SettingsError()
+            settings = yaml.safe_load(Path(settings_file).read_text())
+            for expected_key in DEFAULT_SETTINGS:
+                if expected_key not in settings:
+                    errors.append(f"Expected '{expected_key}' in settings")
+                elif not isinstance(settings[expected_key], str):
+                    errors.append(f"Invalid path for {expected_key}: {settings[expected_key]}")
+            if errors:
+                raise SettingsError()
+        except SettingsError:
+            errfmt = [f" - {err}" for err in errors]
+            raise QCError('\n'.join(["Error validating settings:"] + errfmt))
 
     def __init__(self, settings):
         """

@@ -7,3 +7,6 @@ class InvalidParameter(QCError):
 class IncompatibleOptions(QCError):
     pass
 
+class SettingsError(QCError):
+    pass
+

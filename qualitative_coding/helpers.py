@@ -1,4 +1,17 @@
 from textwrap import fill
+from pathlib import Path
+
+def iter_paragraph_lines(fh):
+    p_start = 0
+    in_whitespace = False
+    for i, line in enumerate(fh):
+        if line.strip() == "":
+            in_whitespace = True
+        elif in_whitespace:
+            yield p_start, i
+            p_start = i
+            in_whitespace = False
+    yield p_start, i + 1
 
 def merge_ranges(ranges, clamp=None):
     "Overlapping ranges? Let's fix that. Optionally supply clamp=[0, 100]"
