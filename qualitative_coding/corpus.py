@@ -97,7 +97,10 @@ class QCCorpus:
                 raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
             if not codebook_path.exists():
                 codebook_path.touch()
-            db_path = Path(settings["database"])
+            if Path(settings["database"]).is_absolute():
+                db_path = Path(settings["database"])
+            else:
+                db_path = settings_path.resolve().parent / settings["database"]
             if db_path.exists() and db_path.is_dir():
                 raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
             if not db_path.exists():
@@ -134,13 +137,11 @@ class QCCorpus:
         self.settings = read_settings(settings_path)
         if not skip_validation:
             self.validate()
-        self.log = get_logger(
-            __name__, 
-            self.settings['logs_dir'], 
-            self.settings.get('debug')
-        )
-        self.engine = create_engine(f"sqlite:///{self.settings['database']}")
         self.corpus_dir = self.resolve_path(self.settings['corpus_dir'])
+        self.logs_dir = self.resolve_path(self.settings['logs_dir'])
+        self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
+        db_file = self.resolve_path(self.settings['database'])
+        self.engine = create_engine(f"sqlite:///{db_file}")
 
     class NotInSession(Exception):
         def __init__(self, *args, **kwargs):

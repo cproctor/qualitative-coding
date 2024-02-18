@@ -35,8 +35,7 @@ class QCTestCase(TestCase):
         for k, v in settings_0_2_3.items():
             if k.endswith("_dir"):
                 (self.testpath / v).mkdir()
-            else:
-                (self.testpath / v).touch()
+        (self.testpath / "codebook.yaml").touch()
         (self.testpath / "corpus" / "macbeth.txt").write_text(DOC_0_2_3)
         (self.testpath / "codes" / "macbeth.txt.cp.codes").write_text(CODES_0_2_3)
 
@@ -47,8 +46,12 @@ class QCTestCase(TestCase):
         """Runs `command` with testpath as cwd.
         When debug is False, 
         """
-        return run(command, shell=True, check=not debug, cwd=self.testpath, 
-                capture_output=not debug, text=not debug)
+        result = run(command, shell=True, check=not debug, cwd=self.testpath, 
+                capture_output=True, text=True)
+        if debug:
+            print(result.stdout)
+            print(result.stderr)
+        return result
 
     def update_settings(self, key, value):
         settings_path = self.testpath / "settings.yaml"
@@ -59,17 +62,20 @@ class QCTestCase(TestCase):
             settings[key] = value
         settings_path.write_text(yaml.dump(settings))
 
-    def assertFileExists(self, path, message=None):
+    def assertFileExists(self, path, is_dir=False, message=None):
         if not Path(self.testpath / path).exists():
             message = message or f"Expected {path} to exist"
             raise AssertionError(message)
-
-    def assertDirExists(self, path, message=None):
-        if not Path(self.testpath / path).exists():
-            message = message or f"Expected dir {path} to exist"
+        if is_dir and not Path(self.testpath / path).is_dir():
+            message = message or f"Expected {path} to be a directory"
             raise AssertionError(message)
-        if not Path(self.testpath / path).is_dir():
-            message = message or f"Expected {path.resolve()} to be a directory"
+        if not is_dir and Path(self.testpath / path).is_dir():
+            message = message or f"Expected {path} to be a file, not a directory"
+            raise AssertionError(message)
+
+    def assertFileDoesNotExist(self, path, message=None):
+        if Path(self.testpath / path).exists():
+            message = message or f"Expected {path} not to exist"
             raise AssertionError(message)
 
 DOC_0_2_3 = """

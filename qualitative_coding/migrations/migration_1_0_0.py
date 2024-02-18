@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from sqlalchemy import (
     create_engine,
 )
@@ -50,6 +51,7 @@ class Migrate_1_0_0(QCMigration):
                                 "code_id": corpus.get_or_create_code(code_name).name
                             })
                     corpus.create_coded_lines_if_needed(document, coded_lines)
+        shutil.rmtree(corpus_v0.codes_dir)
 
     def revert(self, settings_path):
         self.delete_setting(settings_path, "qc_version")
