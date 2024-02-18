@@ -19,6 +19,8 @@ class QCTestCase(TestCase):
         self.tempdir = TemporaryDirectory()
         self.testpath = Path(self.tempdir.name)
         self.run_in_testpath("qc init")
+        self.run_in_testpath("qc init")
+        (self.testpath / "macbeth.txt").write_text(DOC)
 
     def set_up_qc_project_0_2_3(self):
         self.tempdir = TemporaryDirectory()
@@ -36,7 +38,7 @@ class QCTestCase(TestCase):
             if k.endswith("_dir"):
                 (self.testpath / v).mkdir()
         (self.testpath / "codebook.yaml").touch()
-        (self.testpath / "corpus" / "macbeth.txt").write_text(DOC_0_2_3)
+        (self.testpath / "corpus" / "macbeth.txt").write_text(DOC)
         (self.testpath / "codes" / "macbeth.txt.cp.codes").write_text(CODES_0_2_3)
 
     def tear_down_qc_project(self):
@@ -78,7 +80,7 @@ class QCTestCase(TestCase):
             message = message or f"Expected {path} not to exist"
             raise AssertionError(message)
 
-DOC_0_2_3 = """
+DOC = """
 Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,
 To the last syllable of recorded time;

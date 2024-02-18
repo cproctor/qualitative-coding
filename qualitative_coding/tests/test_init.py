@@ -1,7 +1,14 @@
 from tests.fixtures import QCTestCase
+from tempfile import TemporaryDirectory
+from pathlib import Path
 import yaml
 
 class TestInit(QCTestCase):
+    def setUp(self):
+        self.tempdir = TemporaryDirectory()
+        self.testpath = Path(self.tempdir.name)
+        self.run_in_testpath("qc init")
+
     def test_init_creates_setup_file(self):
         self.assertFileExists(self.testpath / "settings.yaml")
 
@@ -12,9 +19,9 @@ class TestInit(QCTestCase):
     def test_init2_creates_expected_dirs(self):
         self.update_settings("logs_dir", "logz")
         self.run_in_testpath("qc init")
-        self.assertDirExists("corpus")
-        self.assertDirExists("memos")
-        self.assertDirExists("logz")
+        self.assertFileExists("corpus", is_dir=True)
+        self.assertFileExists("memos", is_dir=True)
+        self.assertFileExists("logz", is_dir=True)
 
     def test_init2_creates_db(self):
         self.run_in_testpath("qc init")
