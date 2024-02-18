@@ -20,12 +20,35 @@ class QCTestCase(TestCase):
         self.testpath = Path(self.tempdir.name)
         self.run_in_testpath("qc init")
 
+    def set_up_qc_project_0_2_3(self):
+        self.tempdir = TemporaryDirectory()
+        self.testpath = Path(self.tempdir.name)
+        settings_0_2_3 = {
+            'qc_version': "0.2.3",
+            'corpus_dir': 'corpus',
+            'codes_dir': 'codes',
+            'logs_dir': 'logs',
+            'memos_dir': 'memos',
+            'codebook': 'codebook.yaml',
+        }
+        (self.testpath / "settings.yaml").write_text(yaml.dump(settings_0_2_3))
+        for k, v in settings_0_2_3.items():
+            if k.endswith("_dir"):
+                (self.testpath / v).mkdir()
+            else:
+                (self.testpath / v).touch()
+        (self.testpath / "corpus" / "macbeth.txt").write_text(DOC_0_2_3)
+        (self.testpath / "codes" / "macbeth.txt.cp.codes").write_text(CODES_0_2_3)
+
     def tear_down_qc_project(self):
         self.tempdir.cleanup()
 
-    def run_in_testpath(self, command):
-        return run(command, shell=True, check=True, cwd=self.testpath, capture_output=True, 
-                text=True)
+    def run_in_testpath(self, command, debug=False):
+        """Runs `command` with testpath as cwd.
+        When debug is False, 
+        """
+        return run(command, shell=True, check=not debug, cwd=self.testpath, 
+                capture_output=not debug, text=not debug)
 
     def update_settings(self, key, value):
         settings_path = self.testpath / "settings.yaml"
@@ -49,4 +72,29 @@ class QCTestCase(TestCase):
             message = message or f"Expected {path.resolve()} to be a directory"
             raise AssertionError(message)
 
+DOC_0_2_3 = """
+Tomorrow, and tomorrow, and tomorrow,
+Creeps in this petty pace from day to day,
+To the last syllable of recorded time;
+And all our yesterdays have lighted fools
+The way to dusty death. Out, out, brief candle!
+Life's but a walking shadow, a poor player,
+That struts and frets his hour upon the stage,
+And then is heard no more. It is a tale
+Told by an idiot, full of sound and fury,
+Signifying nothing.
+"""
+
+CODES_0_2_3 = """
+pace, prolepsis
+pace
+speech, prolepsis
+light
+light, prolepsis
+shadow, acting
+acting
+acting, speech
+speech
+speech
+"""
 

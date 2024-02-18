@@ -1,6 +1,5 @@
 from tests.fixtures import QCTestCase
 import yaml
-from qualitative_coding.exceptions import QCError
 
 class TestInit(QCTestCase):
     def test_init_creates_setup_file(self):

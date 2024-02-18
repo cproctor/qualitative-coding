@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import yaml
 import numpy as np
+import os
 from hashlib import sha1
 from pathlib import Path
 from sqlalchemy import (
@@ -29,7 +30,11 @@ from sqlalchemy.dialects.sqlite import insert
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
-from qualitative_coding.exceptions import QCError, SettingsError
+from qualitative_coding.exceptions import (
+    QCError, 
+    SettingsError, 
+    InvalidParameter,
+)
 from qualitative_coding.database.models import (
     Base,
     Document, 
@@ -40,9 +45,12 @@ from qualitative_coding.database.models import (
     CodedLine,
     coded_line_location_association_table
 )
-from qualitative_coding.testing import CorpusTestingMethodsMixin
-from qualitative_coding.editors import EDITORS
-from qualitative_coding.helpers import iter_paragraph_lines
+from qualitative_coding.editors import editors
+from qualitative_coding.media_importers import media_importers
+from qualitative_coding.helpers import (
+    iter_paragraph_lines,
+    read_settings,
+)
 
 DEFAULT_SETTINGS = {
     'qc_version': '1.0.0',
@@ -50,16 +58,16 @@ DEFAULT_SETTINGS = {
     'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',
     'memos_dir': 'memos',
-    'codebook_file': 'codebook.yaml',
+    'codebook': 'codebook.yaml',
     'editor': 'code',
 }
 
-class QCCorpus(CorpusTestingMethodsMixin):
+class QCCorpus:
     """Provides data access to the corpus of documents and codes. 
     QCCorpus methods which access the database must be called from within
     the session context manager:
 
-    corpus = QCCorpus()
+    corpus = QCCorpus('settings.yaml')
     with corpus.session():
         corpus.get_or_create_code("interesting")
     """
@@ -67,16 +75,16 @@ class QCCorpus(CorpusTestingMethodsMixin):
     units = ["line", "paragraph", "document"]
 
     @classmethod
-    def initialize(cls, settings_file="settings.yaml"):
+    def initialize(cls, settings_path="settings.yaml"):
         """
         Initializes a qc project.
         If the settings file does not exist, create it.
         Otherwise, uses the settings file to initialize the expected 
         directories and files.
         """
-        settings_path = Path(settings_file)
+        settings_path = Path(settings_path)
         if settings_path.exists():
-            cls.validate_settings(settings_file)
+            cls.validate_settings(settings_path)
             settings = yaml.safe_load(settings_path.read_text())
             for needed_dir in ["corpus_dir", "logs_dir", "memos_dir"]:
                 dirpath = Path(settings[needed_dir])
@@ -84,7 +92,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
                     raise QCError(f"Cannot create dir {dirpath}; there is a file with that name.")
                 if not dirpath.exists():
                     dirpath.mkdir()
-            codebook_path = Path(settings["codebook_file"])
+            codebook_path = Path(settings["codebook"])
             if codebook_path.exists() and codebook_path.is_dir():
                 raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
             if not codebook_path.exists():
@@ -99,13 +107,17 @@ class QCCorpus(CorpusTestingMethodsMixin):
             settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
 
     @classmethod
-    def validate_settings(cls, settings_file):
+    def validate_settings(cls, settings_path):
+        """Checks that settings are valid, raising QCError if not.
+        This method checks the contents of the settings file, but does
+        not compare it with the project itself.
+        """
         try:
             errors = []
-            if not Path(settings_file).exists():
-                errors.append(f"Settings file {settings_file} is missing")
+            if not Path(settings_path).exists():
+                errors.append(f"Settings file {settings_path} is missing")
                 raise SettingsError()
-            settings = yaml.safe_load(Path(settings_file).read_text())
+            settings = read_settings(settings_path)
             for expected_key in DEFAULT_SETTINGS:
                 if expected_key not in settings:
                     errors.append(f"Expected '{expected_key}' in settings")
@@ -117,19 +129,18 @@ class QCCorpus(CorpusTestingMethodsMixin):
             errfmt = [f" - {err}" for err in errors]
             raise QCError('\n'.join(["Error validating settings:"] + errfmt))
 
-    def __init__(self, settings):
-        """
-        We need the actual settings file instead of just settings because it also
-        provides a default (portable) working directory for relative links
-        """
-        self.settings = settings
-        self.validate()
+    def __init__(self, settings_path, skip_validation=False):
+        self.settings_path = Path(settings_path)
+        self.settings = read_settings(settings_path)
+        if not skip_validation:
+            self.validate()
         self.log = get_logger(
             __name__, 
             self.settings['logs_dir'], 
             self.settings.get('debug')
         )
         self.engine = create_engine(f"sqlite:///{self.settings['database']}")
+        self.corpus_dir = self.resolve_path(self.settings['corpus_dir'])
 
     class NotInSession(Exception):
         def __init__(self, *args, **kwargs):
@@ -155,24 +166,30 @@ class QCCorpus(CorpusTestingMethodsMixin):
         except AttributeError:
             raise self.NotInSession()
 
+    def resolve_path(self, path):
+        "Returns a path relative to self.settings_path"
+        path = Path(path)
+        if path.is_absolute():
+            return path.resolve()
+        else:
+            return (self.settings_path.parent / path).resolve()
+
     def validate(self):
-        "Checks that files are as they should be"
+        "Checks that project state is valid"
+        QCCorpus.validate_settings(self.settings_path)
         errors = []
-        for attr in DEFAULT_SETTINGS.keys():
-            if attr not in self.settings:
-                errors.append(f"settings['{attr}'] is missing")
-            elif attr.endswith('dir'):
-                path = Path(self.settings[attr])
-                if not path.exists():
-                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
-                elif not path.is_dir():
-                    errors.append(f"settings['{attr}'] ({path}) is not a directory")
-            elif attr.endswith('file'):
-                path = Path(self.settings[attr])
-                if not path.exists():
-                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
-                elif path.is_dir():
-                    errors.append(f"settings['{attr}'] ({path}) is a directory")
+        for expected_dir in ['corpus_dir', 'logs_dir', 'memos_dir']:
+            path = self.resolve_path(self.settings[expected_dir])
+            if not path.exists():
+                errors.append(f"{expected_dir} path {path} does not exist")
+            elif not path.is_dir():
+                errors.append(f"{expected_dir} path {path} is not a directory")
+        for expected_file in ['codebook', 'database']:
+            path = self.resolve_path(self.settings[expected_file])
+            if not path.exists():
+                errors.append(f"{expected_file} path {path} does not exist")
+            elif path.is_dir():
+                errors.append(f"{expected_file} path {path} is a directory")
         if errors:
             raise QCError("Invalid settings:\n" + "\n".join([f"- {err}" for err in errors]))
 
@@ -240,7 +257,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
 
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
-        return TreeNode.read_yaml(self.settings['codebook_file'])
+        return TreeNode.read_yaml(self.settings['codebook'])
 
     def get_document(self, corpus_path):
         """Fetches a document object.
@@ -329,7 +346,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
         path relative to the corpus directory, suitable for Document.file_path.
         """
         try:
-            relative_path = Path(corpus_path).relative_to(self.settings['corpus_dir'])
+            relative_path = Path(corpus_path).relative_to(self.corpus_dir)
             return str(relative_path)
         except ValueError:
             if Path(corpus_path).is_absolute():
@@ -339,6 +356,51 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 )
             else:
                 return str(corpus_path)
+
+    def import_media(self, file_path, recursive=False, corpus_root=None, importer="pandoc"):
+        """Imports media into the corpus. 
+        Importing media consists of three tasks: 
+
+        - transforming the media's representation, 
+        - saving the transformed media into the corpus directory,
+        - and registering the file in the database. 
+
+        The specified media importer handles transformation and saving. 
+        When recursive is True, walks the given directory and imports all files found.
+        When corpus_root is true, saves the files relative to the given subdirectory within
+        the corpus.
+        """
+        imp = media_importers[importer](self.settings)
+        source = Path(file_path)
+
+        if not source.exists():
+            raise InvalidParameter(f"{source} does not exist.")
+        if recursive and not source.is_dir():
+            raise InvalidParameter(f"{source} must be a dir when importing recursively.")
+        if not recursive and source.is_dir():
+            raise InvalidParameter(f"{source} is a dir. Use --recursive.")
+        if corpus_root and Path(corpus_root).is_absolute():
+            raise InvalidParameter(f"corpus_root ({corpus_root}) must be a relative directory.")
+
+        if corpus_root:
+            dest_root_dir = self.corpus_dir / corpus_root
+            dest_root_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            dest_root_dir = self.corpus_dir
+
+        with self.session():
+            if recursive:
+                for dir_path, dir_names, filenames in os.walk(source):
+                    dest_dir = dest_root_dir / Path(dir_path).relative_to(source)
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    for fn in filenames:
+                        source_path = Path(dir_path) / fn
+                        dest_path = (dest_dir / fn).with_suffix(".txt")
+                        imp.import_media(source_path, dest_path)
+                        self.register_document(dest_path)
+            else:
+                dest_path = (dest_dir / path.name).with_suffix(".txt")
+                imp.import_media(source, dest_path)
 
     def hash_file(self, corpus_path):
         """Computes the hash of a document at a corpus path.
@@ -550,7 +612,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
             code_tree.add_child(new_code)
-        TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
+        TreeNode.write_yaml(self.settings['codebook'], code_tree)
 
     # TODO: Needs to be rewritten for SQL.
     def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
@@ -577,5 +639,5 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 code_tree.rename(old_code, new_code)
                 code_tree.remove_children_by_name(old_code)
                 self.log.info(f"Renamed code {old_code} to {new_code}")
-            TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
+            TreeNode.write_yaml(self.settings['codebook'], code_tree)
             self.update_codebook()

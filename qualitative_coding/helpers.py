@@ -1,5 +1,18 @@
 from textwrap import fill
 from pathlib import Path
+import yaml
+
+def read_settings(path):
+    if not Path(path).exists():
+        raise QCError(f"Settings file {path} not found.")
+    try:
+        settings_text = Path(path).read_text()
+    except:
+        raise QCError(f"Error reading settings file {path}")
+    try:
+        return yaml.safe_load(settings_text)
+    except:
+        raise QCError(f"Error parsing settings file {path}")
 
 def iter_paragraph_lines(fh):
     p_start = 0

@@ -7,4 +7,3 @@ class VerbatimImporter(BaseMediaImporter):
     def import_media(self, input_filename, output_filename):
         if input_filename != output_filename:
             shutil.copyfile(input_filename, output_filename)
-        self.register_media_in_database(output_filename)
