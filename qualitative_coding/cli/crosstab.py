@@ -4,6 +4,8 @@ from pathlib import Path
 from tabulate import tabulate_formats
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
+from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("code", nargs=-1)
@@ -31,10 +33,11 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 @click.option("-y", "--tidy", help="Return tidy format", is_flag=True)
 @click.option("-u", "--max", "_max", help="Maximum count value to show", type=int)
 @click.option("-l", "--min", "_min", help="Minimum count value to show", type=int)
+@handle_qc_errors
 def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_codes,
         recursive_counts, expanded, _format, outfile, probs, compact, tidy, _max, _min):
     "Cross-tabulate code occurrences"
-    if depth and not recursive_codes: # Why is this required?
+    if depth and not recursive_codes:
         msg = "--depth requires --recursive-codes"
         raise IncompatibleOptions(msg)
     if tidy and compact:
@@ -49,12 +52,8 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
     if _max and not tidy:
         msg = "--max requires --tidy"
         raise IncompatibleOptions(msg)
-    if filenames:
-        file_list = Path(filenames).read_text().split("\n")
-    else:
-        file_list = None
-    s = yaml.safe_load(Path(settings).read_text())
-    corpus = QCCorpus(s)
+
+    corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
     if tidy:
         viewer.tidy_codes(
@@ -65,7 +64,7 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
             expanded=expanded, 
             format=_format, 
             pattern=pattern,
-            file_list=file_list,
+            file_list=read_file_list(filenames),
             coder=coder,
             unit=unit,
             outfile=outfile,
@@ -81,7 +80,7 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
             expanded=expanded, 
             format=_format, 
             pattern=pattern,
-            file_list=file_list,
+            file_list=read_file_list(filenames),
             coder=coder,
             unit=unit,
             outfile=outfile,

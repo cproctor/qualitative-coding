@@ -1,6 +1,5 @@
 from tests.fixtures import QCTestCase
 from pathlib import Path
-from qualitative_coding.corpus import QCCorpus
 
 class TestCoders(QCTestCase):
     def test_coders_shows_coders(self):

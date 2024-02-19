@@ -133,8 +133,6 @@ class QCCorpusViewer:
         if probs:
             totals = np.diag(m).reshape((-1, 1))
             m = m / totals
-            print(totals)
-            print(m)
         if compact:
             data = [[ix, code, *row] for ix, code, row in zip(count(), labels, m)]
             cols = ["ix", "code", *range(len(labels))]
