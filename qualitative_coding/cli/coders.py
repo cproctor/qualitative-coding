@@ -10,6 +10,6 @@ def coders(settings):
     corpus = QCCorpus(settings)
     with corpus.session():
         for coder in corpus.get_all_coders():
-            print(coder)
+            print(coder.name)
 
 

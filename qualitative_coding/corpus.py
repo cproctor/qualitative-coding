@@ -245,8 +245,8 @@ class QCCorpus:
             return coder
 
     def get_all_coders(self):
-        q = select(Coder.name)
-        return self.get_session().execute(q).scalars()
+        q = select(Coder)
+        return self.get_session().scalars(q)
 
     def get_or_create_code(self, code_name):
         try:
@@ -302,6 +302,7 @@ class QCCorpus:
         When existing are absent from new, marks objects for deletion. 
         When new are absent from existing, creates a new CodedLine and adds it to the session.
         """
+        self.get_or_create_coder(coder)
         session = self.get_session()
         q = (select(CodedLine)
             .join(CodedLine.locations)
