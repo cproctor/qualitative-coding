@@ -241,7 +241,7 @@ class QCCorpusViewer:
                 doc_code_counts[doc_path] += 1
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
-                with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
+                with open(self.corpus.corpus_dir / doc_path) as fh:
                     lines = [line for line in fh]
                 ranges = self.merge_ranges(
                     [range(n-before, n+after+1) for n in coded_lines.keys()], 

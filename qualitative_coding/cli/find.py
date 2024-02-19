@@ -1,9 +1,8 @@
 import click
-import yaml
-from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("code", nargs=-1)
@@ -28,12 +27,7 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 def find(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
          before, after, no_codes):
     "Find all coded text"
-    if filenames:
-        file_list = Path(filenames).read_text().split("\n")
-    else:
-        file_list = None
-    s = yaml.safe_load(Path(settings).read_text())
-    corpus = QCCorpus(s)
+    corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
     viewer.show_coded_text(
         code, 
@@ -43,7 +37,7 @@ def find(code, settings, pattern, filenames, coder, depth, unit, recursive_codes
         depth=depth,
         unit=unit,
         pattern=pattern,
-        file_list=file_list,
+        file_list=read_file_list(filenames),
         coder=coder,
         show_codes=not no_codes,
     )

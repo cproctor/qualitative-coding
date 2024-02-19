@@ -1,5 +1,6 @@
 from textwrap import fill
 from pathlib import Path
+from qualitative_coding.exceptions import QCError
 import yaml
 
 def read_settings(path):
