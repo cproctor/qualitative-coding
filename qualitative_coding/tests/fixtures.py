@@ -86,6 +86,19 @@ class QCTestCase(TestCase):
             message = message or f"Expected {path} not to exist"
             raise AssertionError(message)
 
+    def set_mock_editor(self, verbose=False, crash=False):
+        """Updates settings['editor'] to the mock editor.
+        Also reinitializes corpus.
+        """
+        mock_editor_path = str(Path("tests/mock_editor.py").resolve())
+        command = mock_editor_path + ' "{corpus_file_path}" "{codes_file_path}"'
+        if verbose: 
+            command += " --verbose"
+        if crash: 
+            command += " --crash"
+        self.update_settings("editor", command)
+        self.corpus = QCCorpus(self.testpath / "settings.yaml")
+
 MACBETH = """Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,
 To the last syllable of recorded time;
@@ -98,8 +111,7 @@ Told by an idiot, full of sound and fury,
 Signifying nothing.
 """
 
-MACBETH_CODES_0_2_3 = """
-pace, prolepsis
+MACBETH_CODES_0_2_3 = """pace, prolepsis
 pace
 speech, prolepsis
 light

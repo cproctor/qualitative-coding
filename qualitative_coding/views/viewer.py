@@ -389,7 +389,7 @@ class QCCorpusViewer:
         except CalledProcessError as err:
             raise QCError(f"The editor closed before coding was complete: {err.stderr}")
 
-        code_file_path = Path(codes_file)
+        code_file_path = self.corpus.resolve_path(self.codes_file)
         code_file_lines = code_file_path.read_text().splitlines()
         coded_lines = []
         with self.corpus.session():

@@ -34,9 +34,13 @@ class Migrate_1_0_0(QCMigration):
         self.set_setting(settings_path, "editor", 'vim')
         QCCorpus.initialize(settings_path)
         corpus = QCCorpus(settings_path)
-        corpus.import_media(corpus.corpus_dir, recursive=True, importer="verbatim")
         corpus_v0 = QCCorpusV0(settings_path)
         with corpus.session():
+            for filepath in corpus.corpus_dir.iterdir():
+                if filepath.is_dir():
+                    corpus.import_media(filepath, recursive=True, importer="verbatim")
+                else:
+                    corpus.import_media(filepath, importer="verbatim")
             for dir_path, dir_names, filenames in os.walk(corpus.corpus_dir):
                 for fn in filenames:
                     file_path = Path(dir_path) / fn

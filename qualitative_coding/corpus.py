@@ -290,7 +290,10 @@ class QCCorpus:
             .where(Location.start_line <= line)
             .where(Location.end_line > line)
         )
-        return self.get_session().execute(q).scalar_one()
+        try:
+            return self.get_session().execute(q).scalar_one()
+        except NoResultFound:
+            raise QCError(f"Error getting paragraph for {document.file_path}, line {line}.")
 
     def update_coded_lines(self, document, coded_line_data, coder):
         """Updates document's coded lines for the given coder.
