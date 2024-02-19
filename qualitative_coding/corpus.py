@@ -153,7 +153,18 @@ class QCCorpus:
 
     @contextmanager
     def session(self):
-        "A context manager which holds open a Session"
+        """A context manager which holds open a Session.
+        Client code will often need to execute multiple corpus methods
+        within a single session. For example:
+
+        with corpus.session():
+            corpus.get_or_create_coder('chris')
+
+        This context manager should not be used within QCCorpus methods.
+        Instead, use get_session() below; the session will be returned
+        if it is in scope.
+        """
+
         session_context_manager = Session(self.engine)
         self.session = session_context_manager.__enter__()
         yield
@@ -374,20 +385,19 @@ class QCCorpus:
         else:
             dest_root_dir = self.corpus_dir
 
-        with self.session():
-            if recursive:
-                for dir_path, dir_names, filenames in os.walk(source):
-                    dest_dir = dest_root_dir / dir_path
-                    dest_dir.mkdir(parents=True, exist_ok=True)
-                    for fn in filenames:
-                        source_path = Path(dir_path) / fn
-                        dest_path = (dest_dir / fn).with_suffix(".txt")
-                        imp.import_media(source_path, dest_path)
-                        self.register_document(dest_path)
-            else:
-                dest_path = (dest_root_dir / source.name).with_suffix(".txt")
-                imp.import_media(source, dest_path)
-                self.register_document(dest_path)
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(source):
+                dest_dir = dest_root_dir / dir_path
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                for fn in filenames:
+                    source_path = Path(dir_path) / fn
+                    dest_path = (dest_dir / fn).with_suffix(".txt")
+                    imp.import_media(source_path, dest_path)
+                    self.register_document(dest_path)
+        else:
+            dest_path = (dest_root_dir / source.name).with_suffix(".txt")
+            imp.import_media(source, dest_path)
+            self.register_document(dest_path)
 
     def hash_file(self, corpus_path):
         """Computes the hash of a document at a corpus path.

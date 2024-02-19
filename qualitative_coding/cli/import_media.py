@@ -20,6 +20,11 @@ from qualitative_coding.media_importers import media_importers
 def import_media(file_path, settings, recursive, corpus_root, importer):
     "Import corpus files"
     corpus = QCCorpus(settings)
-    corpus.import_media(file_path, recursive=recursive, corpus_root=corpus_root, 
-            importer=importer)
+    with corpus.session():
+        corpus.import_media(
+            file_path, 
+            recursive=recursive, 
+            corpus_root=corpus_root, 
+            importer=importer
+        )
 
