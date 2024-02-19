@@ -1,0 +1,27 @@
+#!python
+
+# This is a mock editor for testing purposes. 
+# Whereas a real editor would present the corpus and code files
+# to the user for coding, the mock editor goes ahead and codes
+# line with 'code_one' and line two (if it exists) with 'code_two'.
+# When --crash is passed, exits with an exception, allowing testing
+# of the error condition.
+
+from argparse import ArgumentParser
+from pathlib import Path
+
+parser = ArgumentParser()
+parser.add_argument("corpus_file_path")
+parser.add_argument("codes_file_path")
+parser.add_argument("--crash", action="store_true")
+args = parser.parse_args()
+
+if args.crash:
+    raise Exception("Crashing the mock editor, as requested...")
+
+nlines = len(Path(args.corpus_file_path).read_text().split('\n'))
+if nlines == 1:
+    Path(args.codes_file_path).write_text("code_one")
+else:
+    lines = ["code_one", "code_two"] + ([""] * (nlines - 2))
+    Path(args.codes_file_path).write_text('\n'.join(lines))

@@ -14,6 +14,13 @@ def read_settings(path):
     except:
         raise QCError(f"Error parsing settings file {path}")
 
+def read_file_list(filename):
+    """Many cli commands accept `--filenames`, a path to a file 
+    containing a list of files. 
+    """
+    if filename:
+        return Path(filenames).read_text().split("\n")
+
 def iter_paragraph_lines(fh):
     p_start = 0
     in_whitespace = False

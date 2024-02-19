@@ -4,9 +4,8 @@ from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.exceptions import IncompatibleOptions
 from qualitative_coding.views.viewer import QCCorpusViewer
-from qualitative_coding.cli.decorators import (
-    handle_qc_errors,
-)
+from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("coder")
@@ -25,17 +24,13 @@ def code(coder, settings, pattern, filenames, uncoded, first, random):
     if first and random:
         msg = "--first and --random cannot both be used."
         raise IncompatibleOptions(msg)
-    s = yaml.safe_load(Path(settings).read_text())
-    corpus = QCCorpus(s)
+
+    corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
-    if filenames:
-        file_list = Path(filenames).read_text().split("\n")
-    else:
-        file_list = None
     f = viewer.select_file(
         coder,
         pattern=pattern, 
-        file_list=file_list,
+        file_list=read_file_list(filenames),
         uncoded=uncoded, 
         first=first, 
         random=random,

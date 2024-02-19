@@ -1,13 +1,10 @@
-# Qualitative Coding corpus viewer
-# --------------------------------
-# (c) 2019 Chris Proctor
-
 import subprocess
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.views.coding_ui import CodingUI
 from qualitative_coding.exceptions import QCError
+from qualitative_coding.editors import editors
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -20,6 +17,8 @@ import numpy as np
 import csv
 
 class QCCorpusViewer:
+
+    codes_file = "codes.txt"
 
     def __init__(self, corpus):
         self.corpus = corpus
@@ -379,37 +378,28 @@ class QCCorpusViewer:
         return "\n\n".join(text)
 
     def open_editor(self, corpus_file_path, coder_name):
-        temp_codes_file = "codes.txt"
-        full_path = Path(self.settings['corpus_dir']) / corpus_file_path
+        codes_file = self.corpus.resolve_path(self.codes_file)
+        if codes_file.exists():
+            self.report_incomplete_coding_session()
+        full_path = self.corpus.corpus_dir / corpus_file_path
         text = full_path.read_text().splitlines()
         with self.corpus.session():
-            code_line_docs = self.corpus.get_coded_lines(file_list=[corpus_file_path], 
-                    coder=coder_name)
-        coded_lines = [(code, line) for code, line, doc in code_line_docs]
+            code_line_docs = self.corpus.get_coded_lines(
+                file_list=[corpus_file_path], 
+                coder=coder_name
+            )
+        codes_per_line = defaultdict(list)
+        for code, line, doc in code_line_docs:
+            codes_per_line[line].append(code)
+        lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
+        codes_file.write_text('\n'.join(lines))
 
-        i=0
-        cl=0
-        out=[]
-
-        while(i<len(text)):
-            code_line = ""
-            while cl < len(coded_lines) and i == coded_lines[cl][1]:
-                code_line += coded_lines[cl][0] + ", "
-                cl += 1
-            code_line += "\n"
-            i+=1
-            out.append(code_line)
-
-        temp_code = open(temp_codes_file, "w")
-        temp_code.writelines(out)
-        temp_code.close()
-
-        editor_args = get_editor_args(self.settings['editor'], full_path, temp_codes_file)
-        p = subprocess.run(editor_args)
+        command = self.get_editor_command(full_path, codes_file)
+        p = subprocess.run(command, shell=True, capture_output=True, text=True)
         if p.returncode != 0:
             print(p.stderr)
 
-        code_file_path = Path(temp_codes_file)
+        code_file_path = Path(codes_file)
         code_file_lines = code_file_path.read_text().splitlines()
         coded_lines = []
         with self.corpus.session():
@@ -428,6 +418,17 @@ class QCCorpusViewer:
         if p.returncode == 0: # and if insert didn't return errors
             code_file_path.unlink()
 
+    def get_editor_command(self, corpus_file_path, codes_file_path):
+        """Returns a shell command to open an editor for coding.
+        If settings['editor'] is a key in qualitative_coding.editors.editors, 
+        return the corresponding command. Otherwise, settings['editor'] is
+        treated as the command itself. 
+        """
+        if self.settings['editor'] in editors:
+            cmd = editors[self.settings['editor']]['command']
+        else:
+            cmd = self.settings['editor']
+        return cmd.format(corpus_file_path=corpus_file_path, codes_file_path=codes_file_path)
 
     def prompt_for_choice(self, prompt, options):
         "Asks for a prompt, returns an index"
@@ -459,20 +460,3 @@ class QCCorpusViewer:
             lo, hi = clamp
             results = [range(max(lo, r.start), min(hi, r.stop)) for r in results]
         return results
-
-
-def get_editor_args(editor: str, corpus_file_path: str, codes_file_path: str) -> list[str]:
-    """Returns argument to be provided to `subprocess.run` to open the editor from the command line"""
-    if editor in ["vim", "nvim"]:
-        return [editor, codes_file_path,
-                "-c", ":set scrollbind", "-c", f':83vsplit|view {corpus_file_path}|set scrollbind']
-    elif editor == "emacs":
-        return [editor, "-Q", "--eval",
-             f"(progn (find-file \"{corpus_file_path}\") (split-window-right) (other-window 1) (find-file \"{codes_file_path}\") (scroll-all-mode))"]
-    # Possible enhancements - vscode allows `--install-extension`, can be used
-    # to suggest installing a scroll sync extension and the LSP server
-    elif editor == "vscode":
-        return ["code", corpus_file_path, codes_file_path]
-    else:
-        return ["echo", "Unsupported editor"]
-
