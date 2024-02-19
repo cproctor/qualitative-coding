@@ -20,7 +20,8 @@ class QCTestCase(TestCase):
         self.testpath = Path(self.tempdir.name)
         self.run_in_testpath("qc init")
         self.run_in_testpath("qc init")
-        (self.testpath / "macbeth.txt").write_text(DOC)
+        (self.testpath / "macbeth.txt").write_text(MACBETH)
+        (self.testpath / "moby_dick.md").write_text(MOBY_DICK)
 
     def set_up_qc_project_0_2_3(self):
         self.tempdir = TemporaryDirectory()
@@ -38,8 +39,8 @@ class QCTestCase(TestCase):
             if k.endswith("_dir"):
                 (self.testpath / v).mkdir()
         (self.testpath / "codebook.yaml").touch()
-        (self.testpath / "corpus" / "macbeth.txt").write_text(DOC)
-        (self.testpath / "codes" / "macbeth.txt.cp.codes").write_text(CODES_0_2_3)
+        (self.testpath / "corpus" / "macbeth.txt").write_text(MACBETH)
+        (self.testpath / "codes" / "macbeth.txt.cp.codes").write_text(MACBETH_CODES_0_2_3)
 
     def tear_down_qc_project(self):
         self.tempdir.cleanup()
@@ -54,6 +55,9 @@ class QCTestCase(TestCase):
             print(result.stdout)
             print(result.stderr)
         return result
+
+    def show_tree(self):
+        self.run_in_testpath("tree", debug=True)
 
     def update_settings(self, key, value):
         settings_path = self.testpath / "settings.yaml"
@@ -80,7 +84,7 @@ class QCTestCase(TestCase):
             message = message or f"Expected {path} not to exist"
             raise AssertionError(message)
 
-DOC = """
+MACBETH = """
 Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,
 To the last syllable of recorded time;
@@ -93,7 +97,7 @@ Told by an idiot, full of sound and fury,
 Signifying nothing.
 """
 
-CODES_0_2_3 = """
+MACBETH_CODES_0_2_3 = """
 pace, prolepsis
 pace
 speech, prolepsis
@@ -106,3 +110,4 @@ speech
 speech
 """
 
+MOBY_DICK = "Call me *Ishmael*. Some years ago- never mind how long precisely- having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation."

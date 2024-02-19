@@ -392,7 +392,7 @@ class QCCorpus:
         with self.session():
             if recursive:
                 for dir_path, dir_names, filenames in os.walk(source):
-                    dest_dir = dest_root_dir / Path(dir_path).relative_to(source)
+                    dest_dir = dest_root_dir / dir_path
                     dest_dir.mkdir(parents=True, exist_ok=True)
                     for fn in filenames:
                         source_path = Path(dir_path) / fn
@@ -400,8 +400,9 @@ class QCCorpus:
                         imp.import_media(source_path, dest_path)
                         self.register_document(dest_path)
             else:
-                dest_path = (dest_dir / path.name).with_suffix(".txt")
+                dest_path = (dest_root_dir / source.name).with_suffix(".txt")
                 imp.import_media(source, dest_path)
+                self.register_document(dest_path)
 
     def hash_file(self, corpus_path):
         """Computes the hash of a document at a corpus path.
