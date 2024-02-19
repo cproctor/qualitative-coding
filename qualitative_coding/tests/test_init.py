@@ -3,6 +3,10 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 import yaml
 
+# TODO: 
+# - Ensure that init catches validation errors when editors is malformed.
+# - Ensure that init catches validation errors when editor not in editors.
+
 class TestInit(QCTestCase):
     def setUp(self):
         self.tempdir = TemporaryDirectory()

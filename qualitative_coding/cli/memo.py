@@ -1,6 +1,4 @@
 import click
-import yaml
-from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
@@ -15,8 +13,7 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 @handle_qc_errors
 def memo(coder, settings, message, list_memos):
     "Write a memo"
-    s = yaml.safe_load(Path(settings).read_text())
-    corpus = QCCorpus(s)
+    corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
     if list_memos:
         click.echo(viewer.list_memos())

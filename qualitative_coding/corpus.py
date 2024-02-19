@@ -126,6 +126,21 @@ class QCCorpus:
                     errors.append(f"Expected '{expected_key}' in settings")
                 elif not isinstance(settings[expected_key], str):
                     errors.append(f"Invalid path for {expected_key}: {settings[expected_key]}")
+            if 'editors' in settings:
+                if not isinstance(settings['editors'], dict):
+                    errors.append(f"Could not read custom-defined editors.")
+                    raise SettingsError()
+                for name, params in settings['editors'].items():
+                    expected = {'name', 'code_command', 'memo_command'}
+                    if isinstance(params, dict):
+                        for extra in set(params.keys()) - expected:
+                            errors.append(f"Unexpected param in editors.{name}: {extra}")
+                        for missing in expected - set(params.keys()):
+                            errors.append(f"Missing param in editors.{name}: {extra}")
+                    else:
+                        errors.append(f"Expected editors.{name} to be a dict")
+            if not settings.get('editor') in {**editors, **settings.get('editors', {})}:
+                errors.append(f"Unrecognized editor {settings.get('editor')}")
             if errors:
                 raise SettingsError()
         except SettingsError:
@@ -138,6 +153,7 @@ class QCCorpus:
         if not skip_validation:
             self.validate()
         self.corpus_dir = self.resolve_path(self.settings['corpus_dir'])
+        self.memos_dir = self.resolve_path(self.settings['memos_dir'])
         self.logs_dir = self.resolve_path(self.settings['logs_dir'])
         self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
         db_file = self.resolve_path(self.settings['database'])

@@ -18,7 +18,7 @@ class TestCrosstab(QCTestCase):
         self.set_mock_editor()
         self.run_in_testpath("qc code chris")
         self.run_in_testpath("qc codebook")
-        result = self.run_in_testpath("qc crosstab one two line --probs --format tsv", debug=True)
+        result = self.run_in_testpath("qc crosstab one two line --probs --format tsv")
         table = self.read_stats_tsv(result.stdout)
         self.assertEqual(table['line']['two'], 0.5)
 

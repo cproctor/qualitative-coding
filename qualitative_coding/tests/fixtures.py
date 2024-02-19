@@ -90,13 +90,21 @@ class QCTestCase(TestCase):
         """Updates settings['editor'] to the mock editor.
         Also reinitializes corpus.
         """
-        mock_editor_path = str(Path("tests/mock_editor.py").resolve())
-        command = mock_editor_path + ' "{corpus_file_path}" "{codes_file_path}"'
+        command = str(Path("tests/mock_editor.py").resolve())
         if verbose: 
             command += " --verbose"
         if crash: 
             command += " --crash"
-        self.update_settings("editor", command)
+        code_command = command + ' "{corpus_file_path}" "{codes_file_path}"'
+        memo_command = command + ' --memo "{memo_file_path}"'
+        self.update_settings("editor", "mock_editor")
+        self.update_settings("editors", {
+            'mock_editor': {
+                'name': "Mock Editor",
+                'code_command': code_command, 
+                'memo_command': memo_command,
+            }
+        })
         self.corpus = QCCorpus(self.testpath / "settings.yaml")
 
 MACBETH = """Tomorrow, and tomorrow, and tomorrow,

@@ -361,13 +361,16 @@ class QCCorpusViewer:
         if message:
             fname += "_" + message.replace(" ", "_").lower()
         fname += ".md"
-        path = Path(self.settings['memos_dir']) / fname
+        path = self.corpus.memos_dir / fname
         if message:
             path.write_text(f"# {message}\n\n{coder} {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
         else:
             path.write_text(f"# Memo by {coder} on {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n") 
         self.log.info(f"{coder} wrote memo {message}")
-        run(f"{self.settings['editor']} {path}", check=True, shell=True)
+        with self.corpus.session():
+            self.corpus.get_or_create_coder(coder)
+            command = self.get_memo_command(path)
+            run(command, check=True, shell=True)
 
     def list_memos(self):
         "Concatenates all memo text"
@@ -380,7 +383,7 @@ class QCCorpusViewer:
             self.report_incomplete_coding_session()
         full_path = self.corpus.corpus_dir / corpus_file_path
         codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
-        command = self.get_editor_command(full_path, codes_file_path)
+        command = self.get_code_command(full_path, codes_file_path)
         try:
             p = run(command, shell=True, capture_output=True, text=True, check=True)
             print(p.stdout)
@@ -420,17 +423,34 @@ class QCCorpusViewer:
         lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
         return '\n'.join(lines)
 
-    def get_editor_command(self, corpus_file_path, codes_file_path):
+    def get_code_command(self, corpus_file_path, codes_file_path):
         """Returns a shell command to open an editor for coding.
-        If settings['editor'] is a key in qualitative_coding.editors.editors, 
-        return the corresponding command. Otherwise, settings['editor'] is
-        treated as the command itself. 
+        settings['editor'] should be a key in qualitative_coding.editors.editors, 
+        or in the user-specified list of editors. (This is checked during validation.)
+
+        Users can define additional editors in settings.yaml, under the editors key. 
+        name, code_command, and memo_command should be specified, using the placeholders
+        {codes_file_path}, {corpus_file_path}, and {memo_file_path}.
+        For example:
+
+            ...
+            editor: vim_with_linenums
+            editors:
+                vim_with_linenums:
+                    name: Vim
+                    code_command: 'vim "{codes_file_path}" -c :set nu -c :set scrollbind -c :83vsplit|view {corpus_file_path}|set scrollbind',
+                    "memo_command": 'vim "{memo_file_path}',
         """
-        if self.settings['editor'] in editors:
-            cmd = editors[self.settings['editor']]['command']
-        else:
-            cmd = self.settings['editor']
+        all_editors = {**editors, **self.settings.get('editors', {})}
+        cmd = all_editors[self.settings['editor']]['code_command']
         return cmd.format(corpus_file_path=corpus_file_path, codes_file_path=codes_file_path)
+
+    def get_memo_command(self, memo_file_path):
+        """Returns a shell command to open an editor for memo-writing.
+        """
+        all_editors = {**editors, **self.settings.get('editors', {})}
+        cmd = all_editors[self.settings['editor']]['memo_command']
+        return cmd.format(memo_file_path=memo_file_path)
 
     def prompt_for_choice(self, prompt, options):
         "Asks for a prompt, returns an index"
