@@ -86,8 +86,7 @@ class QCTestCase(TestCase):
             message = message or f"Expected {path} not to exist"
             raise AssertionError(message)
 
-MACBETH = """
-Tomorrow, and tomorrow, and tomorrow,
+MACBETH = """Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,
 To the last syllable of recorded time;
 And all our yesterdays have lighted fools

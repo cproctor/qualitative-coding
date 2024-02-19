@@ -396,6 +396,7 @@ class QCCorpusViewer:
 
         command = self.get_editor_command(full_path, codes_file)
         p = subprocess.run(command, shell=True, capture_output=True, text=True)
+        print(p.stdout)
         if p.returncode != 0:
             print(p.stderr)
 

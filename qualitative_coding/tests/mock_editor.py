@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python3
 
 # This is a mock editor for testing purposes. 
 # Whereas a real editor would present the corpus and code files
@@ -13,6 +13,7 @@ from pathlib import Path
 parser = ArgumentParser()
 parser.add_argument("corpus_file_path")
 parser.add_argument("codes_file_path")
+parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--crash", action="store_true")
 args = parser.parse_args()
 
@@ -23,5 +24,19 @@ nlines = len(Path(args.corpus_file_path).read_text().split('\n'))
 if nlines == 1:
     Path(args.codes_file_path).write_text("code_one")
 else:
-    lines = ["code_one", "code_two"] + ([""] * (nlines - 2))
+    lines = ["line, one", "line, two"] + ([""] * (nlines - 2))
     Path(args.codes_file_path).write_text('\n'.join(lines))
+
+if args.verbose:
+    print('-' * 80)
+    print("MOCK EDITOR")
+    print('-' * 80)
+    text = open(args.corpus_file_path)
+    codes = open(args.codes_file_path)
+    for tl, cl in zip(text, codes):
+        print(f"{tl.strip().ljust(80, ' ')}| {cl.strip()}")
+    text.close()
+    codes.close()
+
+
+
