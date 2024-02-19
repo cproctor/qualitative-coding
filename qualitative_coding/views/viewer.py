@@ -22,7 +22,7 @@ class QCCorpusViewer:
     def __init__(self, corpus):
         self.corpus = corpus
         self.settings = self.corpus.settings
-        self.log = get_logger(__name__, self.corpus.settings['logs_dir'], self.corpus.settings.get('debug'))
+        self.log = get_logger(__name__, self.corpus.logs_dir, self.corpus.settings.get('debug'))
 
     def list_codes(self, expanded=False, depth=None):
         "Prints all the codes in the codebook"

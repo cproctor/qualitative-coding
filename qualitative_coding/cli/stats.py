@@ -5,6 +5,7 @@ from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.exceptions import IncompatibleOptions
+from qualitative_coding.helpers import read_file_list
 from tabulate import tabulate_formats
 
 @click.command()
@@ -42,12 +43,7 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
     if total_only and recursive_counts:
         msg = "--total-only and --recursive-counts are incompatible"
         raise IncompatibleOptions(msg)
-    if filenames:
-        file_list = Path(filenames).read_text().split("\n")
-    else:
-        file_list = None
-    s = yaml.safe_load(Path(settings).read_text())
-    corpus = QCCorpus(s)
+    corpus = QCCorpus(settings)
     viewer = QCCorpusViewer(corpus)
     viewer.show_stats(
         code, 
@@ -59,7 +55,7 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
         expanded=expanded, 
         format=_format, 
         pattern=pattern,
-        file_list=file_list,
+        file_list=read_file_list(filenames),
         coder=coder,
         unit=unit,
         outfile=outfile,

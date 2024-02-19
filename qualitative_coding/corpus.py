@@ -269,7 +269,7 @@ class QCCorpus:
 
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
-        return TreeNode.read_yaml(self.settings['codebook'])
+        return TreeNode.read_yaml(self.resolve_path(self.settings['codebook']))
 
     def get_document(self, corpus_path):
         """Fetches a document object.
