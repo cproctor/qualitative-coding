@@ -1,4 +1,3 @@
-import subprocess
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
@@ -8,7 +7,7 @@ from qualitative_coding.editors import editors
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
-from subprocess import run
+from subprocess import run, CalledProcessError
 from datetime import datetime
 from random import choice
 from itertools import count
@@ -378,27 +377,17 @@ class QCCorpusViewer:
         return "\n\n".join(text)
 
     def open_editor(self, corpus_file_path, coder_name):
-        codes_file = self.corpus.resolve_path(self.codes_file)
-        if codes_file.exists():
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        if codes_file_path.exists():
             self.report_incomplete_coding_session()
         full_path = self.corpus.corpus_dir / corpus_file_path
-        text = full_path.read_text().splitlines()
-        with self.corpus.session():
-            code_line_docs = self.corpus.get_coded_lines(
-                file_list=[corpus_file_path], 
-                coder=coder_name
-            )
-        codes_per_line = defaultdict(list)
-        for code, line, doc in code_line_docs:
-            codes_per_line[line].append(code)
-        lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
-        codes_file.write_text('\n'.join(lines))
-
-        command = self.get_editor_command(full_path, codes_file)
-        p = subprocess.run(command, shell=True, capture_output=True, text=True)
-        print(p.stdout)
-        if p.returncode != 0:
-            print(p.stderr)
+        codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
+        command = self.get_editor_command(full_path, codes_file_path)
+        try:
+            p = run(command, shell=True, capture_output=True, text=True, check=True)
+            print(p.stdout)
+        except CalledProcessError as err:
+            raise QCError(f"The editor closed before coding was complete: {err.stderr}")
 
         code_file_path = Path(codes_file)
         code_file_lines = code_file_path.read_text().splitlines()
@@ -415,9 +404,23 @@ class QCCorpusViewer:
                         })
             document = self.corpus.get_document(corpus_file_path)
             self.corpus.update_coded_lines(document, coded_lines, coder_name)
-        # TODO: store args (coder, corpus file) somewhere - preferably new db table
-        if p.returncode == 0: # and if insert didn't return errors
-            code_file_path.unlink()
+        code_file_path.unlink()
+
+    def codes_file_text(self, corpus_file_path, coder_name):
+        """Formats codes for a temporary coding file.
+        """
+        with self.corpus.session():
+            code_line_docs = self.corpus.get_coded_lines(
+                file_list=[corpus_file_path], 
+                coder=coder_name
+            )
+        codes_per_line = defaultdict(list)
+        for code, line, doc in code_line_docs:
+            codes_per_line[line].append(code)
+
+        text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
+        lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
+        return '\n'.join(lines)
 
     def get_editor_command(self, corpus_file_path, codes_file_path):
         """Returns a shell command to open an editor for coding.

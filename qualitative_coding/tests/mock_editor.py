@@ -18,7 +18,9 @@ parser.add_argument("--crash", action="store_true")
 args = parser.parse_args()
 
 if args.crash:
-    raise Exception("Crashing the mock editor, as requested...")
+    if args.verbose:
+        print("Crashing the mock editor, as requested...")
+    raise SystemExit(1)
 
 nlines = len(Path(args.corpus_file_path).read_text().split('\n'))
 if nlines == 1:
