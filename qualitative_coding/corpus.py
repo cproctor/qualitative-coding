@@ -282,45 +282,30 @@ class QCCorpus:
         return self.get_session().execute(q).scalar_one()
 
     def update_coded_lines(self, document, coded_line_data, coder):
-        """Removes existing coded lines and replaces them with coded_line_data
+        """Updates document's coded lines for the given coder.
+        Fetches all existing coded lines for the document and coder, and 
+        then compares the set of existing coded line data with new coded line data.
+        When existing are absent from new, marks objects for deletion. 
+        When new are absent from existing, creates a new CodedLine and adds it to the session.
         """
-        query = (
-            delete(CodedLine)
-                .where(Document.file_path == document.file_path)
-                .where(CodedLine.coder_id == coder)
-                .execution_options(is_delete_using=True)
+        session = self.get_session()
+        q = (select(CodedLine)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.document_id == document.file_path)
+            .where(CodedLine.coder_id == coder)
         )
-        self.get_session().execute(query)
-
-        # result = self.get_session().query(CodedLine).filter(Document.file_path==document.file_path, CodedLine.coder_id==coder)
-        # result.delete(synchronize_session=False)
-
-        # query = (
-        #     select(CodedLine.code_id, CodedLine.line, DocumentIndex.document_id)
-        #     .join(CodedLine.locations)
-        #     .join(Location.document_index)
-        #     .where(Document.file_path == document.file_path)
-        #     .order_by(DocumentIndex.document_id, CodedLine.line)
-        # )
-        # query = self.filter_query_by_coder(query, coder)
-        # result = self.get_session().delete(query)
-
-
-        stmt = (
-            insert(CodedLine)
-            .values(coded_line_data)
-            .on_conflict_do_nothing((
-                CodedLine.line, 
-                CodedLine.code_id, 
-                CodedLine.coder_id
-            ))
-            .returning(CodedLine)
-        )
-        result = self.get_session().scalars(stmt)
-        for coded_line in result:
-            paragraph = self.get_paragraph(document, coded_line.line)
-            coded_line.locations.append(paragraph)
-        self.get_session().commit()
+        existing_coded_lines = self.session.scalars(q).all()
+        existing_coded_line_data = {(cl.line, cl.code_id) for cl in existing_coded_lines}
+        new_coded_line_data = {(d['line'], d['code_id']) for d in coded_line_data}
+        for cl in existing_coded_lines:
+            if (cl.line, cl.code_id) not in new_coded_line_data:
+                self.get_session().delete(cl)
+        for (line, code_id) in new_coded_line_data - existing_coded_line_data:
+            cl = CodedLine(line=line, code_id=code_id, coder_id=coder)
+            session.add(cl)
+            cl.locations.append(self.get_paragraph(document, line))
+        session.commit()
 
     def create_coded_lines_if_needed(self, document, coded_line_data):
         """Inserts or ignores data for coded lines, associating them with the Document

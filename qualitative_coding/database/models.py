@@ -47,8 +47,8 @@ class DocumentIndex(Base):
 coded_line_location_association_table = Table(
     "coded_line_location_association",
     Base.metadata,
-    Column("coded_line_id", ForeignKey("coded_line.id")),
-    Column("location_id", ForeignKey("location.id")),
+    Column("coded_line_id", ForeignKey("coded_line.id"), primary_key=True),
+    Column("location_id", ForeignKey("location.id"), primary_key=True),
 )
 
 class Location(Base):
