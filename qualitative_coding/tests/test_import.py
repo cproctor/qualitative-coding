@@ -1,12 +1,7 @@
 from tests.fixtures import QCTestCase
-from qualitative_coding.corpus import QCCorpus
 from pathlib import Path
 
 class TestImport(QCTestCase):
-    def setUp(self):
-        super().setUp()
-        self.corpus = QCCorpus(self.testpath / "settings.yaml")
-
     def test_import_verbatim(self):
         self.run_in_testpath("qc import macbeth.txt --importer verbatim")
         self.assertFileImported("macbeth.txt")

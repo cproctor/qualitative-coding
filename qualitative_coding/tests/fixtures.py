@@ -2,6 +2,7 @@ from unittest import TestCase
 from pathlib import Path
 from subprocess import run
 from tempfile import TemporaryDirectory
+from qualitative_coding.corpus import QCCorpus
 import yaml
 
 
@@ -11,6 +12,7 @@ class QCTestCase(TestCase):
 
     def setUp(self):
         self.set_up_qc_project()
+        self.corpus = QCCorpus(self.testpath / "settings.yaml")
 
     def tearDown(self):
         self.tear_down_qc_project()
