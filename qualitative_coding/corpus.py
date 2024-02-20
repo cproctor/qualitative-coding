@@ -53,7 +53,7 @@ from qualitative_coding.helpers import (
 )
 
 DEFAULT_SETTINGS = {
-    'qc_version': '1.0.0',
+    'qc_version': '1.0.3',
     'corpus_dir': 'corpus',
     'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',

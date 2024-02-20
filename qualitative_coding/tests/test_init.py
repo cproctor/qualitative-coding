@@ -6,6 +6,7 @@ import yaml
 # TODO: 
 # - Ensure that init catches validation errors when editors is malformed.
 # - Ensure that init catches validation errors when editor not in editors.
+# - Ensure that init catches files in corpus_dir which have not been imported
 
 class TestInit(QCTestCase):
     def setUp(self):
@@ -18,7 +19,7 @@ class TestInit(QCTestCase):
 
     def test_init_settings_has_expected_default_params(self):
         settings = yaml.safe_load((self.testpath / "settings.yaml").read_text())
-        self.assertEqual(settings['qc_version'], '1.0.0')
+        self.assertEqual(settings['qc_version'], '1.0.3')
 
     def test_init2_creates_expected_dirs(self):
         self.update_settings("logs_dir", "logz")
