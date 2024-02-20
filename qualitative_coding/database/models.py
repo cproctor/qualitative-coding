@@ -78,13 +78,6 @@ class Coder(Base):
 
 class CodedLine(Base):
     __tablename__ = "coded_line"
-    __table_args__ = (
-        UniqueConstraint(
-            "line",
-            "coder_id", 
-            "code_id", 
-        ),
-    )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     line: Mapped[int]
     coder_id: Mapped[str] = mapped_column(ForeignKey(Coder.name))

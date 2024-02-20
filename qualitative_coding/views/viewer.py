@@ -1,30 +1,30 @@
-# Qualitative Coding corpus viewer
-# --------------------------------
-# (c) 2019 Chris Proctor
-
-import subprocess
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.views.coding_ui import CodingUI
 from qualitative_coding.exceptions import QCError
+from qualitative_coding.editors import editors
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
-from subprocess import run
+from subprocess import run, CalledProcessError
 from datetime import datetime
 from random import choice
 from itertools import count
 from textwrap import fill
 import numpy as np
 import csv
+import yaml
 
 class QCCorpusViewer:
+
+    codes_file = "codes.txt"
+    coding_session_metadata_file = ".coding_session"
 
     def __init__(self, corpus):
         self.corpus = corpus
         self.settings = self.corpus.settings
-        self.log = get_logger(__name__, self.corpus.settings['logs_dir'], self.corpus.settings.get('debug'))
+        self.log = get_logger(__name__, self.corpus.logs_dir, self.corpus.settings.get('debug'))
 
     def list_codes(self, expanded=False, depth=None):
         "Prints all the codes in the codebook"
@@ -135,8 +135,6 @@ class QCCorpusViewer:
         if probs:
             totals = np.diag(m).reshape((-1, 1))
             m = m / totals
-            print(totals)
-            print(m)
         if compact:
             data = [[ix, code, *row] for ix, code, row in zip(count(), labels, m)]
             cols = ["ix", "code", *range(len(labels))]
@@ -243,7 +241,7 @@ class QCCorpusViewer:
                 doc_code_counts[doc_path] += 1
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
-                with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
+                with open(self.corpus.corpus_dir / doc_path) as fh:
                     lines = [line for line in fh]
                 ranges = self.merge_ranges(
                     [range(n-before, n+after+1) for n in coded_lines.keys()], 
@@ -365,13 +363,16 @@ class QCCorpusViewer:
         if message:
             fname += "_" + message.replace(" ", "_").lower()
         fname += ".md"
-        path = Path(self.settings['memos_dir']) / fname
+        path = self.corpus.memos_dir / fname
         if message:
             path.write_text(f"# {message}\n\n{coder} {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
         else:
             path.write_text(f"# Memo by {coder} on {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n") 
         self.log.info(f"{coder} wrote memo {message}")
-        run(f"{self.settings['editor']} {path}", check=True, shell=True)
+        with self.corpus.session():
+            self.corpus.get_or_create_coder(coder)
+            command = self.get_memo_command(path)
+            run(command, check=True, shell=True)
 
     def list_memos(self):
         "Concatenates all memo text"
@@ -379,37 +380,23 @@ class QCCorpusViewer:
         return "\n\n".join(text)
 
     def open_editor(self, corpus_file_path, coder_name):
-        temp_codes_file = "codes.txt"
-        full_path = Path(self.settings['corpus_dir']) / corpus_file_path
-        text = full_path.read_text().splitlines()
-        with self.corpus.session():
-            code_line_docs = self.corpus.get_coded_lines(file_list=[corpus_file_path], 
-                    coder=coder_name)
-        coded_lines = [(code, line) for code, line, doc in code_line_docs]
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        full_path = self.corpus.corpus_dir / corpus_file_path
+        codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
+        command = self.get_code_command(full_path, codes_file_path)
+        try:
+            p = run(command, shell=True, capture_output=True, text=True, check=True)
+            print(p.stdout)
+        except CalledProcessError as err:
+            self.save_incomplete_coding_session(corpus_file_path, coder_name)
+            raise QCError(
+                "The editor closed before coding was complete:\n" + 
+                err.stderr + '\n' + 
+                "Run qc code --recover to recover this coding session or " + 
+                "qc code --abandon to abandon it."
+            )
 
-        i=0
-        cl=0
-        out=[]
-
-        while(i<len(text)):
-            code_line = ""
-            while cl < len(coded_lines) and i == coded_lines[cl][1]:
-                code_line += coded_lines[cl][0] + ", "
-                cl += 1
-            code_line += "\n"
-            i+=1
-            out.append(code_line)
-
-        temp_code = open(temp_codes_file, "w")
-        temp_code.writelines(out)
-        temp_code.close()
-
-        editor_args = get_editor_args(self.settings['editor'], full_path, temp_codes_file)
-        p = subprocess.run(editor_args)
-        if p.returncode != 0:
-            print(p.stderr)
-
-        code_file_path = Path(temp_codes_file)
+        code_file_path = self.corpus.resolve_path(self.codes_file)
         code_file_lines = code_file_path.read_text().splitlines()
         coded_lines = []
         with self.corpus.session():
@@ -418,16 +405,96 @@ class QCCorpusViewer:
                 for code in codes:
                     if code.strip() != "":
                         coded_lines.append({
-                            "line": idx,
-                            "coder_id": coder_name, 
+                            "line": idx + 1,
                             "code_id": self.corpus.get_or_create_code(code).name
                         })
             document = self.corpus.get_document(corpus_file_path)
-            self.corpus.update_coded_lines(document, coded_lines, coder_name)
-        # TODO: store args (coder, corpus file) somewhere - preferably new db table
-        if p.returncode == 0: # and if insert didn't return errors
-            code_file_path.unlink()
+            self.corpus.update_coded_lines(document, coder_name, coded_lines)
+        code_file_path.unlink()
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if metadata_file_path.exists():
+            metadata_file_path.unlink()
 
+    def incomplete_coding_session_exists(self):
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        return metadata_file_path.exists()
+
+    def abandon_incomplete_coding_session(self):
+        if not incomplete_coding_session_exists():
+            raise QCError("There is no incomplete coding session.")
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if codes_file_path.exists():
+            codes_file_path.unlink()
+        if metadata_file_path.exists():
+            metadata_file_path.unlink()
+
+    def save_incomplete_coding_session(self, corpus_file_path, coder_name):
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        metadata_file_path.write_text(yaml.dump({
+            'corpus_file_path': corpus_file_path,
+            'coder_name': coder_name,
+        }))
+
+    def recover_incomplete_coding_session(self):
+        if not self.incomplete_coding_session_exists():
+            raise QCError("There is no incomplete coding session.")
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if not codes_file_path.exists():
+            raise QCError(
+                "The coding file, {self.codes_file}, no longer exists. " + 
+                "If you can recover {self.codes_file}, run qc code --recover " +
+                "to recover it. Otherwise, run qc code --abandon to abandon " +
+                "the existing session."
+            )
+        metadata = yaml.safe_load(metadata_file_path.read_text())
+        self.open_editor(**metadata)
+
+    def codes_file_text(self, corpus_file_path, coder_name):
+        """Formats codes for a temporary coding file.
+        """
+        with self.corpus.session():
+            code_line_docs = self.corpus.get_coded_lines(
+                file_list=[corpus_file_path], 
+                coder=coder_name
+            )
+        codes_per_line = defaultdict(list)
+        for code, line, doc in code_line_docs:
+            codes_per_line[line].append(code)
+
+        text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
+        lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
+        return '\n'.join(lines)
+
+    def get_code_command(self, corpus_file_path, codes_file_path):
+        """Returns a shell command to open an editor for coding.
+        settings['editor'] should be a key in qualitative_coding.editors.editors, 
+        or in the user-specified list of editors. (This is checked during validation.)
+
+        Users can define additional editors in settings.yaml, under the editors key. 
+        name, code_command, and memo_command should be specified, using the placeholders
+        {codes_file_path}, {corpus_file_path}, and {memo_file_path}.
+        For example:
+
+            ...
+            editor: vim_with_linenums
+            editors:
+                vim_with_linenums:
+                    name: Vim
+                    code_command: 'vim "{codes_file_path}" -c :set nu -c :set scrollbind -c :83vsplit|view {corpus_file_path}|set scrollbind',
+                    "memo_command": 'vim "{memo_file_path}',
+        """
+        all_editors = {**editors, **self.settings.get('editors', {})}
+        cmd = all_editors[self.settings['editor']]['code_command']
+        return cmd.format(corpus_file_path=corpus_file_path, codes_file_path=codes_file_path)
+
+    def get_memo_command(self, memo_file_path):
+        """Returns a shell command to open an editor for memo-writing.
+        """
+        all_editors = {**editors, **self.settings.get('editors', {})}
+        cmd = all_editors[self.settings['editor']]['memo_command']
+        return cmd.format(memo_file_path=memo_file_path)
 
     def prompt_for_choice(self, prompt, options):
         "Asks for a prompt, returns an index"
@@ -459,20 +526,3 @@ class QCCorpusViewer:
             lo, hi = clamp
             results = [range(max(lo, r.start), min(hi, r.stop)) for r in results]
         return results
-
-
-def get_editor_args(editor: str, corpus_file_path: str, codes_file_path: str) -> list[str]:
-    """Returns argument to be provided to `subprocess.run` to open the editor from the command line"""
-    if editor in ["vim", "nvim"]:
-        return [editor, codes_file_path,
-                "-c", ":set scrollbind", "-c", f':83vsplit|view {corpus_file_path}|set scrollbind']
-    elif editor == "emacs":
-        return [editor, "-Q", "--eval",
-             f"(progn (find-file \"{corpus_file_path}\") (split-window-right) (other-window 1) (find-file \"{codes_file_path}\") (scroll-all-mode))"]
-    # Possible enhancements - vscode allows `--install-extension`, can be used
-    # to suggest installing a scroll sync extension and the LSP server
-    elif editor == "vscode":
-        return ["code", corpus_file_path, codes_file_path]
-    else:
-        return ["echo", "Unsupported editor"]
-

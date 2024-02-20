@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import yaml
 import numpy as np
+import os
 from hashlib import sha1
 from pathlib import Path
 from sqlalchemy import (
@@ -29,7 +30,11 @@ from sqlalchemy.dialects.sqlite import insert
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
-from qualitative_coding.exceptions import QCError
+from qualitative_coding.exceptions import (
+    QCError, 
+    SettingsError, 
+    InvalidParameter,
+)
 from qualitative_coding.database.models import (
     Base,
     Document, 
@@ -41,35 +46,29 @@ from qualitative_coding.database.models import (
     CodingSession,
     coded_line_location_association_table
 )
-from qualitative_coding.testing import CorpusTestingMethodsMixin
+from qualitative_coding.editors import editors
+from qualitative_coding.media_importers import media_importers
+from qualitative_coding.helpers import (
+    iter_paragraph_lines,
+    read_settings,
+)
 
 DEFAULT_SETTINGS = {
+    'qc_version': '1.0.0',
     'corpus_dir': 'corpus',
     'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',
     'memos_dir': 'memos',
-    'codebook_file': 'codebook.yaml',
+    'codebook': 'codebook.yaml',
     'editor': 'code',
 }
 
-def iter_paragraph_lines(fh):
-    p_start = 0
-    in_whitespace = False
-    for i, line in enumerate(fh):
-        if line.strip() == "":
-            in_whitespace = True
-        elif in_whitespace:
-            yield p_start, i
-            p_start = i
-            in_whitespace = False
-    yield p_start, i + 1
-
-class QCCorpus(CorpusTestingMethodsMixin):
+class QCCorpus:
     """Provides data access to the corpus of documents and codes. 
     QCCorpus methods which access the database must be called from within
     the session context manager:
 
-    corpus = QCCorpus()
+    corpus = QCCorpus('settings.yaml')
     with corpus.session():
         corpus.get_or_create_code("interesting")
     """
@@ -77,53 +76,89 @@ class QCCorpus(CorpusTestingMethodsMixin):
     units = ["line", "paragraph", "document"]
 
     @classmethod
-    def initialize(cls, settings_file="settings.yaml"):
+    def initialize(cls, settings_path="settings.yaml"):
         """
-        If the settings file does not exist, creates it. Uses the settings
-        file to initialize the expected directories and files.
+        Initializes a qc project.
+        If the settings file does not exist, create it.
+        Otherwise, uses the settings file to initialize the expected 
+        directories and files.
         """
-        supported_editors = ["code", "vim", "nvim", "emacs", "Other"]
-        supported_editors_prompt = ["Visual Studio Code (Recommended)", "Vim", "Neovim", "Emacs", "Other"]
-        settings_path = Path(settings_file)
-        if not settings_path.exists():
-            choice=prompt_for_choice("Choose your preferred editor", supported_editors_prompt)-1
-            editor = supported_editors[choice]
-            settings_path.write_text(yaml.dump({**DEFAULT_SETTINGS, 'editor':editor}))
+        settings_path = Path(settings_path)
+        if settings_path.exists():
+            cls.validate_settings(settings_path)
+            settings = yaml.safe_load(settings_path.read_text())
+            for needed_dir in ["corpus_dir", "logs_dir", "memos_dir"]:
+                dirpath = Path(settings[needed_dir])
+                if dirpath.exists() and not dirpath.is_dir():
+                    raise QCError(f"Cannot create dir {dirpath}; there is a file with that name.")
+                if not dirpath.exists():
+                    dirpath.mkdir()
+            codebook_path = Path(settings["codebook"])
+            if codebook_path.exists() and codebook_path.is_dir():
+                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
+            if not codebook_path.exists():
+                codebook_path.touch()
+            if Path(settings["database"]).is_absolute():
+                db_path = Path(settings["database"])
+            else:
+                db_path = settings_path.resolve().parent / settings["database"]
+            if db_path.exists() and db_path.is_dir():
+                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
+            if not db_path.exists():
+                engine = create_engine(f"sqlite:///{db_path}")
+                Base.metadata.create_all(engine)
+        else:
+            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
 
-        settings = yaml.safe_load(settings_path.read_text())
-        for key, val in settings.items():
-            path = Path(val)
-            if key.endswith("dir"):
-                if path.exists():
-                    if not path.is_dir():
-                        msg = f"Expected {key} ({val}) to be a directory"
-                        raise ValueError(msg)
-                else:
-                    path.mkdir(parents=True)
-            elif key.endswith("file"):
-                if path.exists():
-                    if path.is_dir():
-                        msg = f"Expected {key} ({val}) to be a file"
-                        raise ValueError(msg)
-                else:
-                    path.touch()
-        if not Path(settings['database']).exists():
-            engine = create_engine(f"sqlite:///{settings['database']}")
-            Base.metadata.create_all(engine)
+    @classmethod
+    def validate_settings(cls, settings_path):
+        """Checks that settings are valid, raising QCError if not.
+        This method checks the contents of the settings file, but does
+        not compare it with the project itself.
+        """
+        try:
+            errors = []
+            if not Path(settings_path).exists():
+                errors.append(f"Settings file {settings_path} is missing")
+                raise SettingsError()
+            settings = read_settings(settings_path)
+            for expected_key in DEFAULT_SETTINGS:
+                if expected_key not in settings:
+                    errors.append(f"Expected '{expected_key}' in settings")
+                elif not isinstance(settings[expected_key], str):
+                    errors.append(f"Invalid path for {expected_key}: {settings[expected_key]}")
+            if 'editors' in settings:
+                if not isinstance(settings['editors'], dict):
+                    errors.append(f"Could not read custom-defined editors.")
+                    raise SettingsError()
+                for name, params in settings['editors'].items():
+                    expected = {'name', 'code_command', 'memo_command'}
+                    if isinstance(params, dict):
+                        for extra in set(params.keys()) - expected:
+                            errors.append(f"Unexpected param in editors.{name}: {extra}")
+                        for missing in expected - set(params.keys()):
+                            errors.append(f"Missing param in editors.{name}: {extra}")
+                    else:
+                        errors.append(f"Expected editors.{name} to be a dict")
+            if not settings.get('editor') in {**editors, **settings.get('editors', {})}:
+                errors.append(f"Unrecognized editor {settings.get('editor')}")
+            if errors:
+                raise SettingsError()
+        except SettingsError:
+            errfmt = [f" - {err}" for err in errors]
+            raise QCError('\n'.join(["Error validating settings:"] + errfmt))
 
-    def __init__(self, settings):
-        """
-        We need the actual settings file instead of just settings because it also
-        provides a default (portable) working directory for relative links
-        """
-        self.settings = settings
-        self.validate()
-        self.log = get_logger(
-            __name__, 
-            self.settings['logs_dir'], 
-            self.settings.get('debug')
-        )
-        self.engine = create_engine(f"sqlite:///{self.settings['database']}")
+    def __init__(self, settings_path, skip_validation=False):
+        self.settings_path = Path(settings_path)
+        self.settings = read_settings(settings_path)
+        if not skip_validation:
+            self.validate()
+        self.corpus_dir = self.resolve_path(self.settings['corpus_dir'])
+        self.memos_dir = self.resolve_path(self.settings['memos_dir'])
+        self.logs_dir = self.resolve_path(self.settings['logs_dir'])
+        self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
+        db_file = self.resolve_path(self.settings['database'])
+        self.engine = create_engine(f"sqlite:///{db_file}")
 
     class NotInSession(Exception):
         def __init__(self, *args, **kwargs):
@@ -135,7 +170,18 @@ class QCCorpus(CorpusTestingMethodsMixin):
 
     @contextmanager
     def session(self):
-        "A context manager which holds open a Session"
+        """A context manager which holds open a Session.
+        Client code will often need to execute multiple corpus methods
+        within a single session. For example:
+
+        with corpus.session():
+            corpus.get_or_create_coder('chris')
+
+        This context manager should not be used within QCCorpus methods.
+        Instead, use get_session() below; the session will be returned
+        if it is in scope.
+        """
+
         session_context_manager = Session(self.engine)
         self.session = session_context_manager.__enter__()
         yield
@@ -149,24 +195,30 @@ class QCCorpus(CorpusTestingMethodsMixin):
         except AttributeError:
             raise self.NotInSession()
 
+    def resolve_path(self, path):
+        "Returns a path relative to self.settings_path"
+        path = Path(path)
+        if path.is_absolute():
+            return path.resolve()
+        else:
+            return (self.settings_path.parent / path).resolve()
+
     def validate(self):
-        "Checks that files are as they should be"
+        "Checks that project state is valid"
+        QCCorpus.validate_settings(self.settings_path)
         errors = []
-        for attr in DEFAULT_SETTINGS.keys():
-            if attr not in self.settings:
-                errors.append(f"settings['{attr}'] is missing")
-            elif attr.endswith('dir'):
-                path = Path(self.settings[attr])
-                if not path.exists():
-                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
-                elif not path.is_dir():
-                    errors.append(f"settings['{attr}'] ({path}) is not a directory")
-            elif attr.endswith('file'):
-                path = Path(self.settings[attr])
-                if not path.exists():
-                    errors.append(f"settings['{attr}'] ({path}) path does not exist.")
-                elif path.is_dir():
-                    errors.append(f"settings['{attr}'] ({path}) is a directory")
+        for expected_dir in ['corpus_dir', 'logs_dir', 'memos_dir']:
+            path = self.resolve_path(self.settings[expected_dir])
+            if not path.exists():
+                errors.append(f"{expected_dir} path {path} does not exist")
+            elif not path.is_dir():
+                errors.append(f"{expected_dir} path {path} is not a directory")
+        for expected_file in ['codebook', 'database']:
+            path = self.resolve_path(self.settings[expected_file])
+            if not path.exists():
+                errors.append(f"{expected_file} path {path} does not exist")
+            elif path.is_dir():
+                errors.append(f"{expected_file} path {path} is a directory")
         if errors:
             raise QCError("Invalid settings:\n" + "\n".join([f"- {err}" for err in errors]))
 
@@ -210,8 +262,8 @@ class QCCorpus(CorpusTestingMethodsMixin):
             return coder
 
     def get_all_coders(self):
-        q = select(Coder.name)
-        return self.get_session().execute(q).scalars()
+        q = select(Coder)
+        return self.get_session().scalars(q)
 
     def get_or_create_code(self, code_name):
         try:
@@ -234,7 +286,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
 
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
-        return TreeNode.read_yaml(self.settings['codebook_file'])
+        return TreeNode.read_yaml(self.resolve_path(self.settings['codebook']))
 
     def get_document(self, corpus_path):
         """Fetches a document object.
@@ -255,15 +307,22 @@ class QCCorpus(CorpusTestingMethodsMixin):
             .where(Location.start_line <= line)
             .where(Location.end_line > line)
         )
-        return self.get_session().execute(q).scalar_one()
+        try:
+            return self.get_session().execute(q).scalar_one()
+        except NoResultFound:
+            raise QCError(f"Error getting paragraph for {document.file_path}, line {line}.")
 
-    def update_coded_lines(self, document, coded_line_data, coder):
+    def update_coded_lines(self, document, coder, coded_line_data):
         """Updates document's coded lines for the given coder.
+        document and coder should be strings, and coded_line_data should
+        be a list of dicts like {'line': 1, 'code_id': 'super}.
+
         Fetches all existing coded lines for the document and coder, and 
         then compares the set of existing coded line data with new coded line data.
         When existing are absent from new, marks objects for deletion. 
         When new are absent from existing, creates a new CodedLine and adds it to the session.
         """
+        self.get_or_create_coder(coder)
         session = self.get_session()
         q = (select(CodedLine)
             .join(CodedLine.locations)
@@ -282,6 +341,7 @@ class QCCorpus(CorpusTestingMethodsMixin):
             session.add(cl)
             cl.locations.append(self.get_paragraph(document, line))
         session.commit()
+        self.update_codebook()
 
     def create_coding_session(self, coder, document, code_file):
         stmt = (
@@ -291,32 +351,12 @@ class QCCorpus(CorpusTestingMethodsMixin):
         self.get_session().execute(stmt)
         self.get_session().commit()
 
-    def create_coded_lines_if_needed(self, document, coded_line_data):
-        """Inserts or ignores data for coded lines, associating them with the Document
-        through paragraphs.
-        """
-        stmt = (
-            insert(CodedLine)
-            .values(coded_line_data)
-            .on_conflict_do_nothing((
-                CodedLine.line, 
-                CodedLine.code_id, 
-                CodedLine.coder_id
-            ))
-            .returning(CodedLine)
-        )
-        result = self.get_session().scalars(stmt)
-        for coded_line in result:
-            paragraph = self.get_paragraph(document, coded_line.line)
-            coded_line.locations.append(paragraph)
-        self.get_session().commit()
-
     def get_relative_corpus_path(self, corpus_path):
         """Given a Path or str, tries to return a string representation of the
         path relative to the corpus directory, suitable for Document.file_path.
         """
         try:
-            relative_path = Path(corpus_path).relative_to(self.settings['corpus_dir'])
+            relative_path = Path(corpus_path).relative_to(self.corpus_dir)
             return str(relative_path)
         except ValueError:
             if Path(corpus_path).is_absolute():
@@ -326,6 +366,51 @@ class QCCorpus(CorpusTestingMethodsMixin):
                 )
             else:
                 return str(corpus_path)
+
+    def import_media(self, file_path, recursive=False, corpus_root=None, importer="pandoc"):
+        """Imports media into the corpus. 
+        Importing media consists of three tasks: 
+
+        - transforming the media's representation, 
+        - saving the transformed media into the corpus directory,
+        - and registering the file in the database. 
+
+        The specified media importer handles transformation and saving. 
+        When recursive is True, walks the given directory and imports all files found.
+        When corpus_root is true, saves the files relative to the given subdirectory within
+        the corpus.
+        """
+        imp = media_importers[importer](self.settings)
+        source = Path(file_path)
+
+        if not source.exists():
+            raise InvalidParameter(f"{source} does not exist.")
+        if recursive and not source.is_dir():
+            raise InvalidParameter(f"{source} must be a dir when importing recursively.")
+        if not recursive and source.is_dir():
+            raise InvalidParameter(f"{source} is a dir. Use --recursive.")
+        if corpus_root and Path(corpus_root).is_absolute():
+            raise InvalidParameter(f"corpus_root ({corpus_root}) must be a relative directory.")
+
+        if corpus_root:
+            dest_root_dir = self.corpus_dir / corpus_root
+            dest_root_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            dest_root_dir = self.corpus_dir
+
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(source):
+                dest_dir = dest_root_dir / dir_path
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                for fn in filenames:
+                    source_path = Path(dir_path) / fn
+                    dest_path = (dest_dir / fn).with_suffix(".txt")
+                    imp.import_media(source_path, dest_path)
+                    self.register_document(dest_path)
+        else:
+            dest_path = (dest_root_dir / source.name).with_suffix(".txt")
+            imp.import_media(source, dest_path)
+            self.register_document(dest_path)
 
     def hash_file(self, corpus_path):
         """Computes the hash of a document at a corpus path.
@@ -537,32 +622,60 @@ class QCCorpus(CorpusTestingMethodsMixin):
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
             code_tree.add_child(new_code)
-        TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
+        TreeNode.write_yaml(self.settings['codebook'], code_tree)
 
-    # TODO: Needs to be rewritten for SQL.
-    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
-                update_codebook=False):
+    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coder=None):
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
-        """
-        for corpus_path in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            for code_file_path in self.get_code_files_for_corpus_file(corpus_path, coder=coder):
-                existing_codes = self.read_codes(code_file_path)
-                if len(existing_codes) == 0: 
-                    continue
-                line_nums, codes = zip(*self.read_codes(code_file_path))
-                if set(old_codes) & set(codes):
-                    new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
-                    existing_coder = self.get_coder_from_code_path(code_file_path)
-                    self.write_codes(corpus_path, existing_coder, new_codes)
 
-        global_rename = pattern is None and file_list is None and invert is None and coder is None
-        if global_rename or update_codebook:
-            code_tree = self.get_codebook()
-            for old_code in old_codes:
-                code_tree.rename(old_code, new_code)
-                code_tree.remove_children_by_name(old_code)
-                self.log.info(f"Renamed code {old_code} to {new_code}")
-            TreeNode.write_yaml(self.settings['codebook_file'], code_tree)
-            self.update_codebook()
+        How will I do this?
+        get all the coded lines (with relevant params).
+        For each, create a new coded line with the new code. 
+        Then delete all coded lines with the old code.
+        get_coded_lines returns: (Code.name, CodedLine.line_number, Document.file_path)
+
+        """
+        session = self.get_session()
+        new_code = self.get_or_create_code(new_code)
+        query = (
+            select(CodedLine)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.name == "paragraphs")
+            .where(CodedLine.code_id.in_(old_codes))
+        )
+        query = self.filter_query_by_document(query, pattern, file_list)
+        query = self.filter_query_by_coder(query, coder)
+        matching_coded_lines = session.execute(query).scalars()
+        for cl in matching_coded_lines:
+            doc_path = cl.locations[0].document_index.document_id
+            if self.coded_line_exists(cl.coder_id, new_code.name, cl.line, doc_path):
+                session.delete(cl)
+            else:
+                cl.code = new_code
+        session.commit()
+        self.update_codebook()
+
+    def coded_line_exists(self, coder_name, code_name, line, document_file_path):
+        """Checks whether a coded line exists with the given params.
+        This method is a candidate for optimization.
+        """
+        session = self.get_session()
+        query = (
+            select(CodedLine)
+            .where(CodedLine.coder_id == coder_name)
+            .where(CodedLine.code_id == code_name)
+            .where(CodedLine.line == line)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.document_id == document_file_path)
+        )
+        result = session.execute(query).scalars()
+        return len(list(result)) > 0
+
+
+
+
+
+

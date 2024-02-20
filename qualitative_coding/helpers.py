@@ -1,4 +1,38 @@
 from textwrap import fill
+from pathlib import Path
+from qualitative_coding.exceptions import QCError
+import yaml
+
+def read_settings(path):
+    if not Path(path).exists():
+        raise QCError(f"Settings file {path} not found.")
+    try:
+        settings_text = Path(path).read_text()
+    except:
+        raise QCError(f"Error reading settings file {path}")
+    try:
+        return yaml.safe_load(settings_text)
+    except:
+        raise QCError(f"Error parsing settings file {path}")
+
+def read_file_list(filename):
+    """Many cli commands accept `--filenames`, a path to a file 
+    containing a list of files. 
+    """
+    if filename:
+        return Path(filenames).read_text().split("\n")
+
+def iter_paragraph_lines(fh):
+    p_start = 0
+    in_whitespace = False
+    for i, line in enumerate(fh):
+        if line.strip() == "":
+            in_whitespace = True
+        elif in_whitespace:
+            yield p_start, i
+            p_start = i
+            in_whitespace = False
+    yield p_start, i + 1
 
 def merge_ranges(ranges, clamp=None):
     "Overlapping ranges? Let's fix that. Optionally supply clamp=[0, 100]"
