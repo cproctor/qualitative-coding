@@ -38,6 +38,7 @@ from qualitative_coding.database.models import (
     Code, 
     Coder, 
     CodedLine,
+    CodingSession,
     coded_line_location_association_table
 )
 from qualitative_coding.testing import CorpusTestingMethodsMixin
@@ -281,6 +282,14 @@ class QCCorpus(CorpusTestingMethodsMixin):
             session.add(cl)
             cl.locations.append(self.get_paragraph(document, line))
         session.commit()
+
+    def create_coding_session(self, coder, document, code_file):
+        stmt = (
+            insert(CodingSession)
+            .values(coder_name=coder, document=document.file_path, code_file=code_file)
+        )
+        self.get_session().execute(stmt)
+        self.get_session().commit()
 
     def create_coded_lines_if_needed(self, document, coded_line_data):
         """Inserts or ignores data for coded lines, associating them with the Document

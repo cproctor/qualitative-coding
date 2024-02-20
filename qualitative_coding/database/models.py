@@ -95,3 +95,10 @@ class CodedLine(Base):
         secondary=coded_line_location_association_table,
         back_populates="coded_lines"
     )
+
+class CodingSession(Base):
+    __tablename__ = "coding_session"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    coder_name:  Mapped[str] = mapped_column(ForeignKey(Coder.name))
+    document: Mapped[str] = mapped_column(ForeignKey(Document.file_path))
+    code_file: Mapped[str]
