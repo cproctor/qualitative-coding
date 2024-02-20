@@ -7,7 +7,7 @@ class TestCodebook(QCTestCase):
         self.assertEqual(cb, None)
 
     def test_codebook_updates_codebook_file(self):
-        self.run_in_testpath("qc import macbeth.txt --importer verbatim")
+        self.run_in_testpath("qc corpus import macbeth.txt --importer verbatim")
         self.set_mock_editor()
         self.run_in_testpath("qc code chris")
         self.run_in_testpath("qc codebook")

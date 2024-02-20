@@ -4,7 +4,7 @@ import yaml
 class TestList(QCTestCase):
     def setUp(self):
         super().setUp()
-        self.run_in_testpath("qc import macbeth.txt --importer verbatim")
+        self.run_in_testpath("qc corpus import macbeth.txt --importer verbatim")
         self.set_mock_editor()
         self.run_in_testpath("qc code chris")
         code_tree = [{'line': ['one', 'two']}]

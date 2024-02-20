@@ -1,8 +1,5 @@
-import os
 import click
 from qualitative_coding.corpus import QCCorpus
-from pathlib import Path
-from textwrap import fill
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.media_importers import media_importers
 
@@ -27,4 +24,3 @@ def import_media(file_path, settings, recursive, corpus_root, importer):
             corpus_root=corpus_root, 
             importer=importer
         )
-

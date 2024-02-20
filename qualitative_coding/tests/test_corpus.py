@@ -3,11 +3,11 @@ from pathlib import Path
 
 class TestImport(QCTestCase):
     def test_import_verbatim(self):
-        self.run_in_testpath("qc import macbeth.txt --importer verbatim")
+        self.run_in_testpath("qc corpus import macbeth.txt --importer verbatim")
         self.assertFileImported("macbeth.txt")
 
     def test_import_pandoc(self):
-        self.run_in_testpath("qc import moby_dick.md --importer pandoc")
+        self.run_in_testpath("qc corpus import moby_dick.md --importer pandoc")
         self.assertFileImported("moby_dick.txt")
         nlines = len((self.testpath / "corpus/moby_dick.txt").read_text().split('\n'))
         self.assertEqual(nlines, 5)
@@ -16,7 +16,7 @@ class TestImport(QCTestCase):
         (self.testpath / "chapters").mkdir()
         (self.testpath / "chapters/one.txt").write_text("one")
         (self.testpath / "chapters/two.txt").write_text("two")
-        self.run_in_testpath("qc import chapters --recursive")
+        self.run_in_testpath("qc corpus import chapters --recursive")
         self.assertFileImported("chapters/one.txt")
         self.assertFileImported("chapters/two.txt")
 
