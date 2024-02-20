@@ -311,8 +311,11 @@ class QCCorpus:
         except NoResultFound:
             raise QCError(f"Error getting paragraph for {document.file_path}, line {line}.")
 
-    def update_coded_lines(self, document, coded_line_data, coder):
+    def update_coded_lines(self, document, coder, coded_line_data):
         """Updates document's coded lines for the given coder.
+        document and coder should be strings, and coded_line_data should
+        be a list of dicts like {'line': 1, 'code_id': 'super}.
+
         Fetches all existing coded lines for the document and coder, and 
         then compares the set of existing coded line data with new coded line data.
         When existing are absent from new, marks objects for deletion. 
@@ -337,26 +340,6 @@ class QCCorpus:
             session.add(cl)
             cl.locations.append(self.get_paragraph(document, line))
         session.commit()
-
-    def create_coded_lines_if_needed(self, document, coded_line_data):
-        """Inserts or ignores data for coded lines, associating them with the Document
-        through paragraphs.
-        """
-        stmt = (
-            insert(CodedLine)
-            .values(coded_line_data)
-            .on_conflict_do_nothing((
-                CodedLine.line, 
-                CodedLine.code_id, 
-                CodedLine.coder_id
-            ))
-            .returning(CodedLine)
-        )
-        result = self.get_session().scalars(stmt)
-        for coded_line in result:
-            paragraph = self.get_paragraph(document, coded_line.line)
-            coded_line.locations.append(paragraph)
-        self.get_session().commit()
 
     def get_relative_corpus_path(self, corpus_path):
         """Given a Path or str, tries to return a string representation of the
@@ -631,30 +614,58 @@ class QCCorpus:
             code_tree.add_child(new_code)
         TreeNode.write_yaml(self.settings['codebook'], code_tree)
 
-    # TODO: Needs to be rewritten for SQL.
-    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, invert=False, coder=None,
-                update_codebook=False):
+    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coder=None):
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
-        """
-        for corpus_path in self.iter_corpus(pattern=pattern, file_list=file_list, invert=invert):
-            for code_file_path in self.get_code_files_for_corpus_file(corpus_path, coder=coder):
-                existing_codes = self.read_codes(code_file_path)
-                if len(existing_codes) == 0: 
-                    continue
-                line_nums, codes = zip(*self.read_codes(code_file_path))
-                if set(old_codes) & set(codes):
-                    new_codes = [(ln, new_code if code in old_codes else code) for ln, code in zip(line_nums, codes)]
-                    existing_coder = self.get_coder_from_code_path(code_file_path)
-                    self.write_codes(corpus_path, existing_coder, new_codes)
 
-        global_rename = pattern is None and file_list is None and invert is None and coder is None
-        if global_rename or update_codebook:
-            code_tree = self.get_codebook()
-            for old_code in old_codes:
-                code_tree.rename(old_code, new_code)
-                code_tree.remove_children_by_name(old_code)
-                self.log.info(f"Renamed code {old_code} to {new_code}")
-            TreeNode.write_yaml(self.settings['codebook'], code_tree)
-            self.update_codebook()
+        How will I do this?
+        get all the coded lines (with relevant params).
+        For each, create a new coded line with the new code. 
+        Then delete all coded lines with the old code.
+        get_coded_lines returns: (Code.name, CodedLine.line_number, Document.file_path)
+
+        """
+        session = self.get_session()
+        new_code = self.get_or_create_code(new_code)
+        query = (
+            select(CodedLine)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.name == "paragraphs")
+            .where(CodedLine.code_id.in_(old_codes))
+        )
+        query = self.filter_query_by_document(query, pattern, file_list)
+        query = self.filter_query_by_coder(query, coder)
+        matching_coded_lines = session.execute(query).scalars()
+        for cl in matching_coded_lines:
+            doc_path = cl.locations[0].document_index.document_id
+            if self.coded_line_exists(cl.coder_id, new_code.name, cl.line, doc_path):
+                session.delete(cl)
+            else:
+                cl.code = new_code
+        session.commit()
+        self.update_codebook()
+
+    def coded_line_exists(self, coder_name, code_name, line, document_file_path):
+        """Checks whether a coded line exists with the given params.
+        This method is a candidate for optimization.
+        """
+        session = self.get_session()
+        query = (
+            select(CodedLine)
+            .where(CodedLine.coder_id == coder_name)
+            .where(CodedLine.code_id == code_name)
+            .where(CodedLine.line == line)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.document_id == document_file_path)
+        )
+        result = session.execute(query).scalars()
+        return len(list(result)) > 0
+
+
+
+
+
+

@@ -1,5 +1,4 @@
 from tests.fixtures import QCTestCase
-from pathlib import Path
 import yaml
 
 class TestCodebook(QCTestCase):

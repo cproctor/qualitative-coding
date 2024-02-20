@@ -10,10 +10,10 @@ class TestFind(QCTestCase):
 
     def test_find_shows_codes(self):
         result = self.run_in_testpath("qc find one")
-        self.assertEqual(len(result.stdout.splitlines()), 8)
+        self.assertEqual(len(result.stdout.splitlines()), 9)
 
     def test_find_respects_context_window(self):
         result = self.run_in_testpath("qc find one -C 5")
-        self.assertEqual(len(result.stdout.splitlines()), 11)
+        self.assertEqual(len(result.stdout.splitlines()), 12)
 
 

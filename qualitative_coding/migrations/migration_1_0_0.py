@@ -51,10 +51,9 @@ class Migrate_1_0_0(QCMigration):
                         for line_num, code_name in code_data:
                             coded_lines.append({
                                 "line": line_num,
-                                "coder_id": coder_name, 
                                 "code_id": corpus.get_or_create_code(code_name).name
                             })
-                    corpus.create_coded_lines_if_needed(document, coded_lines)
+                    corpus.update_coded_lines(document, coder_name, coded_lines)
         shutil.rmtree(corpus_v0.codes_dir)
 
     def revert(self, settings_path):

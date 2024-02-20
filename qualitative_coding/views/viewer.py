@@ -399,12 +399,11 @@ class QCCorpusViewer:
                 for code in codes:
                     if code.strip() != "":
                         coded_lines.append({
-                            "line": idx,
-                            "coder_id": coder_name, 
+                            "line": idx + 1,
                             "code_id": self.corpus.get_or_create_code(code).name
                         })
             document = self.corpus.get_document(corpus_file_path)
-            self.corpus.update_coded_lines(document, coded_lines, coder_name)
+            self.corpus.update_coded_lines(document, coder_name, coded_lines)
         code_file_path.unlink()
 
     def codes_file_text(self, corpus_file_path, coder_name):
