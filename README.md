@@ -20,16 +20,17 @@ Qualitative Coding, or `qc`, was designed to address these issues. I have used
 `qc` as a primary coding tool in a [SIGCSE
 paper](https://chrisproctor.net/research/proctor_2019_defining/) on
 packaging and releasing a stable version was my own dissertation work. 
+`qc` is in active use on forthcoming publications and receives regular updates
+as we need new features. 
 
 ## Limitations
 
 - Due to its nature as a command-line program, `qc` is only well-suited to coding textual data. 
 - `qc` uses line numbers as a fundamental unit. Therefore, it requires text files in your corpus to be 
-  hard-wrapped at 80 characters. The `init` task can handle this for you. 
-- Currently, the only interface for actually doing the coding is a split-screen
-  in vim, with the corpus text on one side and comma-separated codes adjacent. This works well 
-  for me, but might not work well for you. I have other ideas in the pipeline,
-  but they won't be around soon.
+  hard-wrapped at 80 characters. The `corpus import` task can handle this for you. 
+- Coding is done in a two-column view in a variety of supported editors, including
+  Visual Studio Code, vim, and emacs. If you are not used to using a text editor, 
+  or if you prefer a more graphical coding experience, `qc` might not be the best option.
 
 # Installation
 
@@ -37,16 +38,9 @@ packaging and releasing a stable version was my own dissertation work.
 
 # Setup 
 
-- All the source files you want to code should be in a directory (possibly
-  nested). 
-- Choose a working directory. Run `qc init`. This will create `settings.yaml`.
-- In `settings.yaml`, update `corpus_dir` with the directory holding your source
-  files. This may be relative to `settings.yaml` or absolute. Similarly, specify
-  directories for `codes_dir` `logs_dir`, `memos_dir`, and the YAML file where you want
-  to store your codebook. Unless you're particular, the default settings are fine. 
-- Run `qc init --prepare-corpus --prepare-codes --coder yourname`. This will
-  hard-wrap all the text in your corpus at 80 characters and create blank coding
-  files. 
+Choose a working directory for your project. Run `qc init -y`. This will create 
+`settings.yaml` with the default settings, and set up the required files 
+and directories for you. (Visual Studio Code is the default editor.) 
 
 # Usage
 
@@ -57,11 +51,10 @@ workflow is to use `code` to apply qualitative codes to your text files. As you
 go, you will start to have ideas about the meanings and organization of your
 codes. Use `memo` to capture these. 
 
-Once you finish a round of coding, it's time to reorganize your codes. Use
-`codebook` to refresh the codebook based on new coding. Use `stats` to see the
-distribution of your codes. If you want to move codes into a tree, make these
-changes directly in the codebook's YAML. If you realize you have redundant
-codes, use `rename`. 
+Once you finish a round of coding, it's time to reorganize your codes. Edit 
+`codebook.yaml`, grouping the flat list of codes into a hierarchy.
+Use `codes stats` to see the distribution of your codes. 
+Use `codes rename` if you want to rename existing codes.
 
 After you finish coding, you may want to use your codes for analysis. Tools 
 are provided for viewing statistics, cross-tabulation, and examples of codes, 
@@ -80,25 +73,17 @@ Create a new directory somewhere. We will create a virtual environment, intstall
     $ python3 -m venv env
     $ source env/bin/activate
     $ pip install qualitative-coding
-    $ qc init
-    $ qc init
-    $ curl -o corpus/what_is_coding.txt "https://en.wikipedia.org/w/index.php?title=Coding_%28social_sciences%29&action=raw"
-    $ qc init --prepare-corpus --prepare-codes --coder chris
+    $ qc init -y
+    $ curl -o what_is_coding.txt "https://en.wikipedia.org/w/index.php?title=Coding_%28social_sciences%29&action=raw"
+    $ qc corpus import what_is_coding.txt
 
-Why run `qc init` three times? The first time creates a prepopulated
-`settings.py` file. You could then change any settings. The second time 
-reads `settings.py` and creates the specified files and directories. 
-And the third run, with the flags, processes the corpus file and creates a
-corresponding coding file.
+Now we're ready to start coding. This next command will open a split-window session in 
+your editor of choice; add comma-separated codes to the blank file on the right. 
+Once you've added some codes, we can analyze and refine them.
 
-Now we're ready to start coding. This next command will open a split-window vim session. 
-Add comma-separated codes to the blank file on the right. I usually page-up (control+u) 
-and page-down (control+d) each file to keep their line numbers synchronized. Once you've 
-added some codes, we can analyze and refine them.
-
-    $ qc code chris -f
+    $ qc code chris
     $ qc codebook
-    $ qc list
+    $ qc codes list
     - a_priori
     - analysis
     - coding_process
@@ -108,12 +93,11 @@ added some codes, we can analyze and refine them.
     - themes
 
 Now that we have coded our corpus (consisting of a single document), we should
-think about whether these codes have any structure. All data in `qc` is stored
-in flat files, so you can easily modify it by hand. Re-organize some of your
+think about whether these codes have any structure. Re-organize some of your
 codes in `codebook.yaml`. When you finish, run `codebook` again. It will go
 through your corpus and add any missing codes. 
 
-    $ qc list
+    $ qc codes list
     - analysis
     - coding_process
         - a_priori
@@ -125,7 +109,7 @@ through your corpus and add any missing codes.
 I decided to group a priori coding and grounded coding together under coding
 process. Let's see some statistics on the codes:
 
-    $ qc stats
+    $ qc codes stats
     Code                  Count
     ------------------  -------
     analysis                  2
@@ -137,7 +121,7 @@ process. Let's see some statistics on the codes:
     themes                    2
 
 `stats` has lots of useful filtering and formatting options. For example, `qc
-stats --pattern wiki --depth 1 --min 10 --format latex` would only consider files
+codes stats --pattern wiki --depth 1 --min 10 --format latex` would only consider files
 having "wiki" in the filename. Within these files, it would show only
 top-level categories of codes having at least ten instances, and would output a
 table suitable for inclusion in a LaTeX document. Use `--help` on any command to
@@ -145,7 +129,7 @@ see available options.
 
 Next, we might want to see examples of what we have coded. 
 
-    $ qc find analysis
+    $ qc codes find analysis
     Showing results for codes:  analysis
     
     what_is_coding.txt (2)
@@ -168,7 +152,7 @@ point, you will probably want to revise your codes. You can easily rename a
 code, or collapse codes together, with the `rename` command. This updates your 
 codebook as well as in all your code files.
 
-    $ qc rename grounded_coding grounded
+    $ qc codes rename grounded_coding grounded
 
 At this point, you are starting to realize some of the deeper themes running
 through your corpus. Capturing these in an "integrative memo" is an important
@@ -187,7 +171,10 @@ I hope you find `qc` to be powerful and efficient; it's worked for me!
 Use `--help` for a full list of available options for each command.
 
 ### init
-Initializes a new coding project, as described above.
+Initializes a new coding project. If `settings.yaml` is missing, writes the settings
+file with default values. Make any desired edits, and then run `qc init` again. 
+You can skip this step by passing **--accept-defaults** (**-y**) to the first
+invocation of `qc init`. It is safe to re-run `qc init`. 
 
     $ qc init
 
@@ -205,35 +192,85 @@ no existing codes (for this coder) using **--first** (**-1**) or **--random**
 
     $ qc code chris -1
 
+Save and close your editor when you finish. In the unlikely event that your editor 
+crashes or your battery dies before you finish coding, your saved changes are 
+persisted in `codes.txt`. Run `qc code --recover` to resume the coding session.
+
 ### codebook (cb)
-Scans through all the code files and adds new codes to the codebook. 
+Ensures that all codes in the project are included in the codebook. (New codes are
+added automatically, but if you accidentally delete some while editing the codebook, 
+`qc codebook` will replace them.)
 
     $ qc codebook
 
-### list (ls)
+### coders
+List all coders in the current project.
+
+### memo
+Opens your default editor to write a memo, optionally passing **--message** (**-m**)
+as the title of the memo. Use **--list** (**-l**) to list all memos.
+
+    $ qc memo -m "It's all starting to make sense..."
+
+### upgrade
+Upgrade a `qc` project from a prior version of `qc`.
+
+### version
+Show the current version of `qc`.
+
+## Corpus commands
+The following commands are grouped under `qc corpus`.
+
+### corpus list
+List all files in the corpus.
+
+### corpus import
+Import files into the corpus, copying source files into `corpus`, formatting them 
+(see options), and registering them in the database. Individual files can be imported, 
+or directories can be recursively imported using **--recursive** (**-r**). 
+
+    $ qc corpus import transcripts --recursive
+
+If you want to import files into a specific subdirectory within the `corpus`, use 
+**--corpus-root** (**-c**). For example, if you wanted to import an additional 
+transcript after importing the transcripts directory, you could run:
+
+    $ qc corpus import follow_up.txt --corpus-root transcripts
+
+Several importers are available to format files, and can be specified using
+**--importer** (**-i**). The default importer, `pandoc`, uses 
+[Pandoc](https://pandoc.org/) to convert files into plain-text, and then hard-wrap
+them at 80 characters. `verbatim` imports text files without making any changes. 
+Future importers will include text extraction from PDFs and automatic transcription of 
+audio files.
+
+## Codes commands
+The following commands are grouped under `qc code`.
+
+### codes list (ls)
 Lists all the codes currently in the codebook.
 
     $ qc list --expanded
 
-### rename
+### codes rename
 Goes through all the code files and replaces one or more codes with another. 
 Removes the old codes from the codebook.
 
     $ qc rename humorous funy funnny funny
 
-### find
+### codes find
 Displays all occurences of the provided code(s). 
 
     $ qc find math science art
 
-### stats
+### codes stats
 Displays frequency of usage for each code. Note that counts include all usages of children.
 List code names to show only certain codes. In addition to the common options below, 
 code results can be filtered with `--max`, and `--min`. 
 
     $qc stats --recursive-codes --depth 2
 
-### crosstab (ct)
+### codes crosstab (ct)
 Displays a cross-tabulation of code co-occurrence within the unit of analysis,
 as counts or as probabilities (**--probs**, **-0**). Optionally use a compact
 (**--compact**, **-z**) output format to display more columns. 
@@ -247,18 +284,17 @@ In the future, this may also include odds ratios.
 
 - **--pattern** `pattern` (**-p**): Only include corpus files and their codes which match
   (glob-style) `pattern`.
-- **-invert** (**-i**): Only include corpus files that do not match `pattern`.
 - **--filenames** `filepath` (**-f**): Only include corpus files listed in
   `filepath` (one per line).
-- **--coder** `coder` (**-c**): Only include codes entered by `coder` (if you
-  use different names for different rounds of coding, you can also use this to
-  filter by round of coding). 
 
 ### Filtering code selection
 
 - **code** [codes]: Many commands have an optional positional argument in which
   you may list codes to consider. If none are given, the root node in the tree
   of codes is assumed.
+- **--coder** `coder` (**-c**): Only include codes entered by `coder` (if you
+  use different names for different rounds of coding, you can also use this to
+  filter by round of coding). 
 - **--recursive-codes** (**-r**): Include children of selected codes. 
 - **--depth** `depth` (**-d**): Limit the recursive depth of codes to select. 
 - **--unit** `unit` (**-n**): Unit of analysis for reporting. Currently
