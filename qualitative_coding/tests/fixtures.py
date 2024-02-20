@@ -3,7 +3,9 @@ from pathlib import Path
 from subprocess import run
 from tempfile import TemporaryDirectory
 from qualitative_coding.corpus import QCCorpus
+from io import StringIO
 import yaml
+import csv
 
 
 class QCTestCase(TestCase):
@@ -106,6 +108,15 @@ class QCTestCase(TestCase):
             }
         })
         self.corpus = QCCorpus(self.testpath / "settings.yaml")
+
+    def read_stats_tsv(self, stdout):
+        reader = csv.reader(StringIO(stdout), delimiter="\t")
+        table = [[item.strip() for item in row] for row in reader]
+        ix_name, *cols = table[0]
+        parse = lambda val: None if val == '' else float(val)
+        return {ix: dict(zip(cols, map(parse, vals))) for ix, *vals in table[1:]}
+
+
 
 MACBETH = """Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,
