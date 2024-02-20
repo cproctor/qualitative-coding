@@ -14,10 +14,12 @@ from itertools import count
 from textwrap import fill
 import numpy as np
 import csv
+import yaml
 
 class QCCorpusViewer:
 
     codes_file = "codes.txt"
+    coding_session_metadata_file = ".coding_session"
 
     def __init__(self, corpus):
         self.corpus = corpus
@@ -379,8 +381,6 @@ class QCCorpusViewer:
 
     def open_editor(self, corpus_file_path, coder_name):
         codes_file_path = self.corpus.resolve_path(self.codes_file)
-        if codes_file_path.exists():
-            self.report_incomplete_coding_session()
         full_path = self.corpus.corpus_dir / corpus_file_path
         codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
         command = self.get_code_command(full_path, codes_file_path)
@@ -388,7 +388,13 @@ class QCCorpusViewer:
             p = run(command, shell=True, capture_output=True, text=True, check=True)
             print(p.stdout)
         except CalledProcessError as err:
-            raise QCError(f"The editor closed before coding was complete: {err.stderr}")
+            self.save_incomplete_coding_session(corpus_file_path, coder_name)
+            raise QCError(
+                "The editor closed before coding was complete:\n" + 
+                err.stderr + '\n' + 
+                "Run qc code --recover to recover this coding session or " + 
+                "qc code --abandon to abandon it."
+            )
 
         code_file_path = self.corpus.resolve_path(self.codes_file)
         code_file_lines = code_file_path.read_text().splitlines()
@@ -405,6 +411,45 @@ class QCCorpusViewer:
             document = self.corpus.get_document(corpus_file_path)
             self.corpus.update_coded_lines(document, coder_name, coded_lines)
         code_file_path.unlink()
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if metadata_file_path.exists():
+            metadata_file_path.unlink()
+
+    def incomplete_coding_session_exists(self):
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        return metadata_file_path.exists()
+
+    def abandon_incomplete_coding_session(self):
+        if not incomplete_coding_session_exists():
+            raise QCError("There is no incomplete coding session.")
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if codes_file_path.exists():
+            codes_file_path.unlink()
+        if metadata_file_path.exists():
+            metadata_file_path.unlink()
+
+    def save_incomplete_coding_session(self, corpus_file_path, coder_name):
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        metadata_file_path.write_text(yaml.dump({
+            'corpus_file_path': corpus_file_path,
+            'coder_name': coder_name,
+        }))
+
+    def recover_incomplete_coding_session(self):
+        if not self.incomplete_coding_session_exists():
+            raise QCError("There is no incomplete coding session.")
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if not codes_file_path.exists():
+            raise QCError(
+                "The coding file, {self.codes_file}, no longer exists. " + 
+                "If you can recover {self.codes_file}, run qc code --recover " +
+                "to recover it. Otherwise, run qc code --abandon to abandon " +
+                "the existing session."
+            )
+        metadata = yaml.safe_load(metadata_file_path.read_text())
+        self.open_editor(**metadata)
 
     def codes_file_text(self, corpus_file_path, coder_name):
         """Formats codes for a temporary coding file.

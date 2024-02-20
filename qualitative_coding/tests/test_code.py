@@ -16,9 +16,21 @@ class TestCode(QCTestCase):
         self.assertEqual(code_counts.get('one'), 1)
         self.assertFileDoesNotExist("codes.txt")
 
-    # Waiting until code command is complete
-    def XXX_test_code_saves_state_on_crash(self):
+    def test_code_saves_state_on_crash(self):
         self.set_mock_editor(verbose=True, crash=True)
-        self.run_in_testpath("qc code chris", debug=True)
+        self.run_in_testpath("qc code chris")
         self.assertFileExists("codes.txt")
         self.assertFileExists(".coding_session")
+
+    def test_code_recovers_incomplete_session(self):
+        self.set_mock_editor(verbose=True, crash=True)
+        self.run_in_testpath("qc code chris")
+        self.set_mock_editor(verbose=True)
+        self.run_in_testpath("qc code chris --recover")
+        self.assertFileDoesNotExist("codes.txt")
+        self.assertFileDoesNotExist(".coding_session")
+        result = self.run_in_testpath("qc list")
+        self.assertTrue("line" in result.stdout)
+        self.assertTrue("one" in result.stdout)
+        self.assertTrue("two" in result.stdout)
+
