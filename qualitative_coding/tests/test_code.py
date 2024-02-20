@@ -29,7 +29,7 @@ class TestCode(QCTestCase):
         self.run_in_testpath("qc code chris --recover")
         self.assertFileDoesNotExist("codes.txt")
         self.assertFileDoesNotExist(".coding_session")
-        result = self.run_in_testpath("qc list")
+        result = self.run_in_testpath("qc codes list")
         self.assertTrue("line" in result.stdout)
         self.assertTrue("one" in result.stdout)
         self.assertTrue("two" in result.stdout)
