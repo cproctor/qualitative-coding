@@ -6,7 +6,6 @@ class TestFind(QCTestCase):
         self.run_in_testpath("qc import macbeth.txt --importer verbatim")
         self.set_mock_editor()
         self.run_in_testpath("qc code chris")
-        self.run_in_testpath("qc codebook")
 
     def test_find_shows_codes(self):
         result = self.run_in_testpath("qc find one")

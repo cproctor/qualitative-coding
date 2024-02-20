@@ -340,6 +340,7 @@ class QCCorpus:
             session.add(cl)
             cl.locations.append(self.get_paragraph(document, line))
         session.commit()
+        self.update_codebook()
 
     def get_relative_corpus_path(self, corpus_path):
         """Given a Path or str, tries to return a string representation of the
