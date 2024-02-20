@@ -75,7 +75,7 @@ class QCCorpus:
     units = ["line", "paragraph", "document"]
 
     @classmethod
-    def initialize(cls, settings_path="settings.yaml"):
+    def initialize(cls, settings_path="settings.yaml", accept_defaults=False):
         """
         Initializes a qc project.
         If the settings file does not exist, create it.
@@ -83,7 +83,9 @@ class QCCorpus:
         directories and files.
         """
         settings_path = Path(settings_path)
-        if settings_path.exists():
+        if settings_path.exists() or accept_defaults:
+            if not settings_path.exists():
+                settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
             cls.validate_settings(settings_path)
             settings = yaml.safe_load(settings_path.read_text())
             for needed_dir in ["corpus_dir", "logs_dir", "memos_dir"]:
