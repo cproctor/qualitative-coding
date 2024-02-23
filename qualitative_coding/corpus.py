@@ -303,6 +303,21 @@ class QCCorpus:
             self.get_session().commit()
             return coder
 
+    # TODO once we implement migrations, this should be simplified using a 
+    # delete cascade on the coder->coded_line
+    def delete_coder(self, coder_name):
+        try:
+            q = select(CodedLine).where(CodedLine.coder_id == coder_name)
+            coded_lines = self.get_session().scalars(q)
+            q = select(Coder).where(Coder.name == coder_name)
+            coder = self.get_session().execute(q).scalar_one()
+        except NoResultFound:
+            raise QCError(f"There is no coder named {coder_name}.")
+        for coded_line in coded_lines:
+            self.get_session().delete(coded_line)
+        self.get_session().delete(coder)
+        self.get_session().commit()
+
     def get_all_coders(self):
         q = select(Coder)
         return self.get_session().scalars(q)
