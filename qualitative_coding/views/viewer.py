@@ -2,7 +2,7 @@ from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.views.coding_ui import CodingUI
-from qualitative_coding.exceptions import QCError
+from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
 from tabulate import tabulate
 from collections import defaultdict, Counter
@@ -15,16 +15,18 @@ from textwrap import fill
 import numpy as np
 import csv
 import yaml
+import re
 
 class QCCorpusViewer:
 
     codes_file = "codes.txt"
     coding_session_metadata_file = ".coding_session"
+    code_pattern = "[a-zA-Z0-9_\-]"
 
     def __init__(self, corpus):
         self.corpus = corpus
         self.settings = self.corpus.settings
-        self.log = get_logger(__name__, self.corpus.logs_dir, self.corpus.settings.get('debug'))
+        self.log = self.corpus.log
 
     def list_codes(self, expanded=False, depth=None):
         "Prints all the codes in the codebook"
@@ -386,6 +388,8 @@ class QCCorpusViewer:
         command = self.get_code_command(full_path, codes_file_path)
         try:
             p = run(command, shell=True, capture_output=True, text=True, check=True)
+            corpus_file_length = len(full_path.read_text().splitlines())
+            coded_lines = self.parse_codes(codes_file_path.read_text(), corpus_file_length)
             print(p.stdout)
         except CalledProcessError as err:
             self.save_incomplete_coding_session(corpus_file_path, coder_name)
@@ -396,24 +400,46 @@ class QCCorpusViewer:
                 "qc code --abandon to abandon it."
             )
 
-        code_file_path = self.corpus.resolve_path(self.codes_file)
-        code_file_lines = code_file_path.read_text().splitlines()
-        coded_lines = []
         with self.corpus.session():
-            for idx, line in enumerate(code_file_lines):
-                codes = [x.strip() for x in line.split(',')]
-                for code in codes:
-                    if code.strip() != "":
-                        coded_lines.append({
-                            "line": idx + 1,
-                            "code_id": self.corpus.get_or_create_code(code).name
-                        })
             document = self.corpus.get_document(corpus_file_path)
             self.corpus.update_coded_lines(document, coder_name, coded_lines)
-        code_file_path.unlink()
+        codes_file_path.unlink()
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
         if metadata_file_path.exists():
             metadata_file_path.unlink()
+
+    def parse_codes(self, code_file_text, expected_length):
+        """Parses the contents of a code file after user editing. 
+        If successful, returns coded_lines, a list of {line: int, code_id: str}
+        Raises CodeFileParseError if there is an error parsing the file.
+        """
+        code_file_lines = code_file_text.splitlines()
+        if len(code_file_lines) != expected_length:
+            raise CodeFileParseError(
+                "Expected the codes file to have the same number of lines as the document " + 
+                f"being coded ({expected_length}), but it has {len(code_file_lines)}."
+            )
+        coded_lines = []
+        for idx, line in enumerate(code_file_lines):
+            if line.strip() == '':
+                continue
+            codes = [self.parse_code(x) for x in line.split(',')]
+            for code in codes:
+                if code.strip() != "":
+                    coded_lines.append({
+                        "line": idx + 1,
+                        "code_id": code
+                    })
+        return coded_lines
+
+    def parse_code(self, text):
+        """Parses an individual code from a codes file.
+        Codes 
+        """
+        text = text.strip()
+        if not re.match(self.code_pattern, text):
+            raise CodeFileParseError(f"{text} is not a valid code.")
+        return text 
 
     def incomplete_coding_session_exists(self):
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
@@ -465,7 +491,7 @@ class QCCorpusViewer:
 
         text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
         lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
-        return '\n'.join(lines)
+        return '\n'.join(lines) + '\n'
 
     def get_code_command(self, corpus_file_path, codes_file_path):
         """Returns a shell command to open an editor for coding.

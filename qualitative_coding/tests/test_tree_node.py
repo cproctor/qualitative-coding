@@ -8,8 +8,6 @@ class TestTreeNode(TestCase):
     def test_read_write_are_isomorphic(self):
         with TemporaryDirectory() as tempdir:
             for case in [EMPTY_CODEBOOK, FLAT_CODEBOOK, NESTED_CODEBOOK]:
-                print("CASE:")
-                print(case)
                 infile = Path(tempdir) / "in.yaml"
                 outfile = Path(tempdir) / "out.yaml"
                 infile.write_text(case)

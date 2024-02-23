@@ -158,6 +158,7 @@ class QCCorpus:
         self.memos_dir = self.resolve_path(self.settings['memos_dir'])
         self.logs_dir = self.resolve_path(self.settings['logs_dir'])
         self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
+        self.codebook_path = self.resolve_path(self.settings['codebook'])
         db_file = self.resolve_path(self.settings['database'])
         self.engine = create_engine(f"sqlite:///{db_file}")
 
@@ -222,6 +223,14 @@ class QCCorpus:
                 errors.append(f"{expected_file} path {path} is a directory")
         if errors:
             raise QCError("Invalid settings:\n" + "\n".join([f"- {err}" for err in errors]))
+
+    def validate_corpus_paths(self):
+        """Checks that the set of files in corpus_dir exactly matches Documents. 
+        This is not included in QCCorpus.validate because it would create a 
+        circular dependency: This method must be run from within a QCCorpus.session, 
+        which cannot be instantiated until initialization is complete.
+        """
+        # TODO HERE
 
     def check_corpus_document_hashes(self):
         "Checks that corpus document hashes match those in the database"
@@ -324,6 +333,8 @@ class QCCorpus:
         When new are absent from existing, creates a new CodedLine and adds it to the session.
         """
         self.get_or_create_coder(coder)
+        for code_id in set(cl['code_id'] for cl in coded_line_data):
+            self.get_or_create_code(code_id)
         session = self.get_session()
         q = (select(CodedLine)
             .join(CodedLine.locations)
@@ -615,7 +626,7 @@ class QCCorpus:
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
             code_tree.add_child(new_code)
-        TreeNode.write_yaml(self.settings['codebook'], code_tree)
+        TreeNode.write_yaml(self.codebook_path, code_tree)
 
     def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coder=None):
         """
