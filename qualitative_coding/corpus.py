@@ -238,7 +238,7 @@ class QCCorpus:
         paths_on_fs = set()
         for dir_path, dirs, filenames in os.walk(self.corpus_dir):
             for fn in filenames:
-                paths_on_fs.add(Path(dir_path).relative_to(self.corpus_dir) / fn)
+                paths_on_fs.add(str(Path(dir_path).relative_to(self.corpus_dir) / fn))
         errors = []
         for extra in paths_on_fs - paths_in_db:
             errors.append(
@@ -503,6 +503,38 @@ class QCCorpus:
         if file_list:
             query = query.where(Document.file_path.in_(file_list))
         return self.get_session().scalars(query).all()
+
+    def move_document(self, target, destination, recursive=False):
+        """Move a file from target to destination, updating the database.
+        """
+        self.validate_corpus_paths()
+        target = self.corpus_dir / target
+        destination = self.corpus_dir / destination
+        if not target.exists():
+            raise QCError(f"{target} does not exist")
+        if destination.exists():
+            raise QCError(f"{destination} already exists")
+        if recursive and not target.is_dir():
+            raise QCError(f"Cannot use --recursive when {target} is a file.")
+        if not recursive and target.is_dir():
+            raise QCError(f"{target} is a directory. Use --recursive")
+
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(target):
+                for fn in filenames:
+                    dp = Path(dir_path).relative_to(target)
+                    rtarget = target / dp / fn
+                    rdestination = destination / dp / fn
+                    file_path = str(rtarget.relative_to(self.corpus_dir))
+                    doc = self.get_documents(file_list=[file_path])[0]
+                    doc.file_path = str(rdestination.relative_to(self.corpus_dir))
+        else:
+            file_path = str(target.relative_to(self.corpus_dir))
+            doc = self.get_documents(file_list=[file_path])[0]
+            doc.file_path = str(destination.relative_to(self.corpus_dir))
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        target.rename(destination)
+        self.get_session().commit()
 
     def filter_query_by_document(self, query, pattern=None, file_list=None, 
             unit="line"):
