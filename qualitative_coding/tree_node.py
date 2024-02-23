@@ -126,13 +126,16 @@ class TreeNode:
 
     def to_json(self):
         "Returns a str/list/dict representation. The root node is stored as a list."
-        if any(self.children):
+        if self.children:
             if self.is_root():
                 return [child.to_json() for child in sorted(self.children)]
             else:
                 return {self.name: [child.to_json() for child in sorted(self.children)]}
         else:
-            return self.name
+            if self.is_root():
+                return []
+            else:
+                return self.name
 
     def __str__(self, max_depth=None, current_depth=0):
         "String representation of tree, limited to `max_depth` if provided. `current_depth` is used internally for recursion."
