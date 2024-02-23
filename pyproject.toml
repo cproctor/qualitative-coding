@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qualitative-coding"
-version = "1.0.3"
+version = "1.0.5"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
 license = "MIT"

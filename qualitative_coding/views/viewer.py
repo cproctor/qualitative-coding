@@ -387,10 +387,9 @@ class QCCorpusViewer:
         codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
         command = self.get_code_command(full_path, codes_file_path)
         try:
-            p = run(command, shell=True, capture_output=True, text=True, check=True)
+            p = run(command, shell=True, check=True)
             corpus_file_length = len(full_path.read_text().splitlines())
             coded_lines = self.parse_codes(codes_file_path.read_text(), corpus_file_length)
-            print(p.stdout)
         except CalledProcessError as err:
             self.save_incomplete_coding_session(corpus_file_path, coder_name)
             raise QCError(
@@ -427,7 +426,7 @@ class QCCorpusViewer:
             for code in codes:
                 if code.strip() != "":
                     coded_lines.append({
-                        "line": idx + 1,
+                        "line": idx,
                         "code_id": code
                     })
         return coded_lines
@@ -490,7 +489,7 @@ class QCCorpusViewer:
             codes_per_line[line].append(code)
 
         text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
-        lines = [', '.join(codes_per_line[i]) for i in range(1, len(text) + 1)]
+        lines = [', '.join(codes_per_line[i]) for i in range(len(text))]
         return '\n'.join(lines) + '\n'
 
     def get_code_command(self, corpus_file_path, codes_file_path):

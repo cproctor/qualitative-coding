@@ -6,12 +6,12 @@ editors = {
     },
     "vim": {
         "name": "Vim",
-        "code_command": 'vim "{codes_file_path}" -c :set scrollbind -c :83vsplit|view {corpus_file_path}|set scrollbind',
+        "code_command": 'vim -O "{corpus_file_path}" "{codes_file_path}" -c \'windo set scb!\'',
         "memo_command": 'vim "{memo_file_path}"',
     },
     "nvim": {
         "name": "Neovim",
-        "code_command": 'nvim "{codes_file_path}" -c :set scrollbind -c :83vsplit|view {corpus_file_path}|set scrollbind',
+        "code_command": 'nvim -O "{corpus_file_path}" "{codes_file_path}" -c \'windo set scb!\'',
         "memo_command": 'nvim "{memo_file_path}"',
     },
     "emacs": {
