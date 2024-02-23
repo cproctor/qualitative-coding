@@ -1,7 +1,7 @@
 editors = {
     "code": {
         "name": "Visual Studio Code",
-        "code_command": 'code "{corpus_file_path}" "{codes_file_path}"',
+        "code_command": 'code "{corpus_file_path}" "{codes_file_path}" --wait',
         "memo_command": 'code "{memo_file_path}"',
     },
     "vim": {
