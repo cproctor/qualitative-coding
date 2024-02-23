@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import yaml
 import numpy as np
+from textwrap import fill
 import os
 from hashlib import sha1
 from pathlib import Path
@@ -226,15 +227,46 @@ class QCCorpus:
 
     def validate_corpus_paths(self):
         """Checks that the set of files in corpus_dir exactly matches Documents. 
+        Also checks that corpus document hashes match those in the database
         This is not included in QCCorpus.validate because it would create a 
         circular dependency: This method must be run from within a QCCorpus.session, 
         which cannot be instantiated until initialization is complete.
         """
-        # TODO HERE
-
-    def check_corpus_document_hashes(self):
-        "Checks that corpus document hashes match those in the database"
-        raise NotImplementedError()
+        q = select(Document)
+        docs_in_db = set(self.get_session().scalars(q).all())
+        paths_in_db = set(doc.file_path for doc in docs_in_db)
+        paths_on_fs = set()
+        for dir_path, dirs, filenames in os.walk(self.corpus_dir):
+            for fn in filenames:
+                paths_on_fs.add(Path(dir_path).relative_to(self.corpus_dir) / fn)
+        errors = []
+        for extra in paths_on_fs - paths_in_db:
+            errors.append(
+                f"{extra} is in the corpus directory but is not part of the project. " + 
+                f"You can fix this by running: qc corpus import {extra} --importer verbatim"
+            )
+        for missing in paths_in_db - paths_on_fs:
+            errors.append(
+                f"{missing} is missing. Either restore the file or remove it from the " + 
+                f"project by running: qc corpus remove {missing}"
+            )
+        for doc in docs_in_db:
+            path = self.corpus_dir / doc.file_path
+            if path.exists():
+                if doc.file_hash != self.hash_file(path):
+                    errors.append(
+                        f"{doc.file_path} has been changed since it was imported. " + 
+                        f"This could affect the alignment of existing codes. " + 
+                        f"Either restore the original version of {doc.file_path}, or " + 
+                        f"import the changed version by running: qc corpus rebase " + 
+                        f"{doc.file_path}"
+                    )
+        if errors:
+            err = "Errors found in corpus:\n"
+            fmt = lambda err: fill(err, initial_indent=" - ", subsequent_indent="   ")
+            error_messages = [fmt(err) for err in errors]
+            err += '\n'.join(error_messages)
+            raise QCError(err)
 
     def get_code_tree_with_counts(self, 
         pattern=None,
