@@ -10,3 +10,6 @@ class IncompatibleOptions(QCError):
 class SettingsError(QCError):
     pass
 
+class CodeFileParseError(QCError):
+    pass
+

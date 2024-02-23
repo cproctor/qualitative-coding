@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import yaml
 import numpy as np
+from textwrap import fill
 import os
 from hashlib import sha1
 from pathlib import Path
@@ -158,6 +159,7 @@ class QCCorpus:
         self.memos_dir = self.resolve_path(self.settings['memos_dir'])
         self.logs_dir = self.resolve_path(self.settings['logs_dir'])
         self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
+        self.codebook_path = self.resolve_path(self.settings['codebook'])
         db_file = self.resolve_path(self.settings['database'])
         self.engine = create_engine(f"sqlite:///{db_file}")
 
@@ -223,9 +225,48 @@ class QCCorpus:
         if errors:
             raise QCError("Invalid settings:\n" + "\n".join([f"- {err}" for err in errors]))
 
-    def check_corpus_document_hashes(self):
-        "Checks that corpus document hashes match those in the database"
-        raise NotImplementedError()
+    def validate_corpus_paths(self):
+        """Checks that the set of files in corpus_dir exactly matches Documents. 
+        Also checks that corpus document hashes match those in the database
+        This is not included in QCCorpus.validate because it would create a 
+        circular dependency: This method must be run from within a QCCorpus.session, 
+        which cannot be instantiated until initialization is complete.
+        """
+        q = select(Document)
+        docs_in_db = set(self.get_session().scalars(q).all())
+        paths_in_db = set(doc.file_path for doc in docs_in_db)
+        paths_on_fs = set()
+        for dir_path, dirs, filenames in os.walk(self.corpus_dir):
+            for fn in filenames:
+                paths_on_fs.add(str(Path(dir_path).relative_to(self.corpus_dir) / fn))
+        errors = []
+        for extra in paths_on_fs - paths_in_db:
+            errors.append(
+                f"{extra} is in the corpus directory but is not part of the project. " + 
+                f"You can fix this by running: qc corpus import {extra} --importer verbatim"
+            )
+        for missing in paths_in_db - paths_on_fs:
+            errors.append(
+                f"{missing} is missing. Either restore the file or remove it from the " + 
+                f"project by running: qc corpus remove {missing}"
+            )
+        for doc in docs_in_db:
+            path = self.corpus_dir / doc.file_path
+            if path.exists():
+                if doc.file_hash != self.hash_file(path):
+                    errors.append(
+                        f"{doc.file_path} has been changed since it was imported. " + 
+                        f"This could affect the alignment of existing codes. " + 
+                        f"Either restore the original version of {doc.file_path}, or " + 
+                        f"import the changed version by running: qc corpus rebase " + 
+                        f"{doc.file_path}"
+                    )
+        if errors:
+            err = "Errors found in corpus:\n"
+            fmt = lambda err: fill(err, initial_indent=" - ", subsequent_indent="   ")
+            error_messages = [fmt(err) for err in errors]
+            err += '\n'.join(error_messages)
+            raise QCError(err)
 
     def get_code_tree_with_counts(self, 
         pattern=None,
@@ -324,6 +365,8 @@ class QCCorpus:
         When new are absent from existing, creates a new CodedLine and adds it to the session.
         """
         self.get_or_create_coder(coder)
+        for code_id in set(cl['code_id'] for cl in coded_line_data):
+            self.get_or_create_code(code_id)
         session = self.get_session()
         q = (select(CodedLine)
             .join(CodedLine.locations)
@@ -460,6 +503,38 @@ class QCCorpus:
         if file_list:
             query = query.where(Document.file_path.in_(file_list))
         return self.get_session().scalars(query).all()
+
+    def move_document(self, target, destination, recursive=False):
+        """Move a file from target to destination, updating the database.
+        """
+        self.validate_corpus_paths()
+        target = self.corpus_dir / target
+        destination = self.corpus_dir / destination
+        if not target.exists():
+            raise QCError(f"{target} does not exist")
+        if destination.exists():
+            raise QCError(f"{destination} already exists")
+        if recursive and not target.is_dir():
+            raise QCError(f"Cannot use --recursive when {target} is a file.")
+        if not recursive and target.is_dir():
+            raise QCError(f"{target} is a directory. Use --recursive")
+
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(target):
+                for fn in filenames:
+                    dp = Path(dir_path).relative_to(target)
+                    rtarget = target / dp / fn
+                    rdestination = destination / dp / fn
+                    file_path = str(rtarget.relative_to(self.corpus_dir))
+                    doc = self.get_documents(file_list=[file_path])[0]
+                    doc.file_path = str(rdestination.relative_to(self.corpus_dir))
+        else:
+            file_path = str(target.relative_to(self.corpus_dir))
+            doc = self.get_documents(file_list=[file_path])[0]
+            doc.file_path = str(destination.relative_to(self.corpus_dir))
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        target.rename(destination)
+        self.get_session().commit()
 
     def filter_query_by_document(self, query, pattern=None, file_list=None, 
             unit="line"):
@@ -615,7 +690,7 @@ class QCCorpus:
         new_codes = all_codes - set(code_tree.flatten(names=True))
         for new_code in new_codes:
             code_tree.add_child(new_code)
-        TreeNode.write_yaml(self.settings['codebook'], code_tree)
+        TreeNode.write_yaml(self.codebook_path, code_tree)
 
     def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coder=None):
         """

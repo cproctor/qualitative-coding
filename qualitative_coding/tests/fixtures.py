@@ -116,7 +116,9 @@ class QCTestCase(TestCase):
         parse = lambda val: None if val == '' else float(val)
         return {ix: dict(zip(cols, map(parse, vals))) for ix, *vals in table[1:]}
 
-
+class MockCorpus:
+    log = None
+    settings = {}
 
 MACBETH = """Tomorrow, and tomorrow, and tomorrow,
 Creeps in this petty pace from day to day,

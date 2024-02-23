@@ -11,4 +11,5 @@ from qualitative_coding.cli.decorators import (
 def check(settings):
     "Check project for errors"
     corpus = QCCorpus(settings)
-    corpus.validate()
+    with corpus.session():
+        corpus.validate_corpus_paths()
