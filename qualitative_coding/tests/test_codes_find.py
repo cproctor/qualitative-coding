@@ -8,11 +8,11 @@ class TestFind(QCTestCase):
         self.run_in_testpath("qc code chris")
 
     def test_find_shows_codes(self):
-        result = self.run_in_testpath("qc codes find one")
-        self.assertEqual(len(result.stdout.splitlines()), 9)
+        result = self.run_in_testpath("qc codes find one", debug=True)
+        self.assertEqual(len(result.stdout.splitlines()), 8)
 
     def test_find_respects_context_window(self):
-        result = self.run_in_testpath("qc codes find one -C 5")
-        self.assertEqual(len(result.stdout.splitlines()), 12)
+        result = self.run_in_testpath("qc codes find one -C 5", debug=True)
+        self.assertEqual(len(result.stdout.splitlines()), 11)
 
 
