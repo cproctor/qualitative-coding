@@ -16,6 +16,7 @@ from tabulate import tabulate_formats
 @click.option("-f", "--filenames", 
         help="File path containing a list of filenames to use")
 @click.option("-c", "--coder", help="Coder")
+@click.option("-x", "--distinct", is_flag=True, help="Report stats separately for each coder")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 @click.option("-n", "--unit", default="line", help="Unit of analysis",
         type=click.Choice(['line', 'paragraph', 'document']))
@@ -34,7 +35,7 @@ from tabulate import tabulate_formats
 @click.option("-t", "--total-only", is_flag=True,
         help="Show total but not count")
 @handle_qc_errors
-def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
+def stats(code, settings, pattern, filenames, coder, distinct, depth, unit, recursive_codes, 
         recursive_counts, expanded, _format, outfile, _max, _min, zeros, total_only):
     "Show statistics about codes"
     if depth and not recursive_codes: 
@@ -57,6 +58,7 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
         pattern=pattern,
         file_list=read_file_list(filenames),
         coder=coder,
+        distinct=distinct,
         unit=unit,
         outfile=outfile,
         total_only=total_only,

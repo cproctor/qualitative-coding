@@ -49,6 +49,7 @@ class QCCorpusViewer:
         pattern=None,
         file_list=None,
         coder=None,
+        distinct=False,
         outfile=None,
         total_only=False,
         zeros=False,
