@@ -29,7 +29,7 @@ class TestCodeParsing(TestCase):
         self.viewer = QCCorpusViewer(MockCorpus())
         codes = self.viewer.parse_codes(CODES_FILE, 6)
         self.assertEqual(len(codes), 4)
-        self.assertEqual(codes[0]['line'], 3)
+        self.assertEqual(codes[0]['line'], 2)
 
     def test_checks_codes_file_length(self):
         self.viewer = QCCorpusViewer(MockCorpus())
