@@ -24,7 +24,7 @@ class TestCode(QCTestCase):
     def test_check_validates_corpus_paths(self):
         self.run_in_testpath("qc corpus import macbeth.txt")
         (self.testpath / "corpus" / "macbeth.txt").write_text("It was the best of times...")
-        message = self.run_in_testpath("qc check", debug=True).stderr
+        message = self.run_in_testpath("qc check").stderr
         self.assertTrue("macbeth.txt" in message)
 
 

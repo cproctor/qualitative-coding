@@ -9,6 +9,7 @@
 
 from argparse import ArgumentParser
 from pathlib import Path
+import sys
 
 parser = ArgumentParser()
 parser.add_argument("corpus_file_path")
@@ -20,7 +21,7 @@ args = parser.parse_args()
 
 if args.crash:
     if args.verbose:
-        print("Crashing the mock editor, as requested...")
+        print("Crashing the mock editor, as requested...", file=sys.stderr)
     raise SystemExit(1)
 
 if args.memo:

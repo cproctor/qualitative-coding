@@ -393,8 +393,8 @@ class QCCorpusViewer:
         except CalledProcessError as err:
             self.save_incomplete_coding_session(corpus_file_path, coder_name)
             raise QCError(
-                "The editor closed before coding was complete:\n" + 
-                err.stderr + '\n' + 
+                "The editor closed before coding was complete" + 
+                (f":\n{err.stderr}\n" if err.stderr else '') + 
                 "Run qc code --recover to recover this coding session or " + 
                 "qc code --abandon to abandon it."
             )
