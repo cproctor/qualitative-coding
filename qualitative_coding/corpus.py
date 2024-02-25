@@ -441,7 +441,7 @@ class QCCorpus:
         if not recursive and source.is_dir():
             raise InvalidParameter(f"{source} is a dir. Use --recursive.")
         if corpus_root and Path(corpus_root).is_absolute():
-            raise InvalidParameter(f"corpus_root ({corpus_root}) must be a relative directory.")
+            raise InvalidParameter(f"corpus_root ({corpus_root}) must be a relative path.")
 
         if corpus_root:
             dest_root_dir = self.corpus_dir / corpus_root
@@ -451,7 +451,8 @@ class QCCorpus:
 
         if recursive:
             for dir_path, dir_names, filenames in os.walk(source):
-                dest_dir = dest_root_dir / dir_path
+                rel_dir_path = str(Path(dir_path).relative_to(source))
+                dest_dir = dest_root_dir / rel_dir_path
                 dest_dir.mkdir(parents=True, exist_ok=True)
                 for fn in filenames:
                     source_path = Path(dir_path) / fn
