@@ -1,6 +1,7 @@
 import click
 from qualitative_coding.cli.click_aliases import ClickAliasedGroup
 from qualitative_coding.cli.init import init
+from qualitative_coding.cli.export import export
 from qualitative_coding.cli.corpus import corpus_group
 from qualitative_coding.cli.codes import codes_group
 from qualitative_coding.cli.version import version
@@ -16,6 +17,7 @@ def cli():
     "Qualitative coding for computer scientists"
 
 cli.add_command(init)
+cli.add_command(export)
 cli.add_command(corpus_group)
 cli.add_command(codes_group)
 cli.add_command(version)

@@ -26,6 +26,20 @@ files = [
 ]
 
 [[package]]
+name = "elementpath"
+version = "4.3.0"
+description = "XPath 1.0/2.0/3.0/3.1 parsers and selectors for ElementTree and lxml"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "elementpath-4.3.0-py3-none-any.whl", hash = "sha256:ecc885f2bb5bd5322fd68ace071f134a8fabf05f0019d77c638b906b844f6593"},
+    {file = "elementpath-4.3.0.tar.gz", hash = "sha256:8d25db9150f5a6aa978c9f58e607fcd5ab6e6e3017140563439a9884ab1eb304"},
+]
+
+[package.extras]
+dev = ["Sphinx", "coverage", "flake8", "lxml", "lxml-stubs", "memory-profiler", "memray", "mypy", "tox", "xmlschema (>=2.0.0)"]
+
+[[package]]
 name = "greenlet"
 version = "3.0.3"
 description = "Lightweight in-process concurrent programming"
@@ -344,7 +358,26 @@ files = [
     {file = "typing_extensions-4.9.0.tar.gz", hash = "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783"},
 ]
 
+[[package]]
+name = "xmlschema"
+version = "3.0.2"
+description = "An XML Schema validator and decoder"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "xmlschema-3.0.2-py3-none-any.whl", hash = "sha256:c8935f81e1645df3e71136805c7206871268aa8c6e31e3667ea23746f22fea0a"},
+    {file = "xmlschema-3.0.2.tar.gz", hash = "sha256:b2526e91695905aa62d4aa2b68349565a168fedf88ada0005f5e0dd21da9734b"},
+]
+
+[package.dependencies]
+elementpath = ">=4.3.0,<5.0.0"
+
+[package.extras]
+codegen = ["elementpath (>=4.3.0,<5.0.0)", "jinja2"]
+dev = ["Sphinx", "coverage", "elementpath (>=4.3.0,<5.0.0)", "flake8", "jinja2", "lxml", "lxml-stubs", "memory-profiler", "mypy", "sphinx-rtd-theme", "tox"]
+docs = ["Sphinx", "elementpath (>=4.3.0,<5.0.0)", "jinja2", "sphinx-rtd-theme"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "9e9a5bdb368f8d1c85830afc15872227793aa7fa59bd4c5216a224bbb1c74e64"
+content-hash = "5e351fe840e07c70710368235b6f6fb01b0f476054aa95fc243e6b7b11d47ed7"
