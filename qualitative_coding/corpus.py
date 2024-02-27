@@ -343,7 +343,7 @@ class QCCorpus:
 
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
-        return TreeNode.read_yaml(self.resolve_path(self.settings['codebook']))
+        return TreeNode.read_yaml(self.codebook_path)
 
     def get_document(self, corpus_path):
         """Fetches a document object.
@@ -590,10 +590,15 @@ class QCCorpus:
         }[unit]
 
     def get_coded_lines(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, CodedLine.line_number, Document.file_path)
+        """Returns (code, coder, line, file_path)
         """
         query = (
-            select(CodedLine.code_id, CodedLine.line, DocumentIndex.document_id)
+            select(
+                CodedLine.code_id, 
+                CodedLine.coder_id, 
+                CodedLine.line, 
+                DocumentIndex.document_id
+            )
             .join(CodedLine.locations)
             .join(Location.document_index)
             .where(DocumentIndex.name == "paragraphs")
@@ -606,11 +611,11 @@ class QCCorpus:
         return self.get_session().execute(query).all()
 
     def get_coded_paragraphs(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, CodedLine.line_number, Document.file_path, Location.id,
+        """Returns (Code.name, Coder.name, CodedLine.line_number, Document.file_path, Location.id,
                 Location.start_line, Location.end_line)
         """
         query = (
-            select(CodedLine.code_id, DocumentIndex.document_id,
+            select(CodedLine.code_id, CodedLine.coder_id, DocumentIndex.document_id,
                    Location.start_line, Location.end_line)
             .join(CodedLine.locations)
             .join(Location.document_index)
@@ -624,10 +629,10 @@ class QCCorpus:
         return self.get_session().execute(query).all()
 
     def get_coded_documents(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, Document.file_path)
+        """Returns (Code.name, Coder.name, Document.file_path)
         """
         query = (
-            select(CodedLine.code_id, DocumentIndex.document_id)
+            select(CodedLine.code_id, CodedLine.coder_id, DocumentIndex.document_id)
             .join(CodedLine.locations)
             .join(Location.document_index)
             .where(DocumentIndex.name == "paragraphs")
@@ -712,13 +717,6 @@ class QCCorpus:
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
-
-        How will I do this?
-        get all the coded lines (with relevant params).
-        For each, create a new coded line with the new code. 
-        Then delete all coded lines with the old code.
-        get_coded_lines returns: (Code.name, CodedLine.line_number, Document.file_path)
-
         """
         session = self.get_session()
         new_code = self.get_or_create_code(new_code)
