@@ -36,11 +36,11 @@ class REFIQDAWriter:
             self.write_corpus(project_path / "sources")
             if self.debug:
                 self.print_tree(project_path)
-            with ZipFile(outpath, 'w', ZIP_DEFLATED) as zfp:
+            with ZipFile(outpath, 'w', ZIP_DEFLATED) as zf:
                 for dirpath, dirnames, filenames in os.walk(tempdir):
                     for fn in filenames:
                         path = Path(dirpath) / fn
-                        zfp.write(path, arcname=path.relative_to(tempdir))
+                        zf.write(path, arcname=path.relative_to(tempdir))
 
     def write_xml(self, outpath):
         root = self.xml_root()
@@ -55,10 +55,8 @@ class REFIQDAWriter:
         copytree(self.corpus.corpus_dir, outpath)
 
     def print_tree(self, project_path):
-        result = run("tree", cwd=project_path, capture_output=True, text=True, check=True, 
-                shell=True)
+        result = run("tree", cwd=project_path, capture_output=True, text=True, shell=True)
         print(result.stdout)
-        print(result.stderr)
 
     def xml_root(self):
         root = Element("Project")
@@ -118,7 +116,7 @@ class REFIQDAWriter:
                 source = Element("TextSource")
                 source.set("plainTextPath", doc.file_path)
                 source.set("guid", self.guid(doc.file_path))
-                doc_line_positions = self.line_positions(doc)
+                doc_line_positions = self.line_positions(doc.file_path)
                 coded_lines = self.corpus.get_coded_lines(file_list=[doc.file_path])
                 lines_with_codes = defaultdict(list)
                 for cl in coded_lines:
@@ -127,8 +125,8 @@ class REFIQDAWriter:
                     selection = Element("PlainTextSelection")
                     selection.set("guid", self.selection_guid(doc.file_path, line))
                     selection.set("name", f"line:{line}")
-                    selection.set("startPosition", doc_line_positions[line][0])
-                    selection.set("endPosition", doc_line_positions[line][1])
+                    selection.set("startPosition", str(doc_line_positions[line][0]))
+                    selection.set("endPosition", str(doc_line_positions[line][1]))
                     for code, coder, line, file_path in cls:
                         coding = Element("Coding")
                         coding.set("guid", self.coding_guid(code, coder, line, file_path))
@@ -141,16 +139,16 @@ class REFIQDAWriter:
                 sources.append(source)
         return sources
 
-    def line_positions(self, doc):
+    def line_positions(self, corpus_file_path):
         """returns a list of (start, end) character positions for lines in doc.
         """
-        text = (self.corpus.corpus_dir / doc.file_path).read_text()
+        text = (self.corpus.corpus_dir / corpus_file_path).read_text()
         lines = []
         index = 0
         for line in text:
             start = index
             end = index + len(line)
-            lines.append((str(start), str(end)))
+            lines.append((start, end))
             index += len(line)
         return lines
 
