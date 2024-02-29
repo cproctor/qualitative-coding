@@ -357,7 +357,7 @@ class QCCorpusViewer:
                 return choice(file_paths)
             else:
                 ix = self.prompt_for_choice("Multiple files matched:", file_paths)
-                return corpus_files[ix]
+                return file_paths[ix]
 
     def memo(self, coder, message=""):
         "Opens a memo file for coding"
@@ -529,7 +529,7 @@ class QCCorpusViewer:
         while True:
             raw_choice = input("> ")
             if raw_choice.isdigit() and int(raw_choice) in range(1, len(options)+1):
-                return int(raw_choice)
+                return int(raw_choice) - 1
             print("Sorry, that's not a valid choice.")
 
     def merge_ranges(self, ranges, clamp=None):
