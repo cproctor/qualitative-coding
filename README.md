@@ -280,14 +280,24 @@ In the future, this may also include odds ratios.
 
 ## Common Options
 
-### Filtering the corpus
+### Specify the settings file
+
+Every `qc` command supports **--settings** (**-s**), which allows you to specify a settings file. 
+This makes it possible to run `qc` commands from outside the project directory or from 
+within scripts without ambiguity. 
+
+The settings file can also be specified via the **QC_SETTINGS** environment variable. This 
+is makes it easy to check multiple settings files into version control (e.g. for users
+with different preferences, or to try out different codebook structures).
+
+### Filter the corpus
 
 - **--pattern** `pattern` (**-p**): Only include corpus files and their codes which match
   (glob-style) `pattern`.
 - **--filenames** `filepath` (**-f**): Only include corpus files listed in
   `filepath` (one per line).
 
-### Filtering code selection
+### Filter code selection
 
 - **code** [codes]: Many commands have an optional positional argument in which
   you may list codes to consider. If none are given, the root node in the tree
