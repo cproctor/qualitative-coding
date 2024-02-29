@@ -1,5 +1,6 @@
 import click
 import yaml
+import os
 from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.exceptions import QCError, IncompatibleOptions
@@ -9,8 +10,7 @@ from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("coder")
-@click.option("-s", "--settings", default="settings.yaml", type=click.Path(exists=True),
-        help="Settings file")
+@click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
@@ -26,8 +26,8 @@ def code(coder, settings, pattern, filenames, uncoded, first, random, recover, a
     if first and random:
         msg = "--first and --random cannot both be used."
         raise IncompatibleOptions(msg)
-
-    corpus = QCCorpus(settings)
+    settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if recover:
         viewer.recover_incomplete_coding_session()

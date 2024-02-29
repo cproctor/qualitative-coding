@@ -1,4 +1,5 @@
 import click
+import os
 import yaml
 from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
@@ -10,7 +11,7 @@ from tabulate import tabulate_formats
 
 @click.command()
 @click.argument("code", nargs=-1)
-@click.option("-s", "--settings", default="settings.yaml", help="Settings file")
+@click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
@@ -43,7 +44,8 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
     if total_only and recursive_counts:
         msg = "--total-only and --recursive-counts are incompatible"
         raise IncompatibleOptions(msg)
-    corpus = QCCorpus(settings)
+    settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     viewer.show_stats(
         code, 
