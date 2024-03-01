@@ -244,6 +244,15 @@ them at 80 characters. `verbatim` imports text files without making any changes.
 Future importers will include text extraction from PDFs and automatic transcription of 
 audio files.
 
+### corpus move (mv)
+Move a document from one corpus path to another (or recursively move a directory 
+with **--recursive** (**-r**)). Do not move corpus files directly or they will become
+out of sync with their metadata in the database.
+
+### corpus remove (rm)
+Remove a document from the corpus, along with codes applied to the document. 
+Or recursively remove all documents in a directory with **--recursive** (**-r**).
+
 ## Codes commands
 The following commands are grouped under `qc code`.
 

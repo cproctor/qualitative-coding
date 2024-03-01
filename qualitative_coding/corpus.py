@@ -7,6 +7,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
 import yaml
+import shutil
 import numpy as np
 from textwrap import fill
 import os
@@ -551,6 +552,58 @@ class QCCorpus:
         destination.parent.mkdir(parents=True, exist_ok=True)
         target.rename(destination)
         self.get_session().commit()
+
+    def remove_document(self, target, recursive=False):
+        """Remove a document, or recursively remove all documents in a directory.
+        Also deletes related CodedLines.
+        """
+        session = self.get_session()
+        self.validate_corpus_paths()
+        target = self.corpus_dir / target
+        if not target.exists():
+            raise QCError(f"{target} does not exist")
+        if recursive and not target.is_dir():
+            raise QCError(f"Cannot use --recursive when {target} is a file.")
+        if not recursive and target.is_dir():
+            raise QCError(f"{target} is a directory. Use --recursive")
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(target):
+                for fn in filenames:
+                    dp = Path(dir_path).relative_to(target)
+                    rtarget = target / dp / fn
+                    file_path = str(rtarget.relative_to(self.corpus_dir))
+                    self._purge_document_from_db(file_path)
+            shutil.rmtree(target)
+        else:
+            file_path = str(target.relative_to(self.corpus_dir))
+            self._purge_document_from_db(file_path)
+            target.unlink()
+        session.commit()
+
+    def _purge_document_from_db(self, file_path):
+        """Removes document and all dependents from the database.
+        Currently, there are no delete cascades in the database. 
+        When delete cascades are added in a future migration, this 
+        method will become trivial.
+        
+        This method is intended to be called by other methods.
+        Note that it does not commit the session.
+        """
+        session = self.get_session()
+        for cl in self.get_coded_lines(file_list=[file_path]):
+            session.delete(cl)
+        loc_q = (
+            select(Location)
+                .join(DocumentIndex)
+                .where(DocumentIndex.document_id == file_path)
+        )
+        for loc in session.scalars(loc_q).all():
+            session.delete(loc)
+        doc_index_q = select(DocumentIndex).where(DocumentIndex.document_id == file_path)
+        for doc_index in session.scalars(doc_index_q).all():
+            session.delete(doc_index)
+        doc = self.get_documents(file_list=[file_path])[0]
+        session.delete(doc)
 
     def filter_query_by_document(self, query, pattern=None, file_list=None, 
             unit="line"):
