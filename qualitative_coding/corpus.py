@@ -542,16 +542,25 @@ class QCCorpus:
                     dp = Path(dir_path).relative_to(target)
                     rtarget = target / dp / fn
                     rdestination = destination / dp / fn
-                    file_path = str(rtarget.relative_to(self.corpus_dir))
-                    doc = self.get_documents(file_list=[file_path])[0]
-                    doc.file_path = str(rdestination.relative_to(self.corpus_dir))
+                    old_file_path = str(rtarget.relative_to(self.corpus_dir))
+                    new_file_path = str(rdestination.relative_to(self.corpus_dir))
+                    self._move_document(old_file_path, new_file_path)
         else:
-            file_path = str(target.relative_to(self.corpus_dir))
-            doc = self.get_documents(file_list=[file_path])[0]
-            doc.file_path = str(destination.relative_to(self.corpus_dir))
+            old_file_path = str(target.relative_to(self.corpus_dir))
+            new_file_path = str(destination.relative_to(self.corpus_dir))
+            self._move_document(old_file_path, new_file_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         target.rename(destination)
         self.get_session().commit()
+
+    def _move_document(self, old_file_path, new_file_path):
+        """Updates a document's file path, and updates DocumentIndex.document_id
+        to match. Does not commit the session.
+        """
+        doc = self.get_documents(file_list=[old_file_path])[0]
+        for document_index in doc.indices:
+            document_index.document_id = new_file_path
+        doc.file_path = new_file_path
 
     def remove_document(self, target, recursive=False):
         """Remove a document, or recursively remove all documents in a directory.
@@ -572,15 +581,15 @@ class QCCorpus:
                     dp = Path(dir_path).relative_to(target)
                     rtarget = target / dp / fn
                     file_path = str(rtarget.relative_to(self.corpus_dir))
-                    self._purge_document_from_db(file_path)
+                    self._remove_document(file_path)
             shutil.rmtree(target)
         else:
             file_path = str(target.relative_to(self.corpus_dir))
-            self._purge_document_from_db(file_path)
+            self._remove_document(file_path)
             target.unlink()
         session.commit()
 
-    def _purge_document_from_db(self, file_path):
+    def _remove_document(self, file_path):
         """Removes document and all dependents from the database.
         Currently, there are no delete cascades in the database. 
         When delete cascades are added in a future migration, this 
@@ -592,16 +601,6 @@ class QCCorpus:
         session = self.get_session()
         for cl in self.get_coded_lines(file_list=[file_path]):
             session.delete(cl)
-        loc_q = (
-            select(Location)
-                .join(DocumentIndex)
-                .where(DocumentIndex.document_id == file_path)
-        )
-        for loc in session.scalars(loc_q).all():
-            session.delete(loc)
-        doc_index_q = select(DocumentIndex).where(DocumentIndex.document_id == file_path)
-        for doc_index in session.scalars(doc_index_q).all():
-            session.delete(doc_index)
         doc = self.get_documents(file_list=[file_path])[0]
         session.delete(doc)
 
