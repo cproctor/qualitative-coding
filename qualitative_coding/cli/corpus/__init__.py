@@ -9,7 +9,7 @@ from qualitative_coding.cli.corpus.remove import remove
 def corpus_group():
     "Corpus commands"
 
-corpus_group.add_command(list_corpus_paths)
+corpus_group.add_command(list_corpus_paths, aliases=["ls"])
 corpus_group.add_command(move, aliases=["mv"])
 corpus_group.add_command(remove, aliases=["rm"])
 corpus_group.add_command(import_media)
