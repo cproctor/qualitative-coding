@@ -41,9 +41,6 @@ def stats(code, settings, pattern, filenames, coder, depth, unit, recursive_code
     if depth and not recursive_codes: 
         msg = "--depth requires --recursive-codes"
         raise IncompatibleOptions(msg)
-    if total_only and recursive_counts:
-        msg = "--total-only and --recursive-counts are incompatible"
-        raise IncompatibleOptions(msg)
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
