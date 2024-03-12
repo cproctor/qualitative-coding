@@ -1,4 +1,5 @@
 import click
+import os
 import yaml
 from pathlib import Path
 from tabulate import tabulate_formats
@@ -9,7 +10,7 @@ from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("code", nargs=-1)
-@click.option("-s", "--settings", default="settings.yaml", help="Settings file")
+@click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
@@ -53,7 +54,8 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
         msg = "--max requires --tidy"
         raise IncompatibleOptions(msg)
 
-    corpus = QCCorpus(settings)
+    settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if tidy:
         viewer.tidy_codes(

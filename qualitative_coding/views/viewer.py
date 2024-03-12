@@ -240,7 +240,7 @@ class QCCorpusViewer:
                         file_list=file_list, coder=coder)
             doc_coded_lines = defaultdict(lambda: defaultdict(set))
             doc_code_counts = defaultdict(int)
-            for code, line_num, doc_path in coded_lines:
+            for code, coder, line_num, doc_path in coded_lines:
                 doc_code_counts[doc_path] += 1
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
@@ -271,7 +271,7 @@ class QCCorpusViewer:
                 coded_paragraphs = self.corpus.get_coded_paragraphs(codes=codes, 
                         pattern=pattern, file_list=file_list, coder=coder)
             doc_coded_paras = defaultdict(lambda: defaultdict(set))
-            for code, doc_path, para_start, para_end in coded_paragraphs:
+            for code, coder, doc_path, para_start, para_end in coded_paragraphs:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
                 with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
@@ -299,7 +299,7 @@ class QCCorpusViewer:
                 coded_documents = self.corpus.get_coded_documents(codes=codes, 
                         pattern=pattern, file_list=file_list, coder=coder)
             doc_codes = defaultdict(set)
-            for code, doc_path in coded_documents:
+            for code, coder, doc_path in coded_documents:
                 doc_codes[doc_path].add(code)
             if show_codes:
                 self.show_text_with_codes(
@@ -344,7 +344,7 @@ class QCCorpusViewer:
             if uncoded:
                 coded_docs = self.corpus.get_coded_documents(pattern=pattern,
                         file_list=file_list, coder=coder)
-                coded_file_paths = set(fp for code, fp in coded_docs)
+                coded_file_paths = set(fp for code, coder, fp in coded_docs)
                 file_paths = file_paths - coded_file_paths
             file_paths = sorted(file_paths)
         if len(file_paths) == 0:
@@ -358,7 +358,7 @@ class QCCorpusViewer:
                 return choice(file_paths)
             else:
                 ix = self.prompt_for_choice("Multiple files matched:", file_paths)
-                return corpus_files[ix]
+                return file_paths[ix]
 
     def memo(self, coder, message=""):
         "Opens a memo file for coding"
@@ -486,7 +486,7 @@ class QCCorpusViewer:
                 coder=coder_name
             )
         codes_per_line = defaultdict(list)
-        for code, line, doc in code_line_docs:
+        for code, coder, line, doc in code_line_docs:
             codes_per_line[line].append(code)
 
         text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
@@ -530,7 +530,7 @@ class QCCorpusViewer:
         while True:
             raw_choice = input("> ")
             if raw_choice.isdigit() and int(raw_choice) in range(1, len(options)+1):
-                return int(raw_choice)
+                return int(raw_choice) - 1
             print("Sorry, that's not a valid choice.")
 
     def merge_ranges(self, ranges, clamp=None):

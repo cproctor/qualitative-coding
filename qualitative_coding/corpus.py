@@ -7,6 +7,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
 import yaml
+import shutil
 import numpy as np
 from textwrap import fill
 import os
@@ -343,7 +344,7 @@ class QCCorpus:
 
     def get_codebook(self):
         "Reads a tree of codes from the codebook file."
-        return TreeNode.read_yaml(self.resolve_path(self.settings['codebook']))
+        return TreeNode.read_yaml(self.codebook_path)
 
     def get_document(self, corpus_path):
         """Fetches a document object.
@@ -541,16 +542,67 @@ class QCCorpus:
                     dp = Path(dir_path).relative_to(target)
                     rtarget = target / dp / fn
                     rdestination = destination / dp / fn
-                    file_path = str(rtarget.relative_to(self.corpus_dir))
-                    doc = self.get_documents(file_list=[file_path])[0]
-                    doc.file_path = str(rdestination.relative_to(self.corpus_dir))
+                    old_file_path = str(rtarget.relative_to(self.corpus_dir))
+                    new_file_path = str(rdestination.relative_to(self.corpus_dir))
+                    self._move_document(old_file_path, new_file_path)
         else:
-            file_path = str(target.relative_to(self.corpus_dir))
-            doc = self.get_documents(file_list=[file_path])[0]
-            doc.file_path = str(destination.relative_to(self.corpus_dir))
+            old_file_path = str(target.relative_to(self.corpus_dir))
+            new_file_path = str(destination.relative_to(self.corpus_dir))
+            self._move_document(old_file_path, new_file_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         target.rename(destination)
         self.get_session().commit()
+
+    def _move_document(self, old_file_path, new_file_path):
+        """Updates a document's file path, and updates DocumentIndex.document_id
+        to match. Does not commit the session.
+        """
+        doc = self.get_documents(file_list=[old_file_path])[0]
+        for document_index in doc.indices:
+            document_index.document_id = new_file_path
+        doc.file_path = new_file_path
+
+    def remove_document(self, target, recursive=False):
+        """Remove a document, or recursively remove all documents in a directory.
+        Also deletes related CodedLines.
+        """
+        session = self.get_session()
+        self.validate_corpus_paths()
+        target = self.corpus_dir / target
+        if not target.exists():
+            raise QCError(f"{target} does not exist")
+        if recursive and not target.is_dir():
+            raise QCError(f"Cannot use --recursive when {target} is a file.")
+        if not recursive and target.is_dir():
+            raise QCError(f"{target} is a directory. Use --recursive")
+        if recursive:
+            for dir_path, dir_names, filenames in os.walk(target):
+                for fn in filenames:
+                    dp = Path(dir_path).relative_to(target)
+                    rtarget = target / dp / fn
+                    file_path = str(rtarget.relative_to(self.corpus_dir))
+                    self._remove_document(file_path)
+            shutil.rmtree(target)
+        else:
+            file_path = str(target.relative_to(self.corpus_dir))
+            self._remove_document(file_path)
+            target.unlink()
+        session.commit()
+
+    def _remove_document(self, file_path):
+        """Removes document and all dependents from the database.
+        Currently, there are no delete cascades in the database. 
+        When delete cascades are added in a future migration, this 
+        method will become trivial.
+        
+        This method is intended to be called by other methods.
+        Note that it does not commit the session.
+        """
+        session = self.get_session()
+        for cl in self.get_coded_lines(file_list=[file_path]):
+            session.delete(cl)
+        doc = self.get_documents(file_list=[file_path])[0]
+        session.delete(doc)
 
     def filter_query_by_document(self, query, pattern=None, file_list=None, 
             unit="line"):
@@ -590,10 +642,15 @@ class QCCorpus:
         }[unit]
 
     def get_coded_lines(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, CodedLine.line_number, Document.file_path)
+        """Returns (code, coder, line, file_path)
         """
         query = (
-            select(CodedLine.code_id, CodedLine.line, DocumentIndex.document_id)
+            select(
+                CodedLine.code_id, 
+                CodedLine.coder_id, 
+                CodedLine.line, 
+                DocumentIndex.document_id
+            )
             .join(CodedLine.locations)
             .join(Location.document_index)
             .where(DocumentIndex.name == "paragraphs")
@@ -606,11 +663,11 @@ class QCCorpus:
         return self.get_session().execute(query).all()
 
     def get_coded_paragraphs(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, CodedLine.line_number, Document.file_path, Location.id,
+        """Returns (Code.name, Coder.name, CodedLine.line_number, Document.file_path, Location.id,
                 Location.start_line, Location.end_line)
         """
         query = (
-            select(CodedLine.code_id, DocumentIndex.document_id,
+            select(CodedLine.code_id, CodedLine.coder_id, DocumentIndex.document_id,
                    Location.start_line, Location.end_line)
             .join(CodedLine.locations)
             .join(Location.document_index)
@@ -624,10 +681,10 @@ class QCCorpus:
         return self.get_session().execute(query).all()
 
     def get_coded_documents(self, codes=None, pattern=None, file_list=None, coder=None):
-        """Returns (Code.name, Document.file_path)
+        """Returns (Code.name, Coder.name, Document.file_path)
         """
         query = (
-            select(CodedLine.code_id, DocumentIndex.document_id)
+            select(CodedLine.code_id, CodedLine.coder_id, DocumentIndex.document_id)
             .join(CodedLine.locations)
             .join(Location.document_index)
             .where(DocumentIndex.name == "paragraphs")
@@ -712,13 +769,6 @@ class QCCorpus:
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
-
-        How will I do this?
-        get all the coded lines (with relevant params).
-        For each, create a new coded line with the new code. 
-        Then delete all coded lines with the old code.
-        get_coded_lines returns: (Code.name, CodedLine.line_number, Document.file_path)
-
         """
         session = self.get_session()
         new_code = self.get_or_create_code(new_code)

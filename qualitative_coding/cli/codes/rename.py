@@ -1,12 +1,12 @@
 import click
+import os
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.helpers import read_file_list
 
 @click.command()
 @click.argument("old_codes", nargs=-1)
 @click.argument("new_code")
-@click.option("-s", "--settings", default="settings.yaml", type=click.Path(exists=True),
-        help="Settings file")
+@click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-c", "--coder", help="Coder")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
@@ -14,7 +14,8 @@ from qualitative_coding.helpers import read_file_list
         help="File path containing a list of filenames to use")
 def rename(old_codes, new_code, settings, coder, pattern, filenames):
     "Rename one or more codes"
-    corpus = QCCorpus(settings)
+    settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    corpus = QCCorpus(settings_path)
     with corpus.session():
         corpus.rename_codes(
             old_codes=old_codes, 

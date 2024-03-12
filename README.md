@@ -244,6 +244,15 @@ them at 80 characters. `verbatim` imports text files without making any changes.
 Future importers will include text extraction from PDFs and automatic transcription of 
 audio files.
 
+### corpus move (mv)
+Move a document from one corpus path to another (or recursively move a directory 
+with **--recursive** (**-r**)). Do not move corpus files directly or they will become
+out of sync with their metadata in the database.
+
+### corpus remove (rm)
+Remove a document from the corpus, along with codes applied to the document. 
+Or recursively remove all documents in a directory with **--recursive** (**-r**).
+
 ## Codes commands
 The following commands are grouped under `qc code`.
 
@@ -280,14 +289,24 @@ In the future, this may also include odds ratios.
 
 ## Common Options
 
-### Filtering the corpus
+### Specify the settings file
+
+Every `qc` command supports **--settings** (**-s**), which allows you to specify a settings file. 
+This makes it possible to run `qc` commands from outside the project directory or from 
+within scripts without ambiguity. 
+
+The settings file can also be specified via the **QC_SETTINGS** environment variable. This 
+is makes it easy to check multiple settings files into version control (e.g. for users
+with different preferences, or to try out different codebook structures).
+
+### Filter the corpus
 
 - **--pattern** `pattern` (**-p**): Only include corpus files and their codes which match
   (glob-style) `pattern`.
 - **--filenames** `filepath` (**-f**): Only include corpus files listed in
   `filepath` (one per line).
 
-### Filtering code selection
+### Filter code selection
 
 - **code** [codes]: Many commands have an optional positional argument in which
   you may list codes to consider. If none are given, the root node in the tree

@@ -21,7 +21,8 @@ class Document(Base):
     __tablename__ = "document"
     file_path: Mapped[str] = mapped_column(primary_key=True)
     file_hash: Mapped[str] 
-    indices: Mapped[List["DocumentIndex"]] = relationship(back_populates="document")
+    indices: Mapped[List["DocumentIndex"]] = relationship(back_populates="document",
+            cascade="all, delete-orphan")
 
     class AlreadyExists(QCError):
         def __init__(self, doc):
@@ -42,7 +43,8 @@ class DocumentIndex(Base):
     time_series: Mapped[bool] = mapped_column(default=False)
     document_id: Mapped[str] = mapped_column(ForeignKey(Document.file_path))
     document: Mapped["Document"] = relationship(back_populates="indices")
-    locations: Mapped[List["Location"]] = relationship(back_populates="document_index")
+    locations: Mapped[List["Location"]] = relationship(back_populates="document_index",
+            cascade="all, delete-orphan")
 
 coded_line_location_association_table = Table(
     "coded_line_location_association",
@@ -63,18 +65,20 @@ class Location(Base):
     document_index: Mapped["DocumentIndex"] = relationship(back_populates="locations")
     coded_lines: Mapped[List["CodedLine"]] = relationship(
         secondary=coded_line_location_association_table,
-        back_populates="locations"
+        back_populates="locations",
     )
 
 class Code(Base):
     __tablename__ = "code"
     name: Mapped[str] = mapped_column(primary_key=True)
-    coded_lines: Mapped[List["CodedLine"]] = relationship(back_populates="code")
+    coded_lines: Mapped[List["CodedLine"]] = relationship(back_populates="code",
+            cascade="all, delete-orphan")
 
 class Coder(Base):
     __tablename__ = "coder"
     name: Mapped[str] = mapped_column(primary_key=True)
-    coded_lines: Mapped[List["CodedLine"]] = relationship(back_populates="coder")
+    coded_lines: Mapped[List["CodedLine"]] = relationship(back_populates="coder", 
+            cascade="all, delete-orphan")
 
 class CodedLine(Base):
     __tablename__ = "coded_line"
