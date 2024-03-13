@@ -15,7 +15,7 @@ from qualitative_coding.helpers import read_file_list
         help="Pattern to filter corpus filenames (glob-style)")
 @click.option("-f", "--filenames", 
         help="File path containing a list of filenames to use")
-@click.option("-c", "--coder", help="Coder")
+@click.option("-c", "--coders", help="Coders", multiple=True)
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
 @click.option("-n", "--unit", default="line", help="Unit of analysis",
         type=click.Choice(['line', 'paragraph', 'document']))
@@ -35,7 +35,7 @@ from qualitative_coding.helpers import read_file_list
 @click.option("-u", "--max", "_max", help="Maximum count value to show", type=int)
 @click.option("-l", "--min", "_min", help="Minimum count value to show", type=int)
 @handle_qc_errors
-def crosstab(codes, settings, pattern, filenames, coder, depth, unit, recursive_codes,
+def crosstab(codes, settings, pattern, filenames, coders, depth, unit, recursive_codes,
         recursive_counts, expanded, _format, outfile, probs, compact, tidy, _max, _min):
     "Cross-tabulate code occurrences"
     if depth and not recursive_codes:
@@ -67,7 +67,7 @@ def crosstab(codes, settings, pattern, filenames, coder, depth, unit, recursive_
             format=_format, 
             pattern=pattern,
             file_list=read_file_list(filenames),
-            coder=coder,
+            coders=coders,
             unit=unit,
             outfile=outfile,
             minimum=_min,
@@ -83,7 +83,7 @@ def crosstab(codes, settings, pattern, filenames, coder, depth, unit, recursive_
             format=_format, 
             pattern=pattern,
             file_list=read_file_list(filenames),
-            coder=coder,
+            coders=coders,
             unit=unit,
             outfile=outfile,
             probs=probs,

@@ -272,14 +272,14 @@ class QCCorpus:
     def get_code_tree_with_counts(self, 
         pattern=None,
         file_list=None,
-        coder=None,
+        coders=None,
         unit='line',
     ):
         tree = self.get_codebook()
         code_counts = self.count_codes(
             pattern=pattern,
             file_list=file_list, 
-            coder=coder,
+            coders=coders,
             unit=unit,
         )
         for node in tree.flatten():
@@ -497,7 +497,7 @@ class QCCorpus:
                 ))
         self.get_session().commit()
 
-    def count_codes(self, pattern=None, file_list=None, coder=None, unit="line"):
+    def count_codes(self, pattern=None, file_list=None, coders=None, unit="line"):
         """Returns a dict of {code:count}.
         """
         unit_column = self.get_column_to_count(unit)
@@ -507,7 +507,7 @@ class QCCorpus:
             .group_by(Code.name)
         )
         query = self.filter_query_by_document(query, pattern, file_list, unit=unit)
-        query = self.filter_query_by_coder(query, coder)
+        query = self.filter_query_by_coders(query, coders)
         result = self.get_session().execute(query).all()
         return dict(result)
 
@@ -622,12 +622,12 @@ class QCCorpus:
             query = query.where(Document.file_path.in_(file_list))
         return query
 
-    def filter_query_by_coder(self, query, coder=None, coded_line_alias=CodedLine):
-        """Filters a query by coder, if coder is given.
+    def filter_query_by_coders(self, query, coders=None, coded_line_alias=CodedLine):
+        """Filters a query by coders, if coders are given.
         Joins the query to CodedLine and adds a where clause matching the coder name.
         """
-        if coder:
-            return query.where(coded_line_alias.coder_id == coder)
+        if coders:
+            return query.where(coded_line_alias.coder_id.in_(coders))
         else:
             return query
 
@@ -641,7 +641,7 @@ class QCCorpus:
             "document": document_alias.file_path,
         }[unit]
 
-    def get_coded_lines(self, codes=None, pattern=None, file_list=None, coder=None):
+    def get_coded_lines(self, codes=None, pattern=None, file_list=None, coders=None):
         """Returns (code, coder, line, file_path)
         """
         query = (
@@ -659,10 +659,10 @@ class QCCorpus:
         if codes:
             query = query.where(CodedLine.code_id.in_(codes))
         query = self.filter_query_by_document(query, pattern, file_list)
-        query = self.filter_query_by_coder(query, coder)
+        query = self.filter_query_by_coders(query, coders)
         return self.get_session().execute(query).all()
 
-    def get_coded_paragraphs(self, codes=None, pattern=None, file_list=None, coder=None):
+    def get_coded_paragraphs(self, codes=None, pattern=None, file_list=None, coders=None):
         """Returns (Code.name, Coder.name, CodedLine.line_number, Document.file_path, Location.id,
                 Location.start_line, Location.end_line)
         """
@@ -677,10 +677,10 @@ class QCCorpus:
         if codes:
             query = query.where(CodedLine.code_id.in_(codes))
         query = self.filter_query_by_document(query, pattern, file_list)
-        query = self.filter_query_by_coder(query, coder)
+        query = self.filter_query_by_coders(query, coders)
         return self.get_session().execute(query).all()
 
-    def get_coded_documents(self, codes=None, pattern=None, file_list=None, coder=None):
+    def get_coded_documents(self, codes=None, pattern=None, file_list=None, coders=None):
         """Returns (Code.name, Coder.name, Document.file_path)
         """
         query = (
@@ -693,7 +693,7 @@ class QCCorpus:
         if codes:
             query = query.where(CodedLine.code_id.in_(codes))
         query = self.filter_query_by_document(query, pattern, file_list)
-        query = self.filter_query_by_coder(query, coder)
+        query = self.filter_query_by_coders(query, coders)
         return self.get_session().execute(query).all()
 
     def get_code_matrix(self, codes, 
@@ -704,7 +704,7 @@ class QCCorpus:
         pattern=None,
         file_list=None,
         invert=False,
-        coder=None,
+        coders=None,
         expanded=False,
     ):
         """Returns a list of codes and a matrix of (codes * selections). 
@@ -743,8 +743,8 @@ class QCCorpus:
                 .join(LocationB, CodedLineB.locations)
                 .where(LocationA.document_index_id == LocationB.document_index_id)
             )
-            query = self.filter_query_by_coder(query, coder, CodedLineA)
-            query = self.filter_query_by_coder(query, coder, CodedLineB)
+            query = self.filter_query_by_coders(query, coders, CodedLineA)
+            query = self.filter_query_by_coders(query, coders, CodedLineB)
 
             ab_count = self.get_session().scalars(query).first()
             cooccurrences[ix_a][ix_b] = ab_count
@@ -765,7 +765,7 @@ class QCCorpus:
             code_tree.add_child(new_code)
         TreeNode.write_yaml(self.codebook_path, code_tree)
 
-    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coder=None):
+    def rename_codes(self, old_codes, new_code, pattern=None, file_list=None, coders=None):
         """
         Updates the codefiles and the codebook, replacing the old code with the new code. 
         Removes the old code from the codebook.
@@ -780,7 +780,7 @@ class QCCorpus:
             .where(CodedLine.code_id.in_(old_codes))
         )
         query = self.filter_query_by_document(query, pattern, file_list)
-        query = self.filter_query_by_coder(query, coder)
+        query = self.filter_query_by_coders(query, coders)
         matching_coded_lines = session.execute(query).scalars()
         for cl in matching_coded_lines:
             doc_path = cl.locations[0].document_index.document_id

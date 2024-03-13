@@ -48,7 +48,7 @@ class QCCorpusViewer:
         format=None,
         pattern=None,
         file_list=None,
-        coder=None,
+        coders=None,
         distinct=False,
         outfile=None,
         total_only=False,
@@ -66,7 +66,7 @@ class QCCorpusViewer:
             tree = self.corpus.get_code_tree_with_counts(
                 pattern=pattern, 
                 file_list=file_list,
-                coder=coder, 
+                coders=coders, 
                 unit=unit, 
             )
         if codes:
@@ -115,7 +115,7 @@ class QCCorpusViewer:
         unit='line',
         pattern=None,
         file_list=None,
-        coder=None,
+        coders=None,
         probs=False,
         expanded=False, 
         compact=False,
@@ -131,7 +131,7 @@ class QCCorpusViewer:
                 unit=unit,
                 pattern=pattern,
                 file_list=file_list,
-                coder=coder,
+                coders=coders,
                 expanded=expanded,
             )
         m = matrix
@@ -169,7 +169,7 @@ class QCCorpusViewer:
         unit='line',
         pattern=None,
         file_list=None,
-        coder=None,
+        coders=None,
         expanded=False, 
         outfile=None,
         format=None,
@@ -186,7 +186,7 @@ class QCCorpusViewer:
             unit=unit,
             pattern=pattern,
             file_list=file_list,
-            coder=coder,
+            coders=coders,
             expanded=expanded,
         )
         counts = Counter(map(tuple, matrix))
@@ -223,7 +223,7 @@ class QCCorpusViewer:
             before=2, 
             after=2, 
             text_width=80, 
-            coder=None,
+            coders=None,
             pattern=None,
             file_list=None,
             show_codes=True,
@@ -237,7 +237,7 @@ class QCCorpusViewer:
         if unit == "line": 
             with self.corpus.session():
                 coded_lines = self.corpus.get_coded_lines(codes=codes, pattern=pattern, 
-                        file_list=file_list, coder=coder)
+                        file_list=file_list, coders=coders)
             doc_coded_lines = defaultdict(lambda: defaultdict(set))
             doc_code_counts = defaultdict(int)
             for code, coder, line_num, doc_path in coded_lines:
@@ -477,13 +477,13 @@ class QCCorpusViewer:
         metadata = yaml.safe_load(metadata_file_path.read_text())
         self.open_editor(**metadata)
 
-    def codes_file_text(self, corpus_file_path, coder_name):
+    def codes_file_text(self, corpus_file_path, coder):
         """Formats codes for a temporary coding file.
         """
         with self.corpus.session():
             code_line_docs = self.corpus.get_coded_lines(
                 file_list=[corpus_file_path], 
-                coder=coder_name
+                coders=[coder]
             )
         codes_per_line = defaultdict(list)
         for code, coder, line, doc in code_line_docs:
