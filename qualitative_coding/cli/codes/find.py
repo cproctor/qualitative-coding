@@ -6,7 +6,7 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 
 @click.command()
-@click.argument("code", nargs=-1)
+@click.argument("codes", nargs=-1)
 @click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
@@ -25,14 +25,14 @@ from qualitative_coding.helpers import read_file_list
 @click.option("-l", "--no-codes", "no_codes", is_flag=True,
         help="Do not show matching codes")
 @handle_qc_errors
-def find(code, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
+def find(codes, settings, pattern, filenames, coder, depth, unit, recursive_codes, 
          before, after, no_codes):
     "Find all coded text"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     viewer.show_coded_text(
-        code, 
+        codes, 
         before=before, 
         after=after, 
         recursive_codes=recursive_codes,

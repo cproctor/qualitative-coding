@@ -9,7 +9,7 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 
 @click.command()
-@click.argument("code", nargs=-1)
+@click.argument("codes", nargs=-1)
 @click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
@@ -35,7 +35,7 @@ from qualitative_coding.helpers import read_file_list
 @click.option("-u", "--max", "_max", help="Maximum count value to show", type=int)
 @click.option("-l", "--min", "_min", help="Minimum count value to show", type=int)
 @handle_qc_errors
-def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_codes,
+def crosstab(codes, settings, pattern, filenames, coder, depth, unit, recursive_codes,
         recursive_counts, expanded, _format, outfile, probs, compact, tidy, _max, _min):
     "Cross-tabulate code occurrences"
     if depth and not recursive_codes:
@@ -59,7 +59,7 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
     viewer = QCCorpusViewer(corpus)
     if tidy:
         viewer.tidy_codes(
-            code, 
+            codes, 
             depth=depth, 
             recursive_codes=recursive_codes,
             recursive_counts=recursive_counts,
@@ -75,7 +75,7 @@ def crosstab(code, settings, pattern, filenames, coder, depth, unit, recursive_c
         )
     else:
         viewer.crosstab(
-            code, 
+            codes, 
             depth=depth, 
             recursive_codes=recursive_codes,
             recursive_counts=recursive_counts,

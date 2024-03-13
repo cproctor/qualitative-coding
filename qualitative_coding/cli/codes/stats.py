@@ -10,7 +10,7 @@ from qualitative_coding.helpers import read_file_list
 from tabulate import tabulate_formats
 
 @click.command()
-@click.argument("code", nargs=-1)
+@click.argument("codes", nargs=-1)
 @click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
 @click.option("-p", "--pattern", 
         help="Pattern to filter corpus filenames (glob-style)")
@@ -36,7 +36,7 @@ from tabulate import tabulate_formats
 @click.option("-t", "--total-only", is_flag=True,
         help="Show total but not count")
 @handle_qc_errors
-def stats(code, settings, pattern, filenames, coder, distinct, depth, unit, recursive_codes, 
+def stats(codes, settings, pattern, filenames, coder, distinct, depth, unit, recursive_codes, 
         recursive_counts, expanded, _format, outfile, _max, _min, zeros, total_only):
     "Show statistics about codes"
     if depth and not recursive_codes: 
@@ -46,7 +46,7 @@ def stats(code, settings, pattern, filenames, coder, distinct, depth, unit, recu
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     viewer.show_stats(
-        code, 
+        codes, 
         max_count=_max, 
         min_count=_min, 
         depth=depth, 
