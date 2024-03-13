@@ -49,7 +49,8 @@ class QCCorpusViewer:
         pattern=None,
         file_list=None,
         coders=None,
-        distinct=False,
+        by_coder=False,
+        by_document=False,
         outfile=None,
         total_only=False,
         zeros=False,
@@ -107,6 +108,69 @@ class QCCorpusViewer:
                 writer.writerows(results)
         else:
             print(tabulate(results, cols, tablefmt=format))
+
+    def show_document_coders_pivot_table(self, 
+        codes=None,
+        recursive=False,
+        format=None,
+        pattern=None,
+        file_list=None,
+        coders=None,
+        unit='line',
+        outfile=None,
+    ):
+        """Shows a table where each row is a document and each column
+        is a coder.
+        """
+        with self.corpus.session():
+            if unit == 'line':
+                lines = self.corpus.get_coded_lines(
+                    codes=codes, 
+                    pattern=pattern,
+                    file_list=file_list,
+                    coders=coders,
+                )
+                units = [(doc, coder) for _, coder, _, doc in lines]
+            elif unit == 'paragraph':
+                paragraphs = self.corpus.get_coded_paragraphs(
+                    codes=codes, 
+                    pattern=pattern,
+                    file_list=file_list,
+                    coders=coders,
+                )
+                units = [(doc, coder) for _, coder, _, doc, _, _, _ in paragraphs]
+            elif unit == 'document':
+                docs = self.corpus.get_coded_paragraphs(
+                    codes=codes, 
+                    pattern=pattern,
+                    file_list=file_list,
+                    coders=coders,
+                )
+                units = [(doc, coder) for _, coder, doc in docs]
+        matrix = defaultdict(lambda: defaultdict(int))
+        for doc, coder in units:
+            matrix[doc][coder] += 1
+        doc_index = sorted(matrix.keys())
+        coder_index = set()
+        for row in matrix.values():
+            for coder in row.keys():
+                coder_index.add(coder)
+        coder_index = sorted(coder_index)
+        cols = ["Document"] + coder_index + ["Total"]
+        results = []
+        for doc in doc_index:
+            row = [doc] + [matrix[doc][c] for c in coder_index] + [sum(matrix[doc].values())]
+            results.append(row)
+        totals = ["Total"] + [sum(col) for col in zip(*[r[1:] for r in results])]
+        results.append(totals)
+        if outfile:
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(results)
+        else:
+            print(tabulate(results, cols, tablefmt=format))
+
 
     def crosstab(self, codes, 
         recursive_codes=False,
