@@ -81,7 +81,7 @@ class QCCorpusViewer:
         if min_count:
             nodes = filter(lambda n: n.total >= min_count, nodes)
         if not zeros:
-            nodes = filter(lambda n: n.count > 0, nodes)
+            nodes = filter(lambda n: n.total > 0, nodes)
         nodes = sorted(nodes)
 
         def namer(node):
@@ -91,16 +91,65 @@ class QCCorpusViewer:
                 return node.indented_name(nodes)
             else:
                 return node.name
-        if recursive_counts:
-            if total_only:
-                cols = ["Code", "Total"]
-                results = [(namer(n), n.total) for n in nodes]
-            else:
-                cols = ["Code", "Count", "Total"]
-                results = [(namer(n), n.count, n.total) for n in nodes]
+
+        if by_coder:
+            with self.corpus.session():
+                totals_by_coder = self.corpus.count_codes_by_coder(
+                    codes=codes, 
+                    coders=coders,
+                    recursive_codes=recursive_codes, 
+                    depth=depth,
+                    pattern=pattern,
+                    file_list=file_list,
+                    unit=unit,
+                    totals=True
+                )
+                if coders:
+                    all_coders = sorted(coders)
+                else:
+                    all_coders = sorted(c.name for c in self.corpus.get_all_coders())
+                cols = all_coders + ["Total"]
+                results = []
+                for n in nodes:
+                    row = []
+                    for coder in all_coders:
+                        row.append(totals_by_coder[coder][n.expanded_name()])
+                    row.append(sum(row))
+                    results.append([namer(n)] + row)
+        elif by_document:
+            with self.corpus.session():
+                totals_by_doc = self.corpus.count_codes_by_document(
+                    codes=codes, 
+                    coders=coders,
+                    recursive_codes=recursive_codes, 
+                    depth=depth,
+                    pattern=pattern,
+                    file_list=file_list,
+                    unit=unit,
+                    totals=True
+                )
+                all_docs = self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                all_docs = sorted(d.file_path for d in all_docs)
+                cols = all_docs + ["Total"]
+                results = []
+                for n in nodes:
+                    row = []
+                    for doc in all_docs:
+                        row.append(totals_by_doc[doc][n.expanded_name()])
+                    row.append(sum(row))
+                    results.append([namer(n)] + row)
         else:
-            cols = ["Code", "Count"]
-            results = [(namer(n), n.count) for n in nodes]
+            if recursive_counts:
+                if total_only:
+                    cols = ["Code", "Total"]
+                    results = [(namer(n), n.total) for n in nodes]
+                else:
+                    cols = ["Code", "Count", "Total"]
+                    results = [(namer(n), n.count, n.total) for n in nodes]
+            else:
+                cols = ["Code", "Count"]
+                results = [(namer(n), n.count) for n in nodes]
+
         if outfile:
             with open(outfile, 'w') as fh:
                 writer = csv.writer(fh)

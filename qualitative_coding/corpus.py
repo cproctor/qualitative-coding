@@ -808,6 +808,59 @@ class QCCorpus:
         result = session.execute(query).scalars()
         return len(list(result)) > 0
 
+    def count_codes_by_coder(self, codes=None, coders=None, recursive_codes=False,
+            depth=None, pattern=None, file_list=None, unit='line', totals=True):
+        """Counts codes per-coder. Returns a dict of dicts like {"coder":{"code": n}}.
+        """
+        coders = coders or [c.name for c in self.get_all_coders()]
+        attr = "total" if totals else "count"
+        totals_by_coder = defaultdict(lambda: defaultdict(int))
+        for coder in coders:
+            tree = self.get_code_tree_with_counts(
+                pattern=pattern, 
+                file_list=file_list,
+                coders=[coder], 
+                unit=unit, 
+            )
+            if codes:
+                nodes = sum([tree.find(c) for c in codes], [])
+                if recursive_codes:
+                    nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
+            else:
+                nodes = tree.flatten(depth=depth)
+            for node in nodes:
+                totals_by_coder[coder][node.expanded_name()] = getattr(node, attr)
+        return totals_by_coder
+
+    def count_codes_by_document(self, codes=None, coders=None, recursive_codes=False,
+            depth=None, pattern=None, file_list=None, unit='line', totals=True):
+        """Counts codes per-coder. Returns a dict of dicts like {"coder":{"code": n}}.
+        """
+        documents = self.get_documents(pattern=pattern, file_list=file_list)
+        documents = [doc.file_path for doc in documents]
+        attr = "total" if totals else "count"
+        totals_by_doc = defaultdict(lambda: defaultdict(int))
+        for doc in documents:
+            tree = self.get_code_tree_with_counts(
+                file_list=[doc],
+                coders=coders, 
+                unit=unit, 
+            )
+            if codes:
+                nodes = sum([tree.find(c) for c in codes], [])
+                if recursive_codes:
+                    nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
+            else:
+                nodes = tree.flatten(depth=depth)
+            for node in nodes:
+                totals_by_doc[doc][node.expanded_name()] = getattr(node, attr)
+        return totals_by_doc
+
+
+
+
+
+
 
 
 
