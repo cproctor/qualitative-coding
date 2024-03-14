@@ -57,6 +57,29 @@ I want to publish this tool. What's needed?
 - Add autocoding
   - Verbose mode: Gives language suitable for the methods section.
 
-- Add import/export to standard format. 
+## Notes 2024-02-20
 
+- Ensure that `import` is idempotent. Note files which already exist. 
+- Provide `corpus remove` to remove a file. Warn about all the Coded lines which will be deleted.
+- 'corpus rebase`
 
+## Notes 2024-03-11
+
+### What's the API for autocode?
+I need to send across training and estimation data
+- The codes only need to be specified for test data. Either the autocoder will 
+  fit itself based on the given codes, or it'll do its own thing
+
+qc autocode 
+autocoder               Name of autocoder (either built in or specified in settings.py)
+coder                   Name of coder to use
+codes                   Codes to select for training set (If no codes given, send no training data)
+-r, --recursive-codes   Include recursive codes
+-v, --cross-validate    Cross-validate the estimator
+-k, --folds x           Specify number of folds for cross-validation
+-p, --pattern-train
+
+AI tools to build in. All of these need to be able to be parameterized.
+- suggest
+- named_entities
+- sentiment
