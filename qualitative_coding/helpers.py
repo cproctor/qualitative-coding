@@ -20,7 +20,7 @@ def read_file_list(filename):
     containing a list of files. 
     """
     if filename:
-        return Path(filenames).read_text().split("\n")
+        return Path(filename).read_text().split("\n")
 
 def iter_paragraph_lines(fh):
     p_start = 0
