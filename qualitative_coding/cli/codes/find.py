@@ -4,6 +4,7 @@ from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
+from qualitative_coding.exceptions import IncompatibleOptions
 
 @click.command()
 @click.argument("codes", nargs=-1)
@@ -24,23 +25,39 @@ from qualitative_coding.helpers import read_file_list
         help="Number of lines after the code to show")
 @click.option("-l", "--no-codes", "no_codes", is_flag=True,
         help="Do not show matching codes")
+@click.option("-j", "--json", is_flag=True, help="Export as JSON")
 @handle_qc_errors
 def find(codes, settings, pattern, filenames, coders, depth, unit, recursive_codes, 
-         before, after, no_codes):
+         before, after, no_codes, json):
     "Find all coded text"
+    if no_codes and json:
+        raise IncompatibleOptions("--no-codes and --json are incompatible")
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
-    viewer.show_coded_text(
-        codes, 
-        before=before, 
-        after=after, 
-        recursive_codes=recursive_codes,
-        depth=depth,
-        unit=unit,
-        pattern=pattern,
-        file_list=read_file_list(filenames),
-        coders=coders,
-        show_codes=not no_codes,
-    )
+    if json:
+        viewer.show_coded_text_json(
+            codes, 
+            before=before, 
+            after=after, 
+            recursive_codes=recursive_codes,
+            depth=depth,
+            unit=unit,
+            pattern=pattern,
+            file_list=read_file_list(filenames),
+            coders=coders,
+        )
+    else:
+        viewer.show_coded_text(
+            codes, 
+            before=before, 
+            after=after, 
+            recursive_codes=recursive_codes,
+            depth=depth,
+            unit=unit,
+            pattern=pattern,
+            file_list=read_file_list(filenames),
+            coders=coders,
+            show_codes=not no_codes,
+        )
 

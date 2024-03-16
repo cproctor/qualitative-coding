@@ -15,6 +15,7 @@ from textwrap import fill
 import numpy as np
 import csv
 import yaml
+import json
 import re
 
 class QCCorpusViewer:
@@ -382,12 +383,12 @@ class QCCorpusViewer:
         elif unit == "paragraph":
             with self.corpus.session():
                 coded_paragraphs = self.corpus.get_coded_paragraphs(codes=codes, 
-                        pattern=pattern, file_list=file_list, coder=coder)
+                        pattern=pattern, file_list=file_list, coders=coders)
             doc_coded_paras = defaultdict(lambda: defaultdict(set))
             for code, coder, doc_path, para_start, para_end in coded_paragraphs:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
-                with open(Path(self.settings['corpus_dir']) / doc_path) as fh:
+                with open(self.corpus.corpus_dir / doc_path) as fh:
                     lines = [line for line in fh]
                 para_code_count = sum(len(code_set) for code_set in coded_paras.values())
                 print(f"\n{doc_path} ({para_code_count})")
@@ -410,7 +411,7 @@ class QCCorpusViewer:
         elif unit == "document": 
             with self.corpus.session():
                 coded_documents = self.corpus.get_coded_documents(codes=codes, 
-                        pattern=pattern, file_list=file_list, coder=coder)
+                        pattern=pattern, file_list=file_list, coders=coders)
             doc_codes = defaultdict(set)
             for code, coder, doc_path in coded_documents:
                 doc_codes[doc_path].add(code)
@@ -423,6 +424,78 @@ class QCCorpusViewer:
             else:
                 for doc_path in doc_codes.keys():
                     print(doc_path)
+
+    def show_coded_text_json(self, codes, 
+            recursive_codes=False, 
+            depth=None,
+            unit="line",
+            before=2, 
+            after=2, 
+            text_width=80, 
+            coders=None,
+            pattern=None,
+            file_list=None,
+            show_codes=True,
+        ):
+        """Displays json with lines from corpus documents with their codes.
+        """
+        if recursive_codes:
+            codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
+        else:
+            codes = set(codes)
+        records = []
+        if unit == "line": 
+            with self.corpus.session():
+                coded_lines = self.corpus.get_coded_lines(codes=codes, pattern=pattern, 
+                        file_list=file_list, coders=coders)
+            doc_coded_lines = defaultdict(lambda: defaultdict(set))
+            doc_code_counts = defaultdict(int)
+            for code, coder, line_num, doc_path in coded_lines:
+                doc_code_counts[doc_path] += 1
+                doc_coded_lines[doc_path][line_num].add(code)
+            for doc_path, coded_lines in doc_coded_lines.items():
+                with open(self.corpus.corpus_dir / doc_path) as fh:
+                    lines = [line for line in fh]
+                for line, codes in coded_lines.items():
+                    for code in codes:
+                        line_start = max(0, line - before)
+                        line_end = min(len(lines), line + after + 1)
+                        records.append({
+                            "document": doc_path,
+                            "line": line,
+                            "code": code,
+                            "text_lines": [line_start, line_end],
+                            "text": ''.join(lines[line_start:line_end])
+                        })
+        elif unit == "paragraph":
+            with self.corpus.session():
+                coded_paragraphs = self.corpus.get_coded_paragraphs(codes=codes, 
+                        pattern=pattern, file_list=file_list, coders=coders)
+            doc_coded_paras = defaultdict(lambda: defaultdict(set))
+            for code, coder, doc_path, para_start, para_end in coded_paragraphs:
+                doc_coded_paras[doc_path][(para_start, para_end)].add(code)
+            for doc_path, coded_paras in doc_coded_paras.items():
+                with open(self.corpus.corpus_dir / doc_path) as fh:
+                    lines = [line for line in fh]
+                for (para_start, para_end), codes in coded_paras.items():
+                    for code in codes:
+                        records.append({
+                            "document": doc_path,
+                            "paragraph": [para_start, para_end],
+                            "code": code,
+                            "text": ''.join(lines[para_start:para_end]),
+                        })
+        elif unit == "document": 
+            with self.corpus.session():
+                coded_documents = self.corpus.get_coded_documents(codes=codes, 
+                        pattern=pattern, file_list=file_list, coders=coders)
+            doc_codes = defaultdict(set)
+            for code, coder, doc_path in coded_documents:
+                records.append({
+                    "docuement": doc_path,
+                    "code": code,
+                })
+        print(json.dumps(records))
 
     def show_text(self, lines, text_width=80):
         "Prints lines of text from a corpus document"
