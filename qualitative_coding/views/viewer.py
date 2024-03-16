@@ -439,6 +439,34 @@ class QCCorpusViewer:
         ):
         """Displays json with lines from corpus documents with their codes.
         """
+        records = self.get_coded_text_json(codes, 
+            recursive_codes=recursive_codes, 
+            depth=depth,
+            unit=unit,
+            before=before, 
+            after=after, 
+            text_width=text_width, 
+            coders=coders,
+            pattern=pattern,
+            file_list=file_list,
+            show_codes=show_codes,
+        )
+        print(json.dumps(records))
+
+    def get_coded_text_json(self, codes, 
+            recursive_codes=False, 
+            depth=None,
+            unit="line",
+            before=2, 
+            after=2, 
+            text_width=80, 
+            coders=None,
+            pattern=None,
+            file_list=None,
+            show_codes=True,
+        ):
+        """Gets json with lines from corpus documents with their codes.
+        """
         if recursive_codes:
             codes = set(sum([self.get_child_nodes(code, names=True) for code in codes], []))
         else:
@@ -495,7 +523,7 @@ class QCCorpusViewer:
                     "docuement": doc_path,
                     "code": code,
                 })
-        print(json.dumps(records))
+        return records
 
     def show_text(self, lines, text_width=80):
         "Prints lines of text from a corpus document"
