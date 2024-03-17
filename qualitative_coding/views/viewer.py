@@ -449,7 +449,6 @@ class QCCorpusViewer:
             coders=coders,
             pattern=pattern,
             file_list=file_list,
-            show_codes=show_codes,
         )
         print(json.dumps(records))
 
@@ -463,7 +462,6 @@ class QCCorpusViewer:
             coders=None,
             pattern=None,
             file_list=None,
-            show_codes=True,
         ):
         """Gets json with lines from corpus documents with their codes.
         """
@@ -532,15 +530,16 @@ class QCCorpusViewer:
 
     def show_text_with_codes(self, lines, code_sets, text_width=80, code_width=80):
         "Prints text lines with associated codes"
+        sep = " | "
         for line, code_set in zip(lines, code_sets):
-            print(
-                line.strip()[:text_width].ljust(text_width) + " | " + 
-                fill(
-                    ", ".join(sorted(code_set)), 
-                    width=code_width, 
-                    subsequent_indent=" " * text_width + " | "
-                )
-            )
+            text = line.strip()[:text_width].ljust(text_width)
+            code = ", ".join(sorted(code_set))
+            print(fill(
+                code, 
+                initial_indent=text + sep,
+                subsequent_indent=" " * text_width + sep,
+                width=text_width + len(sep) + code_width, 
+            ))
             
     def select_file(self, coder, pattern=None, file_list=None, uncoded=False, 
             first=False, random=False):
