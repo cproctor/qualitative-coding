@@ -103,7 +103,7 @@ class QCCorpusViewer:
                     pattern=pattern,
                     file_list=file_list,
                     unit=unit,
-                    totals=True
+                    totals=recursive_counts,
                 )
                 if coders:
                     all_coders = sorted(coders)
@@ -127,7 +127,7 @@ class QCCorpusViewer:
                     pattern=pattern,
                     file_list=file_list,
                     unit=unit,
-                    totals=True
+                    totals=recursive_counts,
                 )
                 all_docs = self.corpus.get_documents(pattern=pattern, file_list=file_list)
                 all_docs = sorted(d.file_path for d in all_docs)
@@ -533,13 +533,15 @@ class QCCorpusViewer:
         sep = " | "
         for line, code_set in zip(lines, code_sets):
             text = line.strip()[:text_width].ljust(text_width)
-            code = ", ".join(sorted(code_set))
-            print(fill(
-                code, 
-                initial_indent=text + sep,
-                subsequent_indent=" " * text_width + sep,
-                width=text_width + len(sep) + code_width, 
-            ))
+            if code_set:
+                print(fill(
+                    ", ".join(sorted(code_set)),
+                    initial_indent=text + sep,
+                    subsequent_indent=" " * text_width + sep,
+                    width=text_width + len(sep) + code_width, 
+                ))
+            else:
+                print(text + sep)
             
     def select_file(self, coder, pattern=None, file_list=None, uncoded=False, 
             first=False, random=False):
