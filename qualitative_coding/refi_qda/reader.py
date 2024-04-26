@@ -97,6 +97,8 @@ class REFIQDAReader:
         for code in codes:
             unpack_code(code, self.code_tree)
 
+        TreeNode.write_yaml(self.corpus.codebook_path, self.code_tree)
+
     def unpack_sources(self, sources):
         self.document_guids = {}
         for source in sources:
