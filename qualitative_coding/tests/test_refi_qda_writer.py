@@ -5,6 +5,16 @@ from tempfile import TemporaryDirectory
 from xmlschema import validate
 import importlib.resources
 
+CODEBOOK = """
+- one
+- two
+- three
+- tens:
+  - twenty
+  - thirty
+  - forty
+"""
+
 class TestREFIQDAWriter(QCTestCase):
     def setUp(self):
         super().setUp()
@@ -16,6 +26,14 @@ class TestREFIQDAWriter(QCTestCase):
             project_path = Path(tempdir)
             self.writer.write_corpus(project_path / "sources")
             self.assertFileExists(project_path / "sources" / "macbeth.txt")
+
+    def test_writes_nested_codes(self):
+        with open(self.testpath / "codebook.yaml", 'w') as codebook:
+            codebook.write(CODEBOOK)
+        codebook_xml = self.writer.codebook_to_xml()
+        codes = codebook_xml.find('Codes')
+        tens = codes.find("Code[@name='tens']")
+        self.assertEqual(len(tens.findall('Code')), 3)
 
     def test_xml_validates(self):
         schema_path = importlib.resources.files("qualitative_coding") / "refi_qda" / "schema.xsd"
