@@ -77,9 +77,9 @@ class QCCorpusViewer:
                 nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
         else:
             nodes = tree.flatten(depth=depth)
-        if max_count:
+        if max_count != None:
             nodes = filter(lambda n: n.total <= max_count, nodes)
-        if min_count:
+        if min_count != None:
             nodes = filter(lambda n: n.total >= min_count, nodes)
         if not zeros:
             nodes = filter(lambda n: n.total > 0, nodes)
