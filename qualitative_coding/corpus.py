@@ -5,6 +5,7 @@
 from itertools import chain, combinations_with_replacement
 from collections import defaultdict
 from contextlib import contextmanager
+from importlib.metadata import metadata
 from pathlib import Path
 import yaml
 import shutil
@@ -55,7 +56,7 @@ from qualitative_coding.helpers import (
 )
 
 DEFAULT_SETTINGS = {
-    'qc_version': '1.0.3',
+    'qc_version': metadata('qualitative-coding')['version'],
     'corpus_dir': 'corpus',
     'database': 'qualitative_coding.sqlite3',
     'logs_dir': 'logs',
@@ -282,16 +283,14 @@ class QCCorpus:
             coders=coders,
             unit=unit,
         )
-        for node in tree.flatten():
-            node.count = code_counts.get(node.name, 0)
 
-        def recursive_count(node):
+        def recursive_totals(node):
             for child in node.children:
-                recursive_count(child)
+                recursive_totals(child)
             node.count = code_counts.get(node.name, 0)
-            node.total = node.count + sum(c.count for c in node.children)
+            node.total = node.count + sum([c.total for c in node.children])
 
-        recursive_count(tree)
+        recursive_totals(tree)
         return tree
 
     def get_or_create_coder(self, coder_name):
