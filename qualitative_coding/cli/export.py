@@ -14,6 +14,9 @@ from qualitative_coding.cli.decorators import (
 def export(export_path, settings):
     "Export project as REFI-QDA"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    corpus = QCCorpus(settings_path)
+    with corpus.session():
+        corpus.update_codebook()
     path = Path(export_path).with_suffix(".qdpx")
     writer = REFIQDAWriter(settings_path)
     writer.write(export_path)
