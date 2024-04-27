@@ -110,7 +110,7 @@ class REFIQDAReader:
             coded_lines = defaultdict(list)
             for selection in source:
                 if selection.tag.endswith("PlainTextSelection"):
-                    match = re.match("line:({\d+})", selection.attrib.get("name", ""))
+                    match = re.match("line:(\d+)", selection.attrib.get("name", ""))
                     if match:
                         line = int(match.group(1))
                     else:

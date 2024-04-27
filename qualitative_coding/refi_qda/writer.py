@@ -142,14 +142,14 @@ class REFIQDAWriter:
     def line_positions(self, corpus_file_path):
         """returns a list of (start, end) character positions for lines in doc.
         """
-        text = (self.corpus.corpus_dir / corpus_file_path).read_text()
         lines = []
         index = 0
-        for line in text:
-            start = index
-            end = index + len(line)
-            lines.append((start, end))
-            index += len(line)
+        with (self.corpus.corpus_dir / corpus_file_path).open() as fh:
+            for line in fh:
+                start = index
+                end = index + len(line)
+                lines.append((start, end))
+                index += len(line)
         return lines
 
     def coder_guid(self, coder):
