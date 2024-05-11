@@ -6,6 +6,7 @@ from tabulate import tabulate_formats
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.exceptions import IncompatibleOptions
 from qualitative_coding.helpers import read_file_list
 
 @click.command()
