@@ -1,17 +1,27 @@
 import click
 import os
 from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.helpers import read_file_list
 from pathlib import Path
 
 @click.command(name="list")
 @click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
-def list_corpus_paths(settings):
+@click.option("-p", "--pattern", 
+        help="Pattern to filter corpus filenames (glob-style)")
+@click.option("-f", "--filenames", 
+        help="File path containing a list of filenames to use")
+def list_corpus_paths(settings, pattern, filenames):
     "List corpus paths"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     corpus = QCCorpus(settings_path)
     paths = []
-    for dir_path, dirs, filenames in os.walk(corpus.corpus_dir):
-        for fn in filenames:
-            paths.append(Path(dir_path).relative_to(corpus.corpus_dir) / fn)
+    for dir_path, dirs, fns in os.walk(corpus.corpus_dir):
+        for fn in fns:
+            paths.append(str(Path(dir_path).relative_to(corpus.corpus_dir) / fn))
+    if pattern:
+        paths = [path for path in paths if pattern in path]
+    if filenames:
+        file_list = read_file_list(filenames)
+        paths = [path for path in paths if path in file_list]
     for path in sorted(paths):
         print(path)
