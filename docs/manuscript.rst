@@ -849,6 +849,19 @@ alternatives. Specifically:
    not explicitly supported in ``qc``, but memos could be imported into
    the corpus and then coded if desired.
 
+Contributing
+============
+
+Development of ``qc`` follows the Contributor Covenant. 
+
+.. |Contributor Covenant| image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg :target: code_of_conduct.md
+
+Chris Proctor (chrisp@buffalo.edu), the project lead, would be delighted to hear 
+about your experience using ``qc``.
+Bug reports, feature requests, and discussion of the future directions of 
+``qc`` takes place on the project repository's
+`issues page <https://github.com/cproctor/qualitative-coding/issues>`__.
+
 References
 ==========
 

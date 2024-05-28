@@ -42,3 +42,9 @@ or `requirements.txt`.
 so make sure that is installed as well. `qc` uses a text editor for coding; 
 you should install Visual Studio Code, the default editor, unless you prefer
 a different editor such as emacs or vim.
+
+## Usage
+
+Please see the [package documentation](https://qualitative-coding.readthedocs.io) 
+for details on the design of `qc`, a vignette illustrating its usage, and full 
+documentation of `qc`'s commands. 
