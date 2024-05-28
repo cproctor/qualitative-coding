@@ -4,3 +4,5 @@
 *.swo
 qualitative_coding.egg-info/*
 dist/*
+NOTES.md
+TODO.md
