@@ -3,7 +3,8 @@ name = "qualitative-coding"
 version = "1.3.2"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
-license = "MIT"
+documentation = "https://qualitative-coding.readthedocs.io"
+license = {file = "LICENSE"}
 readme = "README.md"
 packages = [{include = "qualitative_coding"}]
 include = ["refi_qda/schema.xml"]

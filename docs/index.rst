@@ -15,9 +15,30 @@ analysis, they are generally designed to protect users from complexity
 rather than providing affordances for engaging with complexity via
 algorithms and data structures. 
 
+Installation
+------------
+
+``qc`` is distributed via the Python Package Index (PYPI), and can be
+installed on any POSIX system (Linux, Unix, Mac OS, or Windows Subsystem
+for Linux) which has Python 3.9 or higher installed. If you want to
+install ``qc`` globally on your system, the cleanest approach is to use
+`pipx <https://pipx.pypa.io/stable/>`__.
+
+::
+
+   pipx install qualitative-coding
+
+If your research project is already contained within a Python package
+and you want to install ``qc`` as a local dependency, simply add
+``qualitative-coding`` to ``pyproject.toml`` or ``requirements.txt``.
+
+``qc`` relies on `Pandoc <https://pandoc.org/>`__ for converting between
+file formats, so make sure that is installed as well. ``qc`` uses a text
+editor for coding; you should install Visual Studio Code, the default
+editor, unless you prefer a different editor such as emacs or vim.
+
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
    manuscript
-
