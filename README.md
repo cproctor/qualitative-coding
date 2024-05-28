@@ -11,8 +11,6 @@ integrate manual coding with automated coding, a tree-based hierarchy of codes
 stored in a YAML file, allowing versioning of thematic analysis, and a powerful
 query interface for viewing code statistics and snippets of coded documents. 
 
-# Statement of need
-
 Qualitative data analysis, in its various forms, is a core methodology for 
 qualitative, mixed methods, and some quantitative research in the social 
 sciences. Although there are a variety of well-known commercial QDA software 
