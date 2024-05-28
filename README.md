@@ -1,5 +1,37 @@
 # Qualitative Coding
 
+`qc` is a free, open-source command-line-based tool for qualitative data 
+analysis designed to support computational thinking. In addition to making the 
+qualitative data analysis process more efficient, computational thinking can 
+contribute to the richness of subjective interpretation. The typical workflow
+in qualitative research is an iterative cycle of "notice things," "think about 
+things," and "collect things" (seidel, 1998). `qc` provides
+computational affordances for each of these practices, including the ability to 
+integrate manual coding with automated coding, a tree-based hierarchy of codes
+stored in a YAML file, allowing versioning of thematic analysis, and a powerful
+query interface for viewing code statistics and snippets of coded documents. 
+
+# Statement of need
+
+Qualitative data analysis, in its various forms, is a core methodology for 
+qualitative, mixed methods, and some quantitative research in the social 
+sciences. Although there are a variety of well-known commercial QDA software 
+packages such as NVivo, Dedoose, Atlas.TI, and MaxQDA, they are generally 
+designed to protect users from complexity rather than providing 
+affordances for engaging with complexity via algorithms and data structures. 
+The central design hypothesis of `qc` is that a closer partnership between
+the researcher and the computational tool can enhance the quality of QDA.
+`qc` adopts the "unix philosophy" (McIlroy, 1978) of building tools which do 
+one thing well while being composable into flexible workflows, and the 
+values of "plain-text social science" (Healy, 2020), emphasizing 
+reproducability, transparency, and collaborative open science. 
+
+`qc` was used in [a prior paper](https://chrisproctor.net/research/proctor_2019_defining/)
+and the author's doctoral dissertation; `qc` is currently a core tool supporting a large 
+NSF-funded Delphi study involving multiple interviews 
+with forty participant experts, open coding with over a thousand distinct 
+codes, four separate coders, and several custom machine learning tools 
+supporting the research team with clustering and synthesizing emergent themes.
 `qc` is a free, open-source command-line-based tool for qualitative data analysis
 designed to support computational thinking. In addition to making qualitative data 
 analysis process more efficient, computational thinking can contribute to the richness 
@@ -7,21 +39,6 @@ of subjective interpretation. Although numerous powerful software packages exist
 for qualitative data analysis, they are generally designed to protect users from complexity 
 rather than providing affordances for engaging with complexity via algorithms and 
 data structures. 
-
-QDA, in its various
-forms, is a core methodology for qualitative, mixed methods, and some
-quantitative research in the social sciences. There are a variety of well-known 
-commercial QDA software packages such as NVivo, Dedoose, Atlas.TI, and MaxQDA.
-I have used several of these individually and in research groups; `qc` emerged from 
-my loosely-theorized dissatisfaction with these tools. I value open and extensible 
-research software; these were proprietary and expensive. I value "plain-text 
-social science" [@healy2020]; these graphical user interfaces (GUIs) were user-friendly but 
-ultimately limiting. As I developed prototypes of `qc` for my own use in several 
-prior research projects [@proctor2019], I found that I was continually
-augmenting [@engelbart1962] my ability to engage with complexity rather than 
-simplifying the problem space. The release of `qc` documented here results from
-a redesign and reimplementation of the original tool, in the hope that it will be 
-useful to others.
 
 ## Installation
 
