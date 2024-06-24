@@ -4,7 +4,7 @@ version = "1.3.2"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
 documentation = "https://qualitative-coding.readthedocs.io"
-license = {file = "LICENSE"}
+license = "AGPL3"
 readme = "README.md"
 packages = [{include = "qualitative_coding"}]
 include = ["refi_qda/schema.xml"]
