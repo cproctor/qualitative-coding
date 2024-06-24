@@ -862,6 +862,12 @@ Bug reports, feature requests, and discussion of the future directions of
 ``qc`` takes place on the project repository's
 `issues page <https://github.com/cproctor/qualitative-coding/issues>`__.
 
+Acknowledgements
+================
+
+Partial support for development of ``qc`` was provided by UB's Digital Studio Scholarship
+Network. Logo design by Blessed Mhungu. 
+
 References
 ==========
 
