@@ -67,3 +67,8 @@ a different editor such as emacs or vim.
 Please see the [package documentation](https://qualitative-coding.readthedocs.io) 
 for details on the design of `qc`, a vignette illustrating its usage, and full 
 documentation of `qc`'s commands. 
+
+## Acknowledgements
+
+Partial support for development of `qc` was provided by UB's Digital Studio Scholarship
+Network. Logo design by Blessed Mhungu. 
