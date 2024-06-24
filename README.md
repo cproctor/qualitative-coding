@@ -2,6 +2,8 @@
 
 ![QC logo](qc_lockup.v0.png)
 
+[![status](https://joss.theoj.org/papers/7d0c7ed7cbe8f614d986fc699ae42729/status.svg)](https://joss.theoj.org/papers/7d0c7ed7cbe8f614d986fc699ae42729)
+
 `qc` is a free, open-source command-line-based tool for qualitative data 
 analysis designed to support computational thinking. In addition to making the 
 qualitative data analysis process more efficient, computational thinking can 
