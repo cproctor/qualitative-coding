@@ -1,5 +1,7 @@
 # Qualitative Coding
 
+![QC logo](qc_lockup.v0.png)
+
 `qc` is a free, open-source command-line-based tool for qualitative data 
 analysis designed to support computational thinking. In addition to making the 
 qualitative data analysis process more efficient, computational thinking can 
