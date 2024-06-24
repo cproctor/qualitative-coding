@@ -1,5 +1,3 @@
-# Qualitative Coding
-
 ![QC logo](qc_lockup.v0.png)
 
 [![status](https://joss.theoj.org/papers/7d0c7ed7cbe8f614d986fc699ae42729/status.svg)](https://joss.theoj.org/papers/7d0c7ed7cbe8f614d986fc699ae42729)
