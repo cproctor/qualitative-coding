@@ -852,12 +852,11 @@ alternatives. Specifically:
 Contributing
 ============
 
-Development of ``qc`` follows the Contributor Covenant. 
-
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg 
    :alt: Contributor Covenant 2.1 badge
    :target: https://www.contributor-covenant.org/
 
+Development of ``qc`` follows the Contributor Covenant. 
 Chris Proctor (chrisp@buffalo.edu), the project lead, would be delighted to hear 
 about your experience using ``qc``.
 Bug reports, feature requests, and discussion of the future directions of 
