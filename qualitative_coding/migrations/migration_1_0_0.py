@@ -7,7 +7,6 @@ from qualitative_coding.migrations.migration import QCMigration
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.media_importers import media_importers
 from qualitative_coding.helpers import read_settings
-from qualitative_coding.logs import get_logger
 from qualitative_coding.database.models import (
     Base,
     Document,
@@ -65,7 +64,6 @@ class QCCorpusV0:
     def __init__(self, settings_file="settings.yaml"):
         self.settings_file = Path(settings_file)
         self.settings = read_settings(settings_file)
-        self.log = get_logger(__name__, self.settings['logs_dir'], self.settings.get('debug'))
         self.corpus_dir = Path(self.settings['corpus_dir']).resolve()
         self.codes_dir = Path(self.settings['codes_dir']).resolve()
 
