@@ -290,7 +290,7 @@ download the demo project, and unpack it into the directory.
 ::
 
    $ cd ~/Desktop
-   $ curl -O https://github.com/cproctor/qualitative-coding/blob/main/demo.qdpx
+   $ curl -O https://computationalliteracies.net/people/chris/demo.qdpx
    $ mkdir qc_demo
    $ cd qc_demo
    $ qc init --import ../demo.qdpx
