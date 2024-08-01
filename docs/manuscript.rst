@@ -467,7 +467,7 @@ command. If you want to keep a text document’s existing formatting, use
 
 ::
 
-   $ qc import ~/Desktop/interview_transcript.docx
+   $ qc corpus import ~/Desktop/interview_transcript.docx
 
 We can confirm that the document was imported by listing corpus
 documents.
