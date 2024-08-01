@@ -622,7 +622,8 @@ Export the current project in ``.qpdx`` format. See :ref:`interop`.
 upgrade
 ~~~~~~~
 
-Upgrade a ``qc`` project from a prior version of ``qc``.
+Upgrade a ``qc`` project from a prior version of ``qc``. Upgrade (or downgrade)
+to a specific version by specifying ``--version`` (``-v``).
 
 version
 ~~~~~~~
