@@ -1,5 +1,4 @@
 from qualitative_coding.tree_node import TreeNode
-from qualitative_coding.logs import get_logger
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.views.coding_ui import CodingUI
 from qualitative_coding.exceptions import QCError, CodeFileParseError
@@ -27,7 +26,6 @@ class QCCorpusViewer:
     def __init__(self, corpus):
         self.corpus = corpus
         self.settings = self.corpus.settings
-        self.log = self.corpus.log
 
     def list_codes(self, expanded=False, depth=None):
         "Prints all the codes in the codebook"
@@ -586,7 +584,6 @@ class QCCorpusViewer:
             path.write_text(f"# {message}\n\n{coder} {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
         else:
             path.write_text(f"# Memo by {coder} on {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n") 
-        self.log.info(f"{coder} wrote memo {message}")
         with self.corpus.session():
             self.corpus.get_or_create_coder(coder)
             command = self.get_memo_command(path)

@@ -1,25 +1,60 @@
-# Logs
-# -----
-# (c) 2019 Chris Proctor
-
-# Configures and returns a logger
-
+from qualitative_coding.helpers import read_settings
 from pathlib import Path
+import structlog
 import logging
 import sys
 
-def get_logger(name, logs_dir, debug_console=False):
-    "Configures a logger with two file handlers, one at DEBUG and one at INFO"
-    log = logging.getLogger(name)
-    debug_file_handler = logging.FileHandler(Path(logs_dir) / "qc.debug.log")
-    debug_file_handler.setLevel(logging.DEBUG)
-    info_file_handler = logging.FileHandler(Path(logs_dir) / "qc.info.log")
-    info_file_handler.setLevel(logging.INFO)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG if debug_console else logging.INFO)
+def configure_logger(settings_path):
+    """Configures logging and structlog so that future calls to 
+    structlog.get_logger() will return a properly-behaved logger.
+    The logger logs JSON to a file (specified in settings) and, 
+    when settings.verbose is True, also log nicely to the console. 
+    Log level is set to INFO unless settings.debug is True.
+    """
+    if Path(settings_path).exists():
+        settings = read_settings(settings_path)
+        verbose = settings.get('verbose', False)
+        debug = settings.get('debug', False)
+        log_file_path = Path(settings.get('log_path', 'qc.log'))
+        if not log_file_path.is_absolute():
+            log_file_path = Path(settings_path).parent / log_file_path
+    else:
+        log_file_path = "qc.log"
+        verbose = False
+        debug = False
 
-    formatter = logging.Formatter("%(level)s\t%(asctime)s\t%(message)s")
-    for h in [debug_file_handler, info_file_handler, console_handler]:
-        h.setFormatter(formatter)
-        log.addHandler(h)
-    return log
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG if debug else logging.INFO)
+    file_handler = logging.FileHandler(log_file_path, )
+    file_formatter = structlog.stdlib.ProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.processors.EventRenamer('command'),
+            structlog.processors.JSONRenderer(),
+        ]
+    )
+    file_handler.setFormatter(file_formatter)
+    root_logger.addHandler(file_handler)
+
+    if verbose:
+        console_handler = logging.StreamHandler()
+        console_formatter = structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.processors.EventRenamer('command'),
+                structlog.dev.ConsoleRenderer(),
+            ],
+        )
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt='iso'),
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    return structlog.get_logger()

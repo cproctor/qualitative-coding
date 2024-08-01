@@ -1,7 +1,3 @@
-# Qualitative Coding corpus
-# -------------------------
-# (c) 2023 Chris Proctor
-
 from itertools import chain, combinations_with_replacement
 from collections import defaultdict
 from contextlib import contextmanager
@@ -32,7 +28,6 @@ from sqlalchemy.orm import (
 from sqlalchemy.dialects.sqlite import insert
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.tree_node import TreeNode
-from qualitative_coding.logs import get_logger
 from qualitative_coding.exceptions import (
     QCError, 
     SettingsError, 
@@ -59,10 +54,11 @@ DEFAULT_SETTINGS = {
     'qc_version': metadata('qualitative-coding')['version'],
     'corpus_dir': 'corpus',
     'database': 'qualitative_coding.sqlite3',
-    'logs_dir': 'logs',
     'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
     'editor': 'code',
+    'log_file': 'qc.log',
+    'verbose': False,
 }
 
 class QCCorpus:
@@ -91,7 +87,7 @@ class QCCorpus:
                 settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
             cls.validate_settings(settings_path)
             settings = yaml.safe_load(settings_path.read_text())
-            for needed_dir in ["corpus_dir", "logs_dir", "memos_dir"]:
+            for needed_dir in ["corpus_dir", "memos_dir"]:
                 dirpath = Path(settings[needed_dir])
                 if dirpath.exists() and not dirpath.is_dir():
                     raise QCError(f"Cannot create dir {dirpath}; there is a file with that name.")
@@ -129,8 +125,6 @@ class QCCorpus:
             for expected_key in DEFAULT_SETTINGS:
                 if expected_key not in settings:
                     errors.append(f"Expected '{expected_key}' in settings")
-                elif not isinstance(settings[expected_key], str):
-                    errors.append(f"Invalid path for {expected_key}: {settings[expected_key]}")
             if 'editors' in settings:
                 if not isinstance(settings['editors'], dict):
                     errors.append(f"Could not read custom-defined editors.")
@@ -159,8 +153,6 @@ class QCCorpus:
             self.validate()
         self.corpus_dir = self.resolve_path(self.settings['corpus_dir'])
         self.memos_dir = self.resolve_path(self.settings['memos_dir'])
-        self.logs_dir = self.resolve_path(self.settings['logs_dir'])
-        self.log = get_logger(__name__, self.logs_dir, self.settings.get('debug'))
         self.codebook_path = self.resolve_path(self.settings['codebook'])
         db_file = self.resolve_path(self.settings['database'])
         self.engine = create_engine(f"sqlite:///{db_file}")
@@ -212,7 +204,7 @@ class QCCorpus:
         "Checks that project state is valid"
         QCCorpus.validate_settings(self.settings_path)
         errors = []
-        for expected_dir in ['corpus_dir', 'logs_dir', 'memos_dir']:
+        for expected_dir in ['corpus_dir', 'memos_dir']:
             path = self.resolve_path(self.settings[expected_dir])
             if not path.exists():
                 errors.append(f"{expected_dir} path {path} does not exist")

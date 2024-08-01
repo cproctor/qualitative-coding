@@ -7,6 +7,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.exceptions import IncompatibleOptions
 from qualitative_coding.helpers import read_file_list
+from qualitative_coding.logs import configure_logger
 from tabulate import tabulate_formats
 
 @click.command()
@@ -44,6 +45,10 @@ def stats(codes, settings, pattern, filenames, coders, by_coder, by_document, de
         msg = "--depth requires --recursive-codes"
         raise IncompatibleOptions(msg)
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("codes stats", codes=codes, pattern=pattern, filenames=filenames, coders=coders, 
+             by_coder=by_coder, by_document=by_document, depth=depth, unit=unit,
+             recursive_codes=recursive_codes)
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if by_coder and by_document:

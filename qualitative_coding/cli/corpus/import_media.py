@@ -3,6 +3,7 @@ import os
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.media_importers import media_importers
+from qualitative_coding.logs import configure_logger
 
 @click.command(name="import")
 @click.argument("file_path")
@@ -18,6 +19,9 @@ from qualitative_coding.media_importers import media_importers
 def import_media(file_path, settings, recursive, corpus_root, importer):
     "Import corpus files"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("import", file_path=file_path, recursive=recursive, corpus_root=corpus_root,
+             importer=importer)
     corpus = QCCorpus(settings_path)
     with corpus.session():
         corpus.import_media(
