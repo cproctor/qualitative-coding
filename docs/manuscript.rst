@@ -614,6 +614,11 @@ memos.
 
    $ qc memo -m "It's all starting to make sense..."
 
+export
+~~~~~~
+
+Export the current project in ``.qpdx`` format. See :ref:`interop`.
+
 upgrade
 ~~~~~~~
 
@@ -807,6 +812,8 @@ Output and formatting
 -  ``--outfile`` ``outfile`` (``-o``): Save tabular results to a csv
    file instead of displaying them to the screen. This is particularly
    useful in scripts.
+
+.. _interop:
 
 Interoperability with other QDA software
 ----------------------------------------
