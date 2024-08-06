@@ -9,22 +9,19 @@ def configure_logger(settings_path):
     structlog.get_logger() will return a properly-behaved logger.
     The logger logs JSON to a file (specified in settings) and, 
     when settings.verbose is True, also log nicely to the console. 
-    Log level is set to INFO unless settings.debug is True.
     """
     if Path(settings_path).exists():
         settings = read_settings(settings_path)
         verbose = settings.get('verbose', False)
-        debug = settings.get('debug', False)
         log_file_path = Path(settings.get('log_path', 'qc.log'))
         if not log_file_path.is_absolute():
             log_file_path = Path(settings_path).parent / log_file_path
     else:
         log_file_path = "qc.log"
         verbose = False
-        debug = False
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG if debug else logging.INFO)
+    root_logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     file_handler = logging.FileHandler(log_file_path, )
     file_formatter = structlog.stdlib.ProcessorFormatter(
         processors=[
