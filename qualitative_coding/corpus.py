@@ -364,7 +364,7 @@ class QCCorpus:
     def update_coded_lines(self, document, coder, coded_line_data):
         """Updates document's coded lines for the given coder.
         document and coder should be strings, and coded_line_data should
-        be a list of dicts like {'line': 1, 'code_id': 'super}.
+        be a list of dicts like {'line': 1, 'code_id': 'super'}.
 
         Fetches all existing coded lines for the document and coder, and 
         then compares the set of existing coded line data with new coded line data.
