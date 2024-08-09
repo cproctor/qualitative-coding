@@ -189,9 +189,9 @@ also interested in comparing my coding with that of other team members.
 ``qc``\ ’s queries offer a powerful array of options. Consider the
 following query, whose complexity is not atypical in normal usage:
 
-::
+.. code-block:: console
 
-   $ qc codes stats equity participation --recursive-codes --recursive-counts \
+   % qc codes stats equity participation --recursive-codes --recursive-counts \
    --pattern round1 --min 5 --depth 2 --unit paragraph --format latex
 
 This query reports counts for the codes “equity,” “participation,” and
@@ -264,9 +264,9 @@ for Linux) which has Python 3.9 or higher installed. If you want to
 install ``qc`` globally on your system, the cleanest approaach is to use
 `pipx <https://pipx.pypa.io/stable/>`__.
 
-::
+.. code-block:: console
 
-   pipx install qualitative-coding
+   % pipx install qualitative-coding
 
 If your research project is already contained within a Python package
 and you want to install ``qc`` as a local dependency, simply add
@@ -287,20 +287,20 @@ to the district’s primary and secondard schools (Proctor, Bigman, and
 Blikstein 2019). The commands below create a directory on the Desktop,
 download the demo project, and unpack it into the directory.
 
-::
+.. code-block:: console
 
-   $ cd ~/Desktop
-   $ curl -O https://github.com/cproctor/qualitative-coding/blob/main/demo.qdpx
-   $ mkdir qc_demo
-   $ cd qc_demo
-   $ qc init --import ../demo.qdpx
+   % cd ~/Desktop
+   % curl -O https://github.com/cproctor/qualitative-coding/blob/main/demo.qdpx
+   % mkdir qc_demo
+   % cd qc_demo
+   % qc init --import ../demo.qdpx
 
 Now let’s use ``qc`` to look around this project. Which documents are
 included in the corpus?
 
-::
+.. code-block:: console
 
-   $ qc corpus list
+   % qc corpus list
    admin.txt
    board_member.txt
    teacher.txt
@@ -314,9 +314,9 @@ that specific code as well as a total for that code and all of its
 children. Finally, ``--min 10`` filters out codes used fewer than ten
 times.
 
-::
+.. code-block:: console
 
-   $ qc codes stats --recursive-codes --recursive-counts --min 10
+   % qc codes stats --recursive-codes --recursive-counts --min 10
    Code                              Count    Total
    ------------------------------  -------  -------
    rq1_definition                        5       55
@@ -344,9 +344,9 @@ recursive counts, this time using the short form of these flags
 (``-ra``). We also add the ``--by-document`` flag, to get a sense of
 differences across interviewees.
 
-::
+.. code-block:: console
 
-   $ qc codes stats rationales -ra --by-document
+   % qc codes stats rationales -ra --by-document
                                    admin.txt    board_member.txt    teacher.txt    Total
    -------------------------------  -----------  ------------------  -------------  -------
    rq1_definition:rationales                 12                  10              5       27
@@ -361,9 +361,9 @@ came up more in interviews with the administrator and the board member
 than with the teacher. To explore this pattern, we can we can view lines
 coded with “equity,” or any of its child codes.
 
-::
+.. code-block:: console
 
-   $ qc codes find equity -r
+   % qc codes find equity -r
 
    admin.txt (7)
    ================================================================================
@@ -399,7 +399,7 @@ flag again counts all subcodes. This time we omit ``-r``; including
 subcodes as separate items in the cross-tabulation would make the table
 unweildy.
 
-::
+.. code-block:: console
 
    % qc codes crosstab -a equity participation committee_participation
                    code    equity    participation    committee_participation
@@ -443,12 +443,12 @@ Create a new directory on your filesystem. In this example, we will
 create a directory called ``qc_project`` on the current user’s desktop,
 and intialize a new project.
 
-::
+.. code-block:: console
 
-   $ cd ~/Desktop
-   $ mkdir qc_project
-   $ cd qc_project
-   $ qc init -y
+   % cd ~/Desktop
+   % mkdir qc_project
+   % cd qc_project
+   % qc init -y
 
 When ``qc init`` is run in a directory which does not have
 ``settings.yaml``, a settings file is created with default values. When
@@ -465,16 +465,16 @@ it’s ``~/Desktop/interview_transcript.docx``) and run the following
 command. If you want to keep a text document’s existing formatting, use
 ``--importer verbatim`` to tell ``qc`` not to apply any formatting.
 
-::
+.. code-block:: console
 
-   $ qc import ~/Desktop/interview_transcript.docx
+   % qc import ~/Desktop/interview_transcript.docx
 
 We can confirm that the document was imported by listing corpus
 documents.
 
-::
+.. code-block:: console
 
-   $ qc corpus list
+   % qc corpus list
    interview_transcript.txt
 
 Now we will code the document using ``qc code user``, where ``user`` is
@@ -551,18 +551,18 @@ and then run ``qc init`` again. You can skip this step by passing
 ``--accept-defaults`` (``-y``) to the first invocation of ``qc init``.
 It is safe to re-run ``qc init``.
 
-::
+.. code-block:: console
 
-   $ qc init
+   % qc init
 
 check
 ~~~~~
 
 Checks that all required files and directories are in place.
 
-::
+.. code-block:: console
 
-   $ qc check
+   % qc check
 
 code
 ~~~~
@@ -574,9 +574,9 @@ positional argument. After optionally filtering using common options
 ``--first`` (``-1``) or ``--random`` (``-r``). Otherwise, you will be
 presented with a list of corpus files and asked to choose which to code.
 
-::
+.. code-block:: console
 
-   $ qc code chris -1
+   % qc code chris -1
 
 Save and close your editor when you finish. In the unlikely event that
 your editor crashes or your battery dies before you finish coding, your
@@ -590,18 +590,18 @@ Ensures that all codes in the project are included in the codebook. (New
 codes are added automatically, but if you accidentally delete some while
 editing the codebook, ``qc codebook`` will ensure they are all present.)
 
-::
+.. code-block:: console
 
-   $ qc codebook
+   % qc codebook
 
 coders
 ~~~~~~
 
 List all coders in the current project.
 
-::
+.. code-block:: console
 
-   $ qc coders
+   % qc coders
 
 memo
 ~~~~
@@ -610,20 +610,30 @@ Opens your editor to write a memo, optionally passing ``--message``
 (``-m``) as the title of the memo. Use ``--list`` (``-l``) to list all
 memos.
 
-::
+.. code-block:: console
 
-   $ qc memo -m "It's all starting to make sense..."
+   % qc memo -m "It's all starting to make sense..."
 
 upgrade
 ~~~~~~~
 
 Upgrade a ``qc`` project from a prior version of ``qc``.
+Upgrade (or downgrade) to a specific version using ``--version`` (``-v``).
+
+.. code-block:: console
+
+   % qc upgrade
 
 version
 ~~~~~~~
 
 Show the current version of ``qc``. This project uses `semantic
 versioning <https://semver.org/>`__.
+
+.. code-block:: console
+
+   % qc version
+   qualitative-coding 1.4.0
 
 Corpus commands
 ---------------
@@ -635,9 +645,9 @@ corpus list (ls)
 
 List all files in the corpus.
 
-::
+.. code-block:: console
 
-   $ qc corpus list
+   % qc corpus list
 
 corpus import
 ~~~~~~~~~~~~~
@@ -647,18 +657,18 @@ formatting them (see options), and registering them in the database.
 Individual files can be imported, or directories can be recursively
 imported using ``--recursive`` (``-r``).
 
-::
+.. code-block:: console
 
-   $ qc corpus import transcripts --recursive
+   % qc corpus import transcripts --recursive
 
 If you want to import files into a specific subdirectory within the
 ``corpus``, use ``--corpus-root`` (``-c``). For example, if you wanted
 to import an additional transcript after importing the transcripts
 directory, you could run:
 
-::
+.. code-block:: console
 
-   $ qc corpus import follow_up.txt --corpus-root transcripts
+   % qc corpus import follow_up.txt --corpus-root transcripts
 
 Several importers are available to format files, and can be specified
 using ``--importer`` (``-i``). The default importer, ``pandoc``, uses
@@ -675,6 +685,10 @@ directory with ``--recursive`` (``-r``). Do not move corpus files
 directly or they will become out of sync with their metadata in the
 database.
 
+.. code-block:: console
+
+   % qc corpus move interview.txt pre/annabelle.txt
+
 corpus remove (rm)
 ~~~~~~~~~~~~~~~~~~
 
@@ -682,19 +696,23 @@ Remove a document from the corpus, along with codes applied to the
 document. Or recursively remove all documents in a directory with
 ``--recursive`` (``-r``).
 
+.. code-block:: console
+
+   % qc corpus remove pre/annabelle.txt
+
 Codes commands
 --------------
 
-The following commands are grouped under ``qc code``.
+The following commands are grouped under ``qc codes``.
 
 codes list (ls)
 ~~~~~~~~~~~~~~~
 
 Lists all the codes currently in the codebook.
 
-::
+.. code-block:: console
 
-   $ qc codes list --expanded
+   % qc codes list --expanded
 
 codes rename
 ~~~~~~~~~~~~
@@ -702,18 +720,18 @@ codes rename
 Goes through all the code files and replaces one or more codes with
 another. Removes the old codes from the codebook.
 
-::
+.. code-block:: console
 
-   $ qc codes rename humorous funy funnny funny
+   % qc codes rename humorous funy funnny funny
 
 codes find
 ~~~~~~~~~~
 
 Displays all occurences of the provided code(s).
 
-::
+.. code-block:: console
 
-   $ qc codes find math science art
+   % qc codes find math science art
 
 codes stats
 ~~~~~~~~~~~
@@ -723,9 +741,9 @@ usages of children. List code names to show only certain codes. In
 addition to the common options below, code results can be filtered with
 ``--max``, and ``--min``.
 
-::
+.. code-block:: console
 
-   $qc codes stats --recursive-codes --depth 2
+   % qc codes stats --recursive-codes --depth 2
 
 Use ``--by-coder`` (``-C``) for separate columns for each coder, and
 ``--by-document`` for separate columns for each document. When
@@ -742,9 +760,9 @@ analysis, as counts or as probabilities (``--probs``, ``-0``).
 Optionally use a compact (``--compact``, ``-z``) output format to
 display more columns.
 
-::
+.. code-block:: console
 
-   $qc codes crosstab planning implementation evaluation --recursive-codes --depth 1 --probs
+   % qc codes crosstab planning implementation evaluation --recursive-codes --depth 1 --probs
 
 Common options
 --------------
