@@ -26,7 +26,6 @@ def configure_logger(settings_path):
     file_formatter = structlog.stdlib.ProcessorFormatter(
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.processors.EventRenamer('command'),
             structlog.processors.JSONRenderer(),
         ]
     )
@@ -38,7 +37,6 @@ def configure_logger(settings_path):
         console_formatter = structlog.stdlib.ProcessorFormatter(
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                structlog.processors.EventRenamer('command'),
                 structlog.dev.ConsoleRenderer(),
             ],
         )
