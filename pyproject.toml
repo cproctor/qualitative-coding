@@ -24,6 +24,7 @@ semver = "^3.0.2"
 xmlschema = "^3.0.2"
 structlog = "^24.4.0"
 rich = "^13.7.1"
+more-itertools = "^10.4.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.3.7"
