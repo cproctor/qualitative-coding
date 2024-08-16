@@ -580,8 +580,9 @@ presented with a list of corpus files and asked to choose which to code.
 
 Save and close your editor when you finish. In the unlikely event that
 your editor crashes or your battery dies before you finish coding, your
-saved changes are persisted in ``codes.txt``. Run ``qc code --recover``
-to resume the coding session.
+saved changes are persisted in ``codes.txt``. Run ``qc code <coder> --recover``
+to resume the coding session, or ``qc code <coder> --abandon`` to delete
+the coding session.
 
 codebook (cb)
 ~~~~~~~~~~~~~
@@ -825,6 +826,89 @@ Output and formatting
 -  ``--outfile`` ``outfile`` (``-o``): Save tabular results to a csv
    file instead of displaying them to the screen. This is particularly
    useful in scripts.
+
+Settings
+--------
+The behavior of ``qc`` can be configured using your settings file, 
+which by default is ``settings.yaml``. New projects are created with 
+sensible defaults. The following settings are available:
+
+qc_version
+~~~~~~~~~~
+The version of ``qc`` you are using. Do not change this; use ``qc upgrade`` if 
+you need to upgrade to a new version of ``qc``.
+
+corpus_dir
+~~~~~~~~~~
+The location of your corpus. Default: ``corpus``.
+
+database
+~~~~~~~~
+The path to your ``qc`` database file. Default: ``qualitative_coding.sqlite3``.
+
+memos_dir
+~~~~~~~~~
+The path to memos created with ``qc memo``. Default: ``memos``.
+
+codebook
+~~~~~~~~
+The path to the codebook file. Default: ``codebook.yaml``.
+
+editor
+~~~~~~
+Name of the code editor. Default: ``code`` (Visual Studio Code). The following editors are 
+supported:
+
+* ``code``
+* ``vim``
+* ``nvim``
+* ``emacs``
+
+Additional editors can be specified in an optional ``editors`` setting, as shown below.
+Specify a terminal command which should be invoked for coding a document (using 
+placeholders for ``{corpus_file_path}`` and ``{codes_file_path}``). Additionally, specify
+a terminal command which should be invoked for writing memos, using a placeholder
+for ``{memo_file_path}``. 
+
+For example, if you wanted to use `Sublime Text <https://www.sublimetext.com/>`__, 
+you would need to make sure Sublime Text can be called from the terminal
+(`instructions <https://www.sublimetext.com/docs/command_line.html>`__), and then use 
+the following configuration in ``settings.yaml``: 
+
+.. code-block:: yaml
+
+   editor: sublime
+   editors: 
+     - sublime:
+       name: Sublime Text
+       code_command: 'subl "{corpus_file_path}" "{codes_file_path}" --command "new_pane" --wait'
+       memo_command: 'subl "{memo_file_path}" --wait'
+
+Additional examples are available in ``qc``'s `built-in editor support <https://github.com/cproctor/qualitative-coding/blob/main/qualitative_coding/editors.py>`__. 
+
+During coding, ``qc`` creates a temporary codes file with the same number of lines 
+as the corpus document and existing codes on the appropriate lines. 
+The coder should update and save the codes file. When the code command successfully 
+terminates, ``qc`` reads the codes file, updates the codes in the project database, and 
+then deletes the temporary codes file and the metadata file. 
+
+log_file
+~~~~~~~~
+Path of the log file. Default: ``qc.log``.
+
+verbose
+~~~~~~~
+When set to ``true``, human-readable logs will be printed to the screen after each command,
+providing more detail about commands. Default: ``false``.
+
+Logging
+-------
+
+``qc`` uses `structlog <https://www.structlog.org>`__, and emits JSON-formatted logs 
+to support later analysis (e.g. for research on qualitative data analysis practices) 
+or to document the coding process. Custom structlog configuration may be stored in 
+``log_config.py``, allowing ``qc``'s logs to be integrated into a project's logs or 
+sent to a central logging server.
 
 Interoperability with other QDA software
 ----------------------------------------
