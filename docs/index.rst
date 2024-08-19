@@ -18,24 +18,53 @@ algorithms and data structures.
 Installation
 ------------
 
-``qc`` is distributed via the Python Package Index (PYPI), and can be
-installed on any POSIX system (Linux, Unix, Mac OS, or Windows Subsystem
-for Linux) which has Python 3.9 or higher installed. If you want to
+Prerequisites
+~~~~~~~~~~~~~
+
+``qc`` runs on the command line (also called a terminal), so you will 
+need to be familiar with using a command line in order to use ``qc``.
+
+* `Python 3.9 <https://www.python.org/downloads/>`__ or higher.
+* `Pandoc <https://pandoc.org/>`__.
+* A code editor. You should install 
+  `Visual Studio Code <https://code.visualstudio.com/>`__, the default
+  editor, unless you prefer a different editor such as emacs or vim.
+* The `Sync Scroll <https://marketplace.visualstudio.com/items?itemName=dqisme.sync-scroll>`__
+  extension for Visual Studio Code.
+
+Install with pip or pipx
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``qc`` is distributed via the Python Package Index (PYPI). If you want to
 install ``qc`` globally on your system, the cleanest approach is to use
 `pipx <https://pipx.pypa.io/stable/>`__.
 
-::
+.. note::
 
-   pipx install qualitative-coding
+   The command below (and others throughout this documentation)
+   is intended to be entered into a terminal. 
+   The ``%`` character is the command prompt indicating that the
+   terminal is ready for input; don't type it into your terminal.
+   Don't worry if your terminal uses a different command prompt 
+   such as ``$``.
+
+.. code-block:: console
+
+   % pipx install qualitative-coding
+
+
+Install as a dependency
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If your research project is already contained within a Python package
 and you want to install ``qc`` as a local dependency, simply add
 ``qualitative-coding`` to ``pyproject.toml`` or ``requirements.txt``.
 
-``qc`` relies on `Pandoc <https://pandoc.org/>`__ for converting between
-file formats, so make sure that is installed as well. ``qc`` uses a text
-editor for coding; you should install Visual Studio Code, the default
-editor, unless you prefer a different editor such as emacs or vim.
+Stuck?
+~~~~~~
+
+If you get stuck installing ``qc``, feel free to email 
+Chris Proctor (chrisp@buffalo.edu), the project lead.
 
 .. toctree::
    :maxdepth: 1

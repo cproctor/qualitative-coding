@@ -7,7 +7,6 @@ from qualitative_coding.migrations.migration import QCMigration
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.media_importers import media_importers
 from qualitative_coding.helpers import read_settings
-from qualitative_coding.logs import get_logger
 from qualitative_coding.database.models import (
     Base,
     Document,
@@ -44,7 +43,7 @@ class Migrate_1_0_0(QCMigration):
             for dir_path, dir_names, filenames in os.walk(corpus.corpus_dir):
                 for fn in filenames:
                     file_path = Path(dir_path) / fn
-                    document = corpus.get_document(file_path)
+                    corpus_path = str(corpus.get_corpus_path(file_path))
                     coded_lines = []
                     for coder_name, code_data in corpus_v0.get_codes(file_path).items():
                         coder = corpus.get_or_create_coder(coder_name)
@@ -53,7 +52,7 @@ class Migrate_1_0_0(QCMigration):
                                 "line": line_num,
                                 "code_id": corpus.get_or_create_code(code_name).name
                             })
-                    corpus.update_coded_lines(document, coder_name, coded_lines)
+                    corpus.update_coded_lines(corpus_path, coder_name, coded_lines)
         shutil.rmtree(corpus_v0.codes_dir)
 
     def revert(self, settings_path):
@@ -65,7 +64,6 @@ class QCCorpusV0:
     def __init__(self, settings_file="settings.yaml"):
         self.settings_file = Path(settings_file)
         self.settings = read_settings(settings_file)
-        self.log = get_logger(__name__, self.settings['logs_dir'], self.settings.get('debug'))
         self.corpus_dir = Path(self.settings['corpus_dir']).resolve()
         self.codes_dir = Path(self.settings['codes_dir']).resolve()
 

@@ -124,9 +124,8 @@ class REFIQDAReader:
                                 if coderef.tag.endswith("CodeRef"):
                                     code = self.code_guids[coderef.attrib['targetGUID']]
                                     coded_lines[coder].append({'line': line, 'code_id': code})
-            doc = self.corpus.get_document(file_path)
             for coder, cls in coded_lines.items():
-                self.corpus.update_coded_lines(doc, coder, cls)
+                self.corpus.update_coded_lines(file_path, coder, cls)
 
     def get_line_for_position(self, position, line_positions):
         for line, (start, end) in enumerate(line_positions):

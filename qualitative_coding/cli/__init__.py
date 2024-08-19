@@ -11,6 +11,8 @@ from qualitative_coding.cli.code import code
 from qualitative_coding.cli.coders import coders
 from qualitative_coding.cli.memo import memo
 from qualitative_coding.cli.upgrade import upgrade
+import logging
+import structlog
 
 @click.group(cls=ClickAliasedGroup)
 def cli():

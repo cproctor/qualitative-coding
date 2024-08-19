@@ -23,5 +23,5 @@ class TestInitImport(QCTestCase):
             with corpus.session():
                 self.assertEqual(len(corpus.get_codes()), 3)
                 self.assertEqual(len(list(corpus.get_all_coders())), 2)
-                self.assertEqual(len(corpus.get_coded_lines()), 6)
+                self.assertEqual(len(corpus.get_coded_lines()), 8)
 

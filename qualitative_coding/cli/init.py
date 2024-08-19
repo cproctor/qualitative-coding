@@ -1,6 +1,7 @@
 import click
 import os
 from qualitative_coding.cli.decorators import handle_qc_errors
+from qualitative_coding.logs import configure_logger
 from os import getcwd
 from pathlib import Path
 
@@ -18,5 +19,7 @@ def init(settings, accept_defaults, _import):
         reader = REFIQDAReader(_import)
         reader.unpack_project(Path.cwd())
     else:
+        log = configure_logger(settings_path)
+        log.info("init", accept_defaults=accept_defaults)
         from qualitative_coding.corpus import QCCorpus
         QCCorpus.initialize(settings_path, accept_defaults)

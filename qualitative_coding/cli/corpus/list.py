@@ -2,6 +2,7 @@ import click
 import os
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.helpers import read_file_list
+from qualitative_coding.logs import configure_logger
 from pathlib import Path
 
 @click.command(name="list")
@@ -13,6 +14,8 @@ from pathlib import Path
 def list_corpus_paths(settings, pattern, filenames):
     "List corpus paths"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("corpus list", pattern=pattern, filenames=filenames)
     corpus = QCCorpus(settings_path)
     paths = []
     for dir_path, dirs, fns in os.walk(corpus.corpus_dir):

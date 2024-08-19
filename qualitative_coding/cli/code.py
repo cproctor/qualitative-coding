@@ -7,6 +7,7 @@ from qualitative_coding.exceptions import QCError, IncompatibleOptions
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
+from qualitative_coding.logs import configure_logger
 
 @click.command()
 @click.argument("coder")
@@ -27,6 +28,9 @@ def code(coder, settings, pattern, filenames, uncoded, first, random, recover, a
         msg = "--first and --random cannot both be used."
         raise IncompatibleOptions(msg)
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("code", coder=coder, pattern=pattern, filenames=filenames, uncoded=uncoded, 
+             first=first, random=random, recover=recover, abandon=abandon)
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if recover:

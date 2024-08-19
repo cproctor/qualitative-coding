@@ -5,6 +5,7 @@ from pathlib import Path
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.migrations import migrations, migrate
 from qualitative_coding.helpers import read_settings
+from qualitative_coding.logs import configure_logger
 import shutil
 
 @click.command()
@@ -16,4 +17,6 @@ import shutil
 def upgrade(settings, version):
     "Upgrade project to new version of qc"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("upgrade", version=version)
     migrate(settings_path, version)

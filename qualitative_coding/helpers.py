@@ -1,5 +1,6 @@
 from textwrap import fill
 from pathlib import Path
+from subprocess import run
 from qualitative_coding.exceptions import QCError
 import yaml
 
@@ -125,7 +126,3 @@ def check_incompatible(args, **conditions):
             )
         print(args)
         raise IncompatibleOptions(message)
-
-
-
-

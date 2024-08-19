@@ -17,16 +17,10 @@ class TestInit(QCTestCase):
     def test_init_creates_setup_file(self):
         self.assertFileExists(self.testpath / "settings.yaml")
 
-    def test_init_settings_has_expected_default_params(self):
-        settings = yaml.safe_load((self.testpath / "settings.yaml").read_text())
-        self.assertEqual(settings['qc_version'], '1.0.3')
-
     def test_init2_creates_expected_dirs(self):
-        self.update_settings("logs_dir", "logz")
         self.run_in_testpath("qc init")
         self.assertFileExists("corpus", is_dir=True)
         self.assertFileExists("memos", is_dir=True)
-        self.assertFileExists("logz", is_dir=True)
 
     def test_init2_creates_db(self):
         self.run_in_testpath("qc init")

@@ -8,6 +8,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.exceptions import IncompatibleOptions
 from qualitative_coding.helpers import read_file_list
+from qualitative_coding.logs import configure_logger
 
 @click.command()
 @click.argument("codes", nargs=-1)
@@ -56,6 +57,12 @@ def crosstab(codes, settings, pattern, filenames, coders, depth, unit, recursive
         raise IncompatibleOptions(msg)
 
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
+    log = configure_logger(settings_path)
+    log.info("codes crosstab", codes=codes, pattern=pattern, filenames=filenames, 
+             coders=coders, depth=depth, unit=unit, recursive_codes=recursive_codes, 
+             recursive_counts=recursive_counts, expanded=expanded, _format=_format,
+             outfile=outfile, probs=probs, compact=compact, tidy=tidy, _max=_max,
+             _min=_min)
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if tidy:

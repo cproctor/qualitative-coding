@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qualitative-coding"
-version = "1.3.2"
+version = "1.4.0"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
 documentation = "https://qualitative-coding.readthedocs.io"
@@ -22,6 +22,9 @@ click = "^8.1.7"
 sqlalchemy = "^2.0.21"
 semver = "^3.0.2"
 xmlschema = "^3.0.2"
+structlog = "^24.4.0"
+rich = "^13.7.1"
+more-itertools = "^10.4.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.3.7"

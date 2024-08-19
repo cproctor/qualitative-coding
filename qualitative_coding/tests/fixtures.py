@@ -3,17 +3,21 @@ from pathlib import Path
 from subprocess import run
 from tempfile import TemporaryDirectory
 from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.logs import configure_logger
 from io import StringIO
 import yaml
 import csv
+import sys
 
 
 class QCTestCase(TestCase):
     """A subclass of TestCase with methods for instantiating a QC project.
     """
+    verbose = False
 
     def setUp(self):
         self.set_up_qc_project()
+        configure_logger(self.testpath / "settings.yaml")
         self.corpus = QCCorpus(self.testpath / "settings.yaml")
 
     def tearDown(self):
@@ -24,6 +28,8 @@ class QCTestCase(TestCase):
         self.testpath = Path(self.tempdir.name)
         self.run_in_testpath("qc init")
         self.run_in_testpath("qc init")
+        if self.verbose:
+            self.update_settings('verbose', True)
         (self.testpath / "macbeth.txt").write_text(MACBETH)
         (self.testpath / "moby_dick.md").write_text(MOBY_DICK)
 
@@ -34,7 +40,7 @@ class QCTestCase(TestCase):
             'qc_version': "0.2.3",
             'corpus_dir': 'corpus',
             'codes_dir': 'codes',
-            'logs_dir': 'logs',
+            'log_file': 'qc.log',
             'memos_dir': 'memos',
             'codebook': 'codebook.yaml',
         }
@@ -49,15 +55,15 @@ class QCTestCase(TestCase):
     def tear_down_qc_project(self):
         self.tempdir.cleanup()
 
-    def run_in_testpath(self, command, debug=False):
+    def run_in_testpath(self, command):
         """Runs `command` with testpath as cwd.
         When debug is False, 
         """
-        result = run(command, shell=True, check=not debug, cwd=self.testpath, 
-                capture_output=True, text=True)
-        if debug:
-            print(result.stdout)
-            print(result.stderr)
+        if self.verbose:
+            result = run(command, shell=True, cwd=self.testpath, stdout=sys.stdout,
+                    stderr=sys.stderr)
+        else:
+            result = run(command, shell=True, cwd=self.testpath, capture_output=True, text=True)
         return result
 
     def show_tree(self):
