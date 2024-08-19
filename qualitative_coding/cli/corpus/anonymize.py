@@ -6,7 +6,7 @@ from tqdm import tqdm
 from pathlib import Path
 from collections import defaultdict
 from qualitative_coding.corpus import QCCorpus
-from qualitative_coding.exceptions import QCError
+from qualitative_coding.exceptions import QCError, IncompatibleOptions
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.logs import configure_logger
@@ -25,28 +25,32 @@ LABELS = {
 @click.option("-f", "--filenames", help="File path containing a list of filenames to use")
 @click.option("-k", "--key", default="key.yaml", help="Path to key file")
 @click.option("-r", "--reverse", is_flag=True, help="Un-anonymize documents")
-@click.option("-o", "--anon-dir", default="anonymized", help="location for anonymized documemts")
+@click.option("-o", "--out-dir", default="anonymized", help="location for anonymized documemts")
 @click.option("-u", "--update", is_flag=True, help="Update documents in place")
 @handle_qc_errors
-def anonymize(settings, pattern, filenames, key, reverse, anon_dir, update):
+def anonymize(settings, pattern, filenames, key, reverse, out_dir, update):
     "Anonymize corpus files"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     key_file = Path(key)
-    out_path = Path(anon_dir)
+    out_path = Path(out_dir)
     log = configure_logger(settings_path)
-    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key, reverse=reverse, anon_dir=anon_dir, update=update)
+    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key, reverse=reverse, out_dir=out_dir, update=update)
     corpus = QCCorpus(settings_path)
     with corpus.session():
         docs = corpus.get_documents(pattern=pattern, file_list=read_file_list(filenames))
 
     if key_file.exists():
         keys = yaml.safe_load(key_file.read_text())
+        if reverse:
+            keys = reverse_keys(keys)
         out_path.mkdir(exist_ok=True, parents=True)
         for doc in docs:
             source = corpus.corpus_dir / doc.file_path
             dest = out_path / doc.file_path
             replace_keys(keys, source, dest)
     else:
+        if reverse:
+            raise QCError("Cannot use --reverse unless key file exists")
         doc_paths = [corpus.corpus_dir / doc.file_path for doc in docs]
         generate_key_file(key, doc_paths)
 
@@ -55,6 +59,17 @@ def replace_keys(keys, source, dest):
     for k, v in keys.items():
         text = text.replace(k, v)
     dest.write_text(text)
+
+def reverse_keys(keys):
+    """Converts anonymization keys into de-anonymization keys.
+    In a dict, each key has a single value, but there may be multiple 
+    values with the same key. In this case, uses the first occurence. 
+    """
+    rkeys = {}
+    for k, v in keys.items():
+        if v not in rkeys:
+            rkeys[v] = k
+    return rkeys
 
 def generate_key_file(key, file_paths):
     """Generates a YAML file containing keys for anonymization.
