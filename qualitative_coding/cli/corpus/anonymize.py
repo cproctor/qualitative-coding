@@ -27,14 +27,16 @@ LABELS = {
 @click.option("-r", "--reverse", is_flag=True, help="Un-anonymize documents")
 @click.option("-o", "--out-dir", default="anonymized", help="location for anonymized documemts")
 @click.option("-u", "--update", is_flag=True, help="Update documents in place")
+@click.option("-d", "--dryrun", is_flag=True, help="Show diff instead of performing update")
 @handle_qc_errors
-def anonymize(settings, pattern, filenames, key, reverse, out_dir, update):
+def anonymize(settings, pattern, filenames, key, reverse, out_dir, update, dryrun):
     "Anonymize corpus files"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     key_file = Path(key)
     out_path = Path(out_dir)
     log = configure_logger(settings_path)
-    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key, reverse=reverse, out_dir=out_dir, update=update)
+    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key, 
+             reverse=reverse, out_dir=out_dir, update=update, dryrun=dryrun)
     corpus = QCCorpus(settings_path)
     with corpus.session():
         docs = corpus.get_documents(pattern=pattern, file_list=read_file_list(filenames))
@@ -44,10 +46,13 @@ def anonymize(settings, pattern, filenames, key, reverse, out_dir, update):
         if reverse:
             keys = reverse_keys(keys)
         out_path.mkdir(exist_ok=True, parents=True)
-        for doc in docs:
-            source = corpus.corpus_dir / doc.file_path
-            dest = out_path / doc.file_path
-            replace_keys(keys, source, dest)
+        with corpus.session():
+            for doc in docs:
+                source = corpus.corpus_dir / doc.file_path
+                dest = out_path / doc.file_path
+                replace_keys(keys, source, dest)
+                if update:
+                    corpus.update_document(source, dest, dryrun)
     else:
         if reverse:
             raise QCError("Cannot use --reverse unless key file exists")

@@ -51,6 +51,12 @@ from qualitative_coding.helpers import (
     iter_paragraph_lines,
     read_settings,
 )
+from qualitative_coding.diff import (
+    get_diff, 
+    get_git_diff,
+    reindex_coded_lines,
+    in_git_repo,
+)
 
 log = structlog.get_logger()
 
@@ -876,13 +882,36 @@ class QCCorpus:
                 totals_by_doc[doc][node.expanded_name()] = getattr(node, attr)
         return totals_by_doc
 
+    def update_document(self, file_path, new, dryrun=False):
+        """Update the text of a corpus document. 
+        In addition to updating the text in the file, the hash in the database
+        needs to be updated and all existing coded lines need to be reindexed. 
+        """
+        if new:
+            log.debug("Using new file comparison diff strategy")
+            if not Path(new).exists():
+                raise InvalidParameter(f"new path {new} does not exist")
+            diff = get_diff(file_path, new)
+        else:
+            log.debug("Using git diff strategy")
+            if not in_git_repo():
+                raise QCError("update with git strategy can only be used within a git repository")
+            diff = get_git_diff(file_path)
 
-
-
-
-
-
-
-
-
-
+        corpus_path = str(self.get_corpus_path(file_path))
+        coded_lines = self.get_coded_lines(file_list=[corpus_path])
+        reindexed_coded_lines = reindex_coded_lines(coded_lines, diff)
+        coded_lines_by_file_by_coder = defaultdict(lambda: defaultdict(list))
+        for code, coder, line, file_path in reindexed_coded_lines:
+            coded_lines_by_file_by_coder[file_path][coder].append({
+                'line': line, 
+                'code_id': code,
+            })
+        if dryrun:
+            print(diff)
+        else:
+            if new:
+                (self.corpus_dir / corpus_path).write_text(Path(new).read_text())
+            for file_path, lines_by_coder in coded_lines_by_file_by_coder.items():
+                for coder, lines in lines_by_coder.items():
+                    self.update_coded_lines(file_path, coder, lines)

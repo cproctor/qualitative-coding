@@ -1,6 +1,7 @@
 import re
 from more_itertools import peekable
 from difflib import unified_diff
+from subprocess import run
 
 def get_git_diff(path):
     "Gits a diff between file state and HEAD"
@@ -44,8 +45,8 @@ def read_diff_offsets(diff):
     """
     offsets = []
     lines = peekable(diff.split('\n'))
-    read_preamble(lines)
     try:
+        read_preamble(lines)
         while True:
             offsets += read_hunk(lines)
     except StopIteration:
@@ -102,6 +103,9 @@ def read_line_number(hunk_preamble):
     match = re.match('\s*@@ \-(\d+)', hunk_preamble)
     return int(match.group(1))
 
+def in_git_repo():
+    "Checks whether the current working directory is in a git repo."
+    return run("git status", shell=True, capture_output=True).returncode == 0
 
     
 
