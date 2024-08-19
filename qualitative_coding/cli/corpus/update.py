@@ -34,8 +34,6 @@ def update(file_path, settings, new, recursive, dryrun):
         log.debug("Using new file comparison diff strategy")
         if not Path(new).exists():
             raise InvalidParameter(f"new path {new} does not exist")
-        with corpus.session():
-            corpus.validate_corpus_paths()
         diff = get_diff(file_path, new)
     else:
         log.debug("Using git diff strategy")
@@ -52,12 +50,14 @@ def update(file_path, settings, new, recursive, dryrun):
                 'line': line, 
                 'code_id': code,
             })
-    if dryrun:
-        print(diff)
-    else:
-        for file_path, lines_by_coder in coded_lines_by_file_by_coder.items():
-            for coder, lines in lines_by_coder.items():
-                corpus.update_coded_lines(file_path, coder, lines)
+        if dryrun:
+            print(diff)
+        else:
+            if new:
+                (corpus.corpus_dir / corpus_path).write_text(Path(new).read_text())
+            for file_path, lines_by_coder in coded_lines_by_file_by_coder.items():
+                for coder, lines in lines_by_coder.items():
+                    corpus.update_coded_lines(file_path, coder, lines)
 
 def in_git_repo():
     "Checks whether the current working directory is in a git repo."
