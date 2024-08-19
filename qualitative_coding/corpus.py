@@ -277,7 +277,7 @@ class QCCorpus:
                         f"{doc.file_path} has been changed since it was imported. " + 
                         f"This could affect the alignment of existing codes. " + 
                         f"Either restore the original version of {doc.file_path}, or " + 
-                        f"import the changed version by running: qc corpus rebase " + 
+                        f"import the changed version by running: qc corpus update " + 
                         f"{doc.file_path}"
                     )
         if errors:
@@ -898,20 +898,23 @@ class QCCorpus:
                 raise QCError("update with git strategy can only be used within a git repository")
             diff = get_git_diff(file_path)
 
-        corpus_path = str(self.get_corpus_path(file_path))
-        coded_lines = self.get_coded_lines(file_list=[corpus_path])
-        reindexed_coded_lines = reindex_coded_lines(coded_lines, diff)
-        coded_lines_by_file_by_coder = defaultdict(lambda: defaultdict(list))
-        for code, coder, line, file_path in reindexed_coded_lines:
-            coded_lines_by_file_by_coder[file_path][coder].append({
-                'line': line, 
-                'code_id': code,
-            })
         if dryrun:
             print(diff)
         else:
-            if new:
-                (self.corpus_dir / corpus_path).write_text(Path(new).read_text())
+            corpus_path = str(self.get_corpus_path(file_path))
+            coded_lines = self.get_coded_lines(file_list=[corpus_path])
+            reindexed_coded_lines = reindex_coded_lines(coded_lines, diff)
+            coded_lines_by_file_by_coder = defaultdict(lambda: defaultdict(list))
+            for code, coder, line, file_path in reindexed_coded_lines:
+                coded_lines_by_file_by_coder[file_path][coder].append({
+                    'line': line, 
+                    'code_id': code,
+                })
             for file_path, lines_by_coder in coded_lines_by_file_by_coder.items():
                 for coder, lines in lines_by_coder.items():
                     self.update_coded_lines(file_path, coder, lines)
+            if new:
+                (self.corpus_dir / corpus_path).write_text(Path(new).read_text())
+            doc = self.get_document(self.corpus_dir / corpus_path)
+            doc.file_hash = self.hash_file(self.corpus_dir / corpus_path)
+            self.get_session().commit()

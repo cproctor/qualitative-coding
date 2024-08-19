@@ -17,9 +17,8 @@ class TestCorpusUpdate(QCTestCase):
     def setUp(self):
         super().setUp()
         self.run_in_testpath("qc corpus import macbeth.txt --importer verbatim")
-        corpus = QCCorpus(self.testpath / "settings.yaml")
-        with corpus.session():
-            corpus.update_coded_lines("macbeth.txt", "chris", [
+        with self.corpus.session():
+            self.corpus.update_coded_lines("macbeth.txt", "chris", [
                 {'line': 1, 'code_id': 'tomorrow'},
                 {'line': 2, 'code_id': 'creeps'},
                 {'line': 3, 'code_id': 'to'},
@@ -37,4 +36,19 @@ class TestCorpusUpdate(QCTestCase):
         self.run_in_testpath("qc corpus update corpus/macbeth.txt --new macbeth_improved.txt")
         after = self.run_in_testpath("qc codes find speech").stdout
         self.assertEqual(before, after)
+
+    def test_corpus_update_updates_text(self):
+        self.run_in_testpath("qc corpus update corpus/macbeth.txt --new macbeth_improved.txt")
+        text = (self.testpath / "corpus/macbeth.txt").read_text()
+        self.assertEqual(text, MACBETH_IMPROVED)
+
+    def test_corpus_update_updates_file_hash(self):
+        with self.corpus.session():
+            old_hash = self.corpus.get_document(self.testpath / "corpus/macbeth.txt").file_hash
+        self.run_in_testpath("qc corpus update corpus/macbeth.txt --new macbeth_improved.txt")
+        with self.corpus.session():
+            new_hash = self.corpus.get_document(self.testpath / "corpus/macbeth.txt").file_hash
+        self.assertNotEqual(old_hash, new_hash)
+
+
 
