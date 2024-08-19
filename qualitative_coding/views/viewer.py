@@ -613,8 +613,7 @@ class QCCorpusViewer:
             )
 
         with self.corpus.session():
-            document = self.corpus.get_document(corpus_file_path)
-            self.corpus.update_coded_lines(document, coder_name, coded_lines)
+            self.corpus.update_coded_lines(corpus_file_path, coder_name, coded_lines)
         codes_file_path.unlink()
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
         if metadata_file_path.exists():

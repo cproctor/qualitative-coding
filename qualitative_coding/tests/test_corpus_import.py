@@ -53,5 +53,5 @@ class TestImport(QCTestCase):
     def assertFileImported(self, path):
         self.assertFileExists(Path("corpus") / path)
         with self.corpus.session():
-            file_path = self.corpus.get_document(path).file_path
+            file_path = self.corpus.get_document(self.testpath / 'corpus' / path).file_path
         self.assertEqual(file_path, path)

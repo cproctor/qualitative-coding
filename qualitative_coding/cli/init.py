@@ -14,12 +14,12 @@ from pathlib import Path
 def init(settings, accept_defaults, _import):
     "Initialize a qc project"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
-    log = configure_logger(settings_path)
-    log.info("init", accept_defaults=accept_defaults, _import=_import)
     if _import:
         from qualitative_coding.refi_qda.reader import REFIQDAReader
         reader = REFIQDAReader(_import)
         reader.unpack_project(Path.cwd())
     else:
+        log = configure_logger(settings_path)
+        log.info("init", accept_defaults=accept_defaults)
         from qualitative_coding.corpus import QCCorpus
         QCCorpus.initialize(settings_path, accept_defaults)

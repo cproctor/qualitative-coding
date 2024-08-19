@@ -10,7 +10,7 @@ class PandocImporter(BaseMediaImporter):
 
     def check_for_pandoc(self):
         try:
-            run("which pandoc", check=True)
+            run("which pandoc", shell=True, check=True)
         except CalledProcessError:
             raise QCError("pandoc is required but was not found. Please install pandoc.")
 

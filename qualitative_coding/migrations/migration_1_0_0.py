@@ -43,7 +43,7 @@ class Migrate_1_0_0(QCMigration):
             for dir_path, dir_names, filenames in os.walk(corpus.corpus_dir):
                 for fn in filenames:
                     file_path = Path(dir_path) / fn
-                    document = corpus.get_document(file_path)
+                    corpus_path = str(corpus.get_corpus_path(file_path))
                     coded_lines = []
                     for coder_name, code_data in corpus_v0.get_codes(file_path).items():
                         coder = corpus.get_or_create_coder(coder_name)
@@ -52,7 +52,7 @@ class Migrate_1_0_0(QCMigration):
                                 "line": line_num,
                                 "code_id": corpus.get_or_create_code(code_name).name
                             })
-                    corpus.update_coded_lines(document, coder_name, coded_lines)
+                    corpus.update_coded_lines(corpus_path, coder_name, coded_lines)
         shutil.rmtree(corpus_v0.codes_dir)
 
     def revert(self, settings_path):

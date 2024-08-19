@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 import shutil
 import numpy as np
+from semver import Version
+import structlog
 from textwrap import fill
 import os
 from hashlib import sha1
@@ -50,6 +52,8 @@ from qualitative_coding.helpers import (
     read_settings,
 )
 
+log = structlog.get_logger()
+
 DEFAULT_SETTINGS = {
     'qc_version': metadata('qualitative-coding')['version'],
     'corpus_dir': 'corpus',
@@ -60,6 +64,8 @@ DEFAULT_SETTINGS = {
     'log_file': 'qc.log',
     'verbose': False,
 }
+
+LATEST_MIGRATION = Version.parse("1.4.0")
 
 class QCCorpus:
     """Provides data access to the corpus of documents and codes. 
@@ -122,6 +128,17 @@ class QCCorpus:
                 errors.append(f"Settings file {settings_path} is missing")
                 raise SettingsError()
             settings = read_settings(settings_path)
+            if not "qc_version" in settings:
+                log.warning("qc_version not found in settings file. Cannot validate settings.")
+                return
+            try:
+                version = Version.parse(settings["qc_version"])
+            except ValueError:
+                errors.append(f"could not read qc_version {settings['qc_version']}")
+                raise SettingsError()
+            if not version >= LATEST_MIGRATION:
+                log.warning("Cannot validate settings; project is out of date. Run qc upgrade.")
+                return
             for expected_key in DEFAULT_SETTINGS:
                 if expected_key not in settings:
                     errors.append(f"Expected '{expected_key}' in settings")
@@ -145,6 +162,8 @@ class QCCorpus:
         except SettingsError:
             errfmt = [f" - {err}" for err in errors]
             raise QCError('\n'.join(["Error validating settings:"] + errfmt))
+        finally:
+            log.debug("Validating settings", errors=errors, settings_path=str(settings_path))
 
     def __init__(self, settings_path, skip_validation=False):
         self.settings_path = Path(settings_path)
@@ -340,8 +359,8 @@ class QCCorpus:
     def get_document(self, corpus_path):
         """Fetches a document object.
         """
-        relpath = self.get_relative_corpus_path(corpus_path)
-        q = select(Document).where(Document.file_path == relpath)
+        relpath = self.get_corpus_path(corpus_path)
+        q = select(Document).where(Document.file_path == str(relpath))
         return self.get_session().scalars(q).first()
 
     def get_paragraph(self, document, line, index_name="paragraphs"):
@@ -351,7 +370,7 @@ class QCCorpus:
             select(Location)
             .join(Location.document_index)
             .join(DocumentIndex.document)
-            .where(Document.file_path == document.file_path)
+            .where(Document.file_path == document)
             .where(DocumentIndex.name == index_name)
             .where(Location.start_line <= line)
             .where(Location.end_line > line)
@@ -359,7 +378,7 @@ class QCCorpus:
         try:
             return self.get_session().execute(q).scalar_one()
         except NoResultFound:
-            raise QCError(f"Error getting paragraph for {document.file_path}, line {line}.")
+            raise QCError(f"Error getting paragraph for {document}, line {line}.")
 
     def update_coded_lines(self, document, coder, coded_line_data):
         """Updates document's coded lines for the given coder.
@@ -378,7 +397,7 @@ class QCCorpus:
         q = (select(CodedLine)
             .join(CodedLine.locations)
             .join(Location.document_index)
-            .where(DocumentIndex.document_id == document.file_path)
+            .where(DocumentIndex.document_id == document)
             .where(CodedLine.coder_id == coder)
         )
         existing_coded_lines = self.session.scalars(q).all()
@@ -393,22 +412,6 @@ class QCCorpus:
             cl.locations.append(self.get_paragraph(document, line))
         session.commit()
         self.update_codebook()
-
-    def get_relative_corpus_path(self, corpus_path):
-        """Given a Path or str, tries to return a string representation of the
-        path relative to the corpus directory, suitable for Document.file_path.
-        """
-        try:
-            relative_path = Path(corpus_path).relative_to(self.corpus_dir)
-            return str(relative_path)
-        except ValueError:
-            if Path(corpus_path).is_absolute():
-                raise ValueError(
-                    f"{corpus_path} is absolute and is not relative to corpus directory "
-                    f"{self.settings['corpus_dir']}"
-                )
-            else:
-                return str(corpus_path)
 
     def import_media(self, file_path, recursive=False, corpus_root=None, importer="pandoc"):
         """Imports media into the corpus. 
@@ -468,9 +471,9 @@ class QCCorpus:
         doc = self.get_document(corpus_path)
         if doc:
             raise Document.AlreadyExists(doc)
-        relpath = self.get_relative_corpus_path(corpus_path)
+        relpath = self.get_corpus_path(corpus_path)
         document = Document(
-            file_path=relpath,
+            file_path=str(relpath),
             file_hash=self.hash_file(corpus_path),
         )
         self.get_session().add(document)
@@ -487,6 +490,18 @@ class QCCorpus:
                     document_index=index,
                 ))
         self.get_session().commit()
+
+    def get_updated_coded_lines(self, file_path, diff):
+        """Returns [(code, coder, line, file_path)] after applying a file diff.
+        When a document is updated, its line numbers may change and consequently
+        existing paragraphs and existing coded lines may need to be re-indexed.
+        """
+        corpus_path = self.get_corpus_path(file_path)
+        coded_lines = self.get_coded_lines(file_list=[corpus_path])
+        log.debug(coded_lines)
+        # Get all existing coded lines. 
+        # Iterate through the diff
+        # return a list of updated coded lines.
 
     def count_codes(self, pattern=None, file_list=None, coders=None, unit="line"):
         """Returns a dict of {code:count}.
@@ -516,42 +531,56 @@ class QCCorpus:
         """Move a file from target to destination, updating the database.
         """
         self.validate_corpus_paths()
-        target = self.corpus_dir / target
-        destination = self.corpus_dir / destination
-        if not target.exists():
-            raise QCError(f"{target} does not exist")
-        if destination.exists():
-            raise QCError(f"{destination} already exists")
-        if recursive and not target.is_dir():
+        target = self.get_corpus_path(target)
+        destination = self.get_corpus_path(destination)
+        log.debug("In move_document", target=target, destination=destination)
+        if recursive and not (self.corpus_dir / target).is_dir():
             raise QCError(f"Cannot use --recursive when {target} is a file.")
-        if not recursive and target.is_dir():
+        if not recursive and (self.corpus_dir / target).is_dir():
             raise QCError(f"{target} is a directory. Use --recursive")
 
         if recursive:
-            for dir_path, dir_names, filenames in os.walk(target):
+            for dir_path, dir_names, filenames in os.walk(self.corpus_dir / target):
                 for fn in filenames:
-                    dp = Path(dir_path).relative_to(target)
+                    dp = Path(dir_path).relative_to(self.corpus_dir / target)
                     rtarget = target / dp / fn
                     rdestination = destination / dp / fn
-                    old_file_path = str(rtarget.relative_to(self.corpus_dir))
-                    new_file_path = str(rdestination.relative_to(self.corpus_dir))
+                    log.debug("In recursive move", rtarget=rtarget, rdestination=rdestination)
+                    old_file_path = self.get_corpus_path(self.corpus_dir / rtarget)
+                    new_file_path = self.get_corpus_path(self.corpus_dir / rdestination)
                     self._move_document(old_file_path, new_file_path)
         else:
-            old_file_path = str(target.relative_to(self.corpus_dir))
-            new_file_path = str(destination.relative_to(self.corpus_dir))
-            self._move_document(old_file_path, new_file_path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        target.rename(destination)
+            self._move_document(target, destination)
+        (self.corpus_dir / destination).parent.mkdir(parents=True, exist_ok=True)
+        log.debug("Before rename", target=target, destination=destination)
+        (self.corpus_dir / target).rename(self.corpus_dir / destination)
         self.get_session().commit()
 
     def _move_document(self, old_file_path, new_file_path):
         """Updates a document's file path, and updates DocumentIndex.document_id
         to match. Does not commit the session.
         """
-        doc = self.get_documents(file_list=[old_file_path])[0]
+        doc = self.get_documents(file_list=[str(old_file_path)])[0]
         for document_index in doc.indices:
-            document_index.document_id = new_file_path
-        doc.file_path = new_file_path
+            document_index.document_id = str(new_file_path)
+        doc.file_path = str(new_file_path)
+
+    def get_corpus_path(self, target, must_exist=False, must_not_exist=False, 
+                must_be_file=False, must_be_dir=False):
+        """Returns target as a path relative to the corpus root.
+        """
+        target = Path(target).resolve()
+        if not target.is_relative_to(self.corpus_dir):
+            raise QCError(f"{target} is not a path within the corpus directory")
+        if (must_exist or must_be_file or must_be_dir) and not target.exists():
+            raise QCError(f"{target} does not exist")
+        if must_not_exist and target.exists():
+            raise QCError(f"{target} exists")
+        if must_be_file and not target.is_file():
+            raise QCError(f"{target} is not a file")
+        if must_be_dir and not target.is_dir():
+            raise QCError(f"{target} is not a directory")
+        return target.relative_to(self.corpus_dir)
 
     def remove_document(self, target, recursive=False):
         """Remove a document, or recursively remove all documents in a directory.
@@ -633,7 +662,7 @@ class QCCorpus:
         }[unit]
 
     def get_coded_lines(self, codes=None, pattern=None, file_list=None, coders=None):
-        """Returns (code, coder, line, file_path)
+        """Returns [(code, coder, line, file_path)]
         """
         query = (
             select(

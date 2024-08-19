@@ -9,7 +9,16 @@ def configure_logger(settings_path):
     structlog.get_logger() will return a properly-behaved logger.
     The logger logs JSON to a file (specified in settings) and, 
     when settings.verbose is True, also log nicely to the console. 
+
+    Custom log configuration can be stored in a log_config module 
+    (e.g. log_config.py).
     """
+    try:
+        import log_config
+        return structlog.get_logger()
+    except ModuleNotFoundError:
+        pass
+
     if Path(settings_path).exists():
         settings = read_settings(settings_path)
         verbose = settings.get('verbose', False)

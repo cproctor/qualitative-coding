@@ -20,7 +20,7 @@ def migrate(settings_path, target=None):
     if 'qc_version' not in settings:
         raise QCError("qc_version not specified in settings.")
     current_version = Version.parse(settings['qc_version'])
-    target_version = Version.parse(target) if target else migrations[-1].version
+    target_version = Version.parse(target) if target else latest_migration()
     if target_version not in [m.version for m in migrations]:
         raise QCError(f"{target} is not a recognized migration")
     if current_version < target_version:
@@ -33,3 +33,6 @@ def migrate(settings_path, target=None):
             if target_version < migration.version and migration.version <= current_version:
                 click.echo(info(f"Reverting migration {migration.version}"))
                 migration.revert(settings_path)
+
+def latest_migration():
+    return migrations[-1].version

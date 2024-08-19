@@ -18,11 +18,9 @@ class TestInit(QCTestCase):
         self.assertFileExists(self.testpath / "settings.yaml")
 
     def test_init2_creates_expected_dirs(self):
-        self.update_settings("logs_dir", "logz")
         self.run_in_testpath("qc init")
         self.assertFileExists("corpus", is_dir=True)
         self.assertFileExists("memos", is_dir=True)
-        self.assertFileExists("logz", is_dir=True)
 
     def test_init2_creates_db(self):
         self.run_in_testpath("qc init")

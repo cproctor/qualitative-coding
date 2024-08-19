@@ -20,7 +20,7 @@ def import_media(file_path, settings, recursive, corpus_root, importer):
     "Import corpus files"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     log = configure_logger(settings_path)
-    log.info("import", file_path=file_path, recursive=recursive, corpus_root=corpus_root,
+    log.info("corpus import", file_path=file_path, recursive=recursive, corpus_root=corpus_root,
              importer=importer)
     corpus = QCCorpus(settings_path)
     with corpus.session():
