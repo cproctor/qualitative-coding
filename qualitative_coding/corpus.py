@@ -591,7 +591,7 @@ class QCCorpus:
         """
         session = self.get_session()
         self.validate_corpus_paths()
-        target = self.corpus_dir / target
+        target = self.corpus_dir / self.get_corpus_path(target)
         if not target.exists():
             raise QCError(f"{target} does not exist")
         if recursive and not target.is_dir():
