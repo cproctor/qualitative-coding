@@ -539,7 +539,6 @@ class QCCorpus:
         self.validate_corpus_paths()
         target = self.get_corpus_path(target)
         destination = self.get_corpus_path(destination)
-        log.debug("In move_document", target=target, destination=destination)
         if recursive and not (self.corpus_dir / target).is_dir():
             raise QCError(f"Cannot use --recursive when {target} is a file.")
         if not recursive and (self.corpus_dir / target).is_dir():
@@ -551,14 +550,12 @@ class QCCorpus:
                     dp = Path(dir_path).relative_to(self.corpus_dir / target)
                     rtarget = target / dp / fn
                     rdestination = destination / dp / fn
-                    log.debug("In recursive move", rtarget=rtarget, rdestination=rdestination)
                     old_file_path = self.get_corpus_path(self.corpus_dir / rtarget)
                     new_file_path = self.get_corpus_path(self.corpus_dir / rdestination)
                     self._move_document(old_file_path, new_file_path)
         else:
             self._move_document(target, destination)
         (self.corpus_dir / destination).parent.mkdir(parents=True, exist_ok=True)
-        log.debug("Before rename", target=target, destination=destination)
         (self.corpus_dir / target).rename(self.corpus_dir / destination)
         self.get_session().commit()
 
