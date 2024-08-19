@@ -622,7 +622,16 @@ class QCCorpus:
         Note that it does not commit the session.
         """
         session = self.get_session()
-        for cl in self.get_coded_lines(file_list=[file_path]):
+
+        query = (
+            select(CodedLine)
+            .join(CodedLine.locations)
+            .join(Location.document_index)
+            .where(DocumentIndex.name == "paragraphs")
+        )
+        query = self.filter_query_by_document(query, None, [file_path])
+        coded_lines = self.get_session().execute(query).scalars()
+        for cl in coded_lines:
             session.delete(cl)
         doc = self.get_documents(file_list=[file_path])[0]
         session.delete(doc)
