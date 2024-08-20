@@ -41,8 +41,8 @@ def code(coder, settings, pattern, filenames, uncoded, first, random, recover, a
         if viewer.incomplete_coding_session_exists():
             raise QCError(
                 "An incomplete coding session exists. " + 
-                "Run qc code --recover to recover this coding session or " + 
-                "qc code --abandon to abandon it."
+                "Run qc code coder --recover to recover this coding session or " + 
+                "qc code coder --abandon to abandon it."
             )
         f = viewer.select_file(
             coder,
