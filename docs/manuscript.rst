@@ -322,19 +322,19 @@ times.
    rq1_definition                        5       55
    .  rationales                         0       27
    .    equity                          12       15
-   rq2_curriculum_and_instruction        0       83
-   .  curriculum                         4       40
-   .    cs_scope_and_sequence            0       10
-   .    graduation_requirement          11       11
+   rq2_curriculum_and_instruction        0       93
+   .  curriculum                         4       47
+   .    cs_scope_and_sequence            0       11
+   .    graduation_requirement          16       16
    .    interdisciplinary_cs             2       11
-   .  pedagogy                           4       41
+   .  pedagogy                           4       43
    .    participation                    3       15
-   .    tools                            1       12
-   rq3_process                           0       95
-   .  identity                           0       54
-   .    computational_identity           6       22
-   .    identity_categories              1       26
-   .      gender                        19       19
+   .    tools                            1       14
+   rq3_process                           0      102
+   .  identity                           0       60
+   .    computational_identity           6       27
+   .    identity_categories              1       27
+   .      gender                        20       20
 
 We can zoom in on particular codes using the same command. For example,
 the following command shows the code tree for ``rationales``, or
@@ -364,30 +364,30 @@ coded with “equity,” or any of its child codes.
 .. code-block:: console
 
    % qc codes find equity -r
-
+   
    admin.txt (7)
    ================================================================================
-   [10:15]
-   learning computer science when I went to college back in the                     |
+   [40:45]
+   learning computer science when I went to college at Organization_339 back in the |
    early '70s and I could see that was something that I thought, just like math,    |
-   every kid should know. So, fast forward to when I got to [district], which was   | everyone_should_learn_cs
+   every kid should know. So, fast forward to when I got to Location_92, which was  | everyone_should_learn_cs
    in the early '80s, I got there in '83 and I started teaching computer science    |
    in about '85, as well as math and I recognized that it was a niche class and it  |
 
-   [63:68]
+   [93:98]
    academic officer, the elementary academic officer, just figured we would spin    |
    our wheels and we wouldn't go anywhere but when we started talking about         |
    opportunity, she recognized that was an opportunity for all students and being   | equity
    a member of the underrepresented minority, she got behind us, which was great.   |
    However, this year, she did not come to our meetings because she didn't think    |
-
-   [85:90]
+   
+   [118:123]
    kids, that they would have English as a second language kids so that we could    |
    make sure that we were going to create a program that would meet the needs of    |
    all the students and create opportunity for all students to learn computer       | equity
    science, not just programming but the team work and the thinking, the            |
    analytical thinking that goes into computer science but definitely programming   |
-
+   
 Here’s an interesting pattern: the discussion of equity tends to be
 framed in universal terms–what “every kid should know;” an “opportunity
 for all students.” This consideration of what students should learn
@@ -693,7 +693,7 @@ database.
 
 .. code-block:: console
 
-   % qc corpus move interview.txt pre/annabelle.txt
+   % qc corpus move corpus/interview.txt corpus/pre/annabelle.txt
 
 corpus remove (rm)
 ~~~~~~~~~~~~~~~~~~
@@ -704,7 +704,83 @@ document. Or recursively remove all documents in a directory with
 
 .. code-block:: console
 
-   % qc corpus remove pre/annabelle.txt
+   % qc corpus remove corpus/pre/annabelle.txt
+
+corpus update
+~~~~~~~~~~~~~
+
+Update a document in the corpus. When a document changes, ``qc`` 
+needs to update the positions of all existing coded lines, which requires
+access to the old version and the updated version. Documents
+can be updated using two strategies. First, provide a new version 
+of the document, stored outside of the corpus:
+
+.. code-block:: console
+
+   % qc corpus update corpus/interview.txt --new revised_interview.txt
+
+If your project is stored in a git repository (highly recommended), 
+you can also edit the document directly; the committed verison of the document
+is considered the old version.
+
+.. code-block:: console
+
+   % qc corpus update corpus/interview.txt
+
+Use ``--dryrun`` (``-d``) to show a diff of the changes without updating the 
+corpus.
+
+corpus anonymize
+~~~~~~~~~~~~~~~~
+
+Anonymize corpus documents. Documents containing personally-identifiable
+information (PII) frequently need to have this imformation removed in order to 
+protect the privacy of research participants. This can be automated using
+Named Entity Recognition (although it is not perfect; make sure you check 
+for PII). It is often good practice to remove PII from documents as early 
+in the analysis process as possible.
+
+First, generate a key file mapping named entities (e.g. people, places, 
+organizations) to placeholders.
+
+.. code-block:: console
+    
+   % qc corpus anonymize
+
+The key file is called ``key.yaml`` by default; choose another name with 
+``--key`` (``-k``) when necessary. Now edit the key file. All terms appearing
+in the key file will be substituted for their placeholders, so delete any 
+terms which you want to preserve. Often the same person is referred to in 
+different ways; it's fine to assign the same placeholder to several terms.
+For example: 
+
+.. code-block:: yaml
+
+   Chris Proctor: Person_1
+   Dr. Proctor: Person_1
+   Chris: Person_1
+
+If you later reverse the anonymization, placeholders will be replaced with
+the first matching term. So "Person_1" will be replaced with "Chris Proctor."
+
+Once the key file is ready, create anonymized copies of corpus documents:
+
+.. code-block:: console
+    
+   % qc corpus anonymize
+
+This time, the key file already exists, so anonymized copies of the corpus are
+created in ``anonymized`` (specify another directory with ``--out-dir`` (``-o``). 
+
+If you want to update the corpus with the anonymized versions, use
+``--update`` (``-u``).  At this point, you could move the key 
+file to another computer to protect the PII. 
+If you later wish to de-anonymize the corpus, move the key file back into 
+the project and run:
+
+.. code-block:: console
+    
+   % qc corpus anonymize --reverse
 
 Codes commands
 --------------
