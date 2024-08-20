@@ -487,6 +487,13 @@ numbers, and underscores; when multiple codes are applied to a line,
 separate them with a comma. Save and close the codes document to end the
 coding session.
 
+.. note::
+
+   If you are using Sublime Text, the document and the coding file will
+   probably open in separate tabs. Drag them so they are side-by-side, 
+   and then enable the Scroll Sync extension if installed, to keep 
+   the line numbers synchronized.
+
 .. figure:: coding.png
    :alt: Figure 1. Screen shot of the coding interface
 
