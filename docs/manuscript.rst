@@ -464,12 +464,12 @@ documents.
 
 Now we will code the document using ``qc code user``, where ``user`` is
 the username you want to use while coding. The coding interface is
-intentionally simple: the document to be coded and an empty document for
-codes are presented side-by-side in your editor of choice, as shown in
+intentionally simple: the document to be coded and ``codes.txt``, an empty document for
+codes, are presented side-by-side in your editor of choice, as shown in
 Figure 1. Codes are added in the blank document, corresponding to lines
 in the corpus document. Each code may be any combination of letters,
 numbers, and underscores; when multiple codes are applied to a line,
-separate them with a comma. Save and close the codes document to end the
+separate them with a comma. Save and close the files in your editor to end the
 coding session.
 
 .. note::
@@ -480,12 +480,27 @@ coding session.
    the line numbers synchronized.
 
 .. figure:: coding.png
-   :alt: Figure 1. Screen shot of the coding interface
+   :alt: Figure 1. Screen shot of the coding interface using the vim editor
 
-   Figure 1. Screen shot of the coding interface
+   Figure 1. Screen shot of the coding interface using the vim editor
 
-After each coding session, all new codes added to the corpus are
-automatically added to the codebook. Depending on the qualitative
+After each coding session, ``qc`` reads ``codes.txt``, updates the database 
+with changes in coded lines, and then deletes ``codes.txt``. This file 
+therefore serves as an interface between ``qc`` and your editor. 
+
+.. note::
+
+   You could automatically apply codes to a document by writing a script and 
+   defining it as an editor (see :ref:`editors`); the script would receive the 
+   path to a corpus file and the codes file, and would write codes into the codes 
+   file. This opens the possibility of methodological innovation. For example, 
+   when we were analyzing student-written computer programs, we combined 
+   manual qualitative coding with automated static analysis of the programs, 
+   which added codes marking syntactic structures and manipulation of variables.
+   This allowed us to integrate what students were doing (via our qualitative coding)
+   with how they were doing it (via static analysis). 
+
+Depending on the qualitative
 methodology being used, you might want to iterate between coding and
 organizing the codebook. Commands are provided for renaming codes as the
 coding scheme stabilizes (see ``qc codes rename`` below). After open
@@ -926,6 +941,8 @@ The path to memos created with ``qc memo``. Default: ``memos``.
 codebook
 ~~~~~~~~
 The path to the codebook file. Default: ``codebook.yaml``.
+
+.. _editor: 
 
 editor
 ~~~~~~
