@@ -15,6 +15,8 @@ analysis, they are generally designed to protect users from complexity
 rather than providing affordances for engaging with complexity via
 algorithms and data structures. 
 
+.. _installation:
+
 Installation
 ------------
 
@@ -25,7 +27,8 @@ Prerequisites
 need to be familiar with using a command line in order to use ``qc``.
 
 * `Python 3.9 <https://www.python.org/downloads/>`__ or higher.
-* `Pandoc <https://pandoc.org/>`__.
+* `Pandoc <https://pandoc.org/>`__. ``qc`` relies on Pandoc for converting between
+  file formats.
 * A code editor. You should install 
   `Visual Studio Code <https://code.visualstudio.com/>`__, the default
   editor, unless you prefer a different editor such as emacs or vim.
