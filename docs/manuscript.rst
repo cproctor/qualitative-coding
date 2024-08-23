@@ -620,7 +620,7 @@ memos.
 
 .. code-block:: console
 
-   % qc memo -m "It's all starting to make sense..."
+   % qc memo chris -m "It's all starting to make sense..."
 
 export
 ~~~~~~
