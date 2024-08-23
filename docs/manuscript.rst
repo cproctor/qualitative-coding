@@ -405,8 +405,10 @@ be used to specify a different unit of analysis (``paragraph`` and
 development).
 
 The next steps from here might include additional coding (using
-``qc code``), editing the codebook (``codebook.yaml``), further
-articulation of the codebook, or writing memos (``qc memo``) to document
+``qc code``), adding hierarchical structure to the codebook (
+edit ``codebook.yaml`` using an editor of your choice), viewing code stats 
+after editing the codebook, 
+and writing memos (``qc memo``) to document
 emerging themes. We have found that in larger projects, the options to
 scope queries to subsets of coders or subsets of the corpus become
 increasingly useful. The query outputs shown above can also be formatted
