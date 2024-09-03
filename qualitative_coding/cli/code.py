@@ -34,7 +34,7 @@ def code(coder, settings, pattern, filenames, uncoded, first, random, recover, a
     corpus = QCCorpus(settings_path)
     viewer = QCCorpusViewer(corpus)
     if recover:
-        viewer.recover_incomplete_coding_session()
+        viewer.recover_incomplete_coding_session(coder)
     elif abandon:
         viewer.abandon_incomplete_coding_session()
     else:

@@ -11,8 +11,8 @@ class TestCodeParsing(TestCase):
         cases = [
             ['funny', True],
             ['funny-sort-of', True],
-            ['FUNNY!', True],
-            ['funny?', True],
+            ['FUNNY!', False],
+            ['funny?', False],
             ['0', True],
             ['', False],
             [':colon', False],
@@ -20,26 +20,26 @@ class TestCodeParsing(TestCase):
         ]
         for code, ok in cases:
             if ok: 
-                self.viewer.parse_code(code)
+                self.viewer.parse_code('nobody', code)
             else:
                 with self.assertRaises(CodeFileParseError):
-                    self.viewer.parse_code(code)
+                    self.viewer.parse_code('nobody', code)
 
     def test_parses_valid_codes_file(self):
         self.viewer = QCCorpusViewer(MockCorpus())
-        codes = self.viewer.parse_codes(CODES_FILE, 6)
+        codes = self.viewer.parse_codes('nobody', CODES_FILE, 6)
         self.assertEqual(len(codes), 4)
         self.assertEqual(codes[0]['line'], 2)
 
     def test_checks_codes_file_length(self):
         self.viewer = QCCorpusViewer(MockCorpus())
         with self.assertRaises(CodeFileParseError):
-            self.viewer.parse_codes(CODES_FILE, 7)
+            self.viewer.parse_codes('nobody', CODES_FILE, 7)
 
     def test_checks_for_misplaced_commas(self):
         for case in [TRAILING_COMMA, LEADING_COMMA]:
             with self.assertRaises(CodeFileParseError):
-                self.viewer.parse_codes(case, 6)
+                self.viewer.parse_codes('nobody', case, 6)
             
 
 CODES_FILE = """

@@ -3,6 +3,7 @@ from pathlib import Path
 from qualitative_coding.corpus import QCCorpus
 
 class TestCode(QCTestCase):
+
     def setUp(self):
         super().setUp()
         self.run_in_testpath("qc corpus import macbeth.txt --importer verbatim")
@@ -33,4 +34,25 @@ class TestCode(QCTestCase):
         self.assertTrue("line" in result.stdout)
         self.assertTrue("one" in result.stdout)
         self.assertTrue("two" in result.stdout)
+
+    def test_code_will_not_code_when_metadata_file_exists(self):
+        (self.testpath / ".coding_session").write_text('a')
+        self.set_mock_editor(verbose=True)
+        result = self.run_in_testpath("qc code chris")
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_code_will_not_code_when_codes_exists(self):
+        (self.testpath / "codes.txt").write_text('a')
+        self.set_mock_editor(verbose=True)
+        result = self.run_in_testpath("qc code chris")
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_code_abandon_deletes_session(self):
+        (self.testpath / ".coding_session").write_text('a')
+        (self.testpath / "codes.txt").write_text('a')
+        result = self.run_in_testpath("qc code chris --abandon")
+
+
+
+
 

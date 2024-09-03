@@ -16,12 +16,15 @@ import csv
 import yaml
 import json
 import re
+import structlog
+
+log = structlog.get_logger()
 
 class QCCorpusViewer:
 
     codes_file = "codes.txt"
     coding_session_metadata_file = ".coding_session"
-    code_pattern = "[a-zA-Z0-9_\-]"
+    code_pattern = "^[a-zA-Z0-9_\-]+$"
 
     def __init__(self, corpus):
         self.corpus = corpus
@@ -594,32 +597,42 @@ class QCCorpusViewer:
         text = [f.read_text() for f in sorted(self.corpus.memos_dir.glob("*.md"))]
         return "\n\n".join(text)
 
-    def open_editor(self, corpus_file_path, coder_name):
+    def open_editor(self, corpus_file_path, coder_name, write_codes_file=True):
+        """Opens an editor for coding. 
+        corpus_file_path should be a string naming a path relative to the corpus_dir.
+        """
+        log.debug("Opening editor", corpus_file=corpus_file_path, coder=coder_name)
         codes_file_path = self.corpus.resolve_path(self.codes_file)
         full_path = self.corpus.corpus_dir / corpus_file_path
-        codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
+        if write_codes_file:
+            codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
         command = self.get_code_command(full_path, codes_file_path)
         try:
             p = run(command, shell=True, check=True)
             corpus_file_length = len(full_path.read_text().splitlines())
-            coded_lines = self.parse_codes(codes_file_path.read_text(), corpus_file_length)
+            coded_lines = self.parse_codes(coder_name, codes_file_path.read_text(), 
+                    corpus_file_length)
         except CalledProcessError as err:
             self.save_incomplete_coding_session(corpus_file_path, coder_name)
             raise QCError(
-                "The editor closed before coding was complete" + 
-                (f":\n{err.stderr}\n" if err.stderr else '') + 
-                "Run qc code --recover to recover this coding session or " + 
-                "qc code --abandon to abandon it."
+                "The editor closed before coding was complete, resulting in an " + 
+                "incomplete coding session" + 
+                (f":\n{err.stderr}. " if err.stderr else '. ') + 
+                f"Run qc code {coder_name} --recover to recover this coding session or " + 
+                f"qc code {coder_name} --abandon to abandon it."
             )
+        except CodeFileParseError as err:
+            self.save_incomplete_coding_session(corpus_file_path, coder_name)
+            raise err
 
         with self.corpus.session():
-            self.corpus.update_coded_lines(corpus_file_path, coder_name, coded_lines)
+            self.corpus.update_coded_lines(str(corpus_file_path), coder_name, coded_lines)
         codes_file_path.unlink()
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
         if metadata_file_path.exists():
             metadata_file_path.unlink()
 
-    def parse_codes(self, code_file_text, expected_length):
+    def parse_codes(self, coder_name, code_file_text, expected_length):
         """Parses the contents of a code file after user editing. 
         If successful, returns coded_lines, a list of {line: int, code_id: str}
         Raises CodeFileParseError if there is an error parsing the file.
@@ -628,36 +641,49 @@ class QCCorpusViewer:
         if len(code_file_lines) != expected_length:
             raise CodeFileParseError(
                 "Expected the codes file to have the same number of lines as the document " + 
-                f"being coded ({expected_length}), but it has {len(code_file_lines)}."
+                f"being coded ({expected_length}), but it has {len(code_file_lines)}. " + 
+                f"Run qc code {coder_name} --recover to correct the issue, or " + 
+                f"qc code {coder_name} --abandon to abandon the coding session."
             )
         coded_lines = []
-        for idx, line in enumerate(code_file_lines):
-            if line.strip() == '':
-                continue
-            codes = [self.parse_code(x) for x in line.split(',')]
-            for code in codes:
-                if code.strip() != "":
-                    coded_lines.append({
-                        "line": idx,
-                        "code_id": code
-                    })
+        try:
+            for idx, line in enumerate(code_file_lines):
+                if line.strip() == '':
+                    continue
+                codes = [self.parse_code(coder_name, x) for x in line.split(',')]
+                for code in codes:
+                    if code.strip() != "":
+                        coded_lines.append({
+                            "line": idx,
+                            "code_id": code
+                        })
+        except CodeFileParseError as err:
+            raise CodeFileParseError(
+                f"Error parsing codes file (line {idx+1}): " + 
+                str(err) + ' ' + 
+                f"Run qc code {coder_name} --recover to correct the issue, or " + 
+                f"qc code {coder_name} --abandon to abandon the coding session."
+            )
         return coded_lines
 
-    def parse_code(self, text):
+    def parse_code(self, coder_name, text):
         """Parses an individual code from a codes file.
         Codes 
         """
         text = text.strip()
+        if not text:
+            raise CodeFileParseError("Empty codes are invalid.")
         if not re.match(self.code_pattern, text):
             raise CodeFileParseError(f"{text} is not a valid code.")
         return text 
 
     def incomplete_coding_session_exists(self):
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
-        return metadata_file_path.exists()
+        codes_file_path = self.corpus.resolve_path(self.codes_file)
+        return metadata_file_path.exists() or codes_file_path.exists()
 
     def abandon_incomplete_coding_session(self):
-        if not incomplete_coding_session_exists():
+        if not self.incomplete_coding_session_exists():
             raise QCError("There is no incomplete coding session.")
         codes_file_path = self.corpus.resolve_path(self.codes_file)
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
@@ -669,24 +695,51 @@ class QCCorpusViewer:
     def save_incomplete_coding_session(self, corpus_file_path, coder_name):
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
         metadata_file_path.write_text(yaml.dump({
-            'corpus_file_path': corpus_file_path,
+            'corpus_file_path': str(corpus_file_path),
             'coder_name': coder_name,
         }))
 
-    def recover_incomplete_coding_session(self):
+    def recover_incomplete_coding_session(self, coder):
         if not self.incomplete_coding_session_exists():
             raise QCError("There is no incomplete coding session.")
         codes_file_path = self.corpus.resolve_path(self.codes_file)
         metadata_file_path = self.corpus.resolve_path(self.coding_session_metadata_file)
+        if not metadata_file_path.exists():
+            self.regenerate_metadata_file(coder)
+        metadata = yaml.safe_load(metadata_file_path.read_text())
+        former_coder = metadata['coder_name']
+        if coder != former_coder:
+            raise QCError(
+                f"Coder {former_coder} was active during the incomplete session, " + 
+                f"but recovery was attempted with coder {coder}. Please try recovery " + 
+                "again with the correct coder name."
+            )
         if not codes_file_path.exists():
             raise QCError(
-                "The coding file, {self.codes_file}, no longer exists. " + 
-                "If you can recover {self.codes_file}, run qc code --recover " +
+                f"The coding file, {self.codes_file}, no longer exists. " + 
+                f"If you can recover {self.codes_file}, please do so and then " +
+                "run qc code coder --recover " +
                 "to recover it. Otherwise, run qc code --abandon to abandon " +
                 "the existing session."
             )
-        metadata = yaml.safe_load(metadata_file_path.read_text())
-        self.open_editor(**metadata)
+        self.open_editor(**metadata, write_codes_file=False)
+
+    def regenerate_metadata_file(self, coder):
+        print(
+            f"Expected to find {self.coding_session_metadata_file}, but did not. " + 
+            "This file is needed to recover the coding session. " + 
+            "However, we can regenerate the metadata. Please enter the path to the " + 
+            "corpus file you were editing."
+        )
+        while True:
+            path = input("> ")
+            try:
+                corpus_path = self.corpus.get_corpus_path(path, must_exist=True, 
+                        must_be_file=True)
+                self.save_incomplete_coding_session(str(corpus_path), coder)
+                return
+            except QCError as e:
+                print(e)
 
     def codes_file_text(self, corpus_file_path, coder):
         """Formats codes for a temporary coding file.

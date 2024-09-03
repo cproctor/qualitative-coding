@@ -1,5 +1,6 @@
 from functools import update_wrapper
 import click
+import sys
 from qualitative_coding.exceptions import QCError
 from qualitative_coding.views.styles import error
 from qualitative_coding.exceptions import IncompatibleOptions
@@ -14,4 +15,5 @@ def handle_qc_errors(f):
             return f(*args, **kwargs)
         except QCError as e:
             click.echo(error(str(e), preformatted=True), err=True)
+            sys.exit(1)
     return update_wrapper(command, f)
