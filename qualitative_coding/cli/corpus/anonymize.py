@@ -84,8 +84,10 @@ def generate_key_file(key, file_paths):
         nlp = spacy.load('en_core_web_sm')
     except OSError:
         raise QCError(
-            "A language model is required to run this task. Please run:\n" + 
-            "python -m spacy download en_core_web_sm"
+            "A language model is required to run this task. " + 
+            "Please install the optional models dependencies. " + 
+            "For example, if you installed qc with pipx, run:\n" + 
+            "pipx install qualitative-coding --with models"
         )
     entities = defaultdict(set)
     for file_path in tqdm(file_paths, desc="Processing documents"):

@@ -23,7 +23,7 @@ Installation
 Prerequisites
 ~~~~~~~~~~~~~
 
-``qc`` runs on the command line (also called a terminal), so you will 
+``qc`` runs on the command line (also called a shell or a terminal), so you will 
 need to be familiar with using a command line in order to use ``qc``.
 
 * `Python 3.9 <https://www.python.org/downloads/>`__ or higher.
@@ -54,6 +54,12 @@ install ``qc`` globally on your system, the cleanest approach is to use
 .. code-block:: console
 
    % pipx install qualitative-coding
+
+.. note::
+
+   Some ``qc`` commands depend on a langauge model which is included
+   as an optional dependency. If you wish to install the langauge 
+   model, add ``--with models`` to the command above.
 
 
 Install as a dependency

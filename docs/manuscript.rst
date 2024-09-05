@@ -491,7 +491,7 @@ therefore serves as an interface between ``qc`` and your editor.
 .. note::
 
    You could automatically apply codes to a document by writing a script and 
-   defining it as an editor (see :ref:`editors`); the script would receive the 
+   defining it as an editor (see :ref:`editor`); the script would receive the 
    path to a corpus file and the codes file, and would write codes into the codes 
    file. This opens the possibility of methodological innovation. For example, 
    when we were analyzing student-written computer programs, we combined 
@@ -740,6 +740,11 @@ corpus.
 corpus anonymize
 ~~~~~~~~~~~~~~~~
 
+.. note::
+
+   This command requires installing the optional language model. See 
+   :ref:`installation`.
+
 Anonymize corpus documents. Documents containing personally-identifiable
 information (PII) frequently need to have this imformation removed in order to 
 protect the privacy of research participants. This can be automated using
@@ -777,8 +782,7 @@ Once the key file is ready, create anonymized copies of corpus documents:
    % qc corpus anonymize
 
 This time, the key file already exists, so anonymized copies of the corpus are
-created in ``anonymized`` (specify another directory with ``--out-dir`` (``-o``). 
-
+created in ``anonymized`` (specify another directory with ``--out-dir`` (``-o``)). 
 If you want to update the corpus with the anonymized versions, use
 ``--update`` (``-u``).  At this point, you could move the key 
 file to another computer to protect the PII. 

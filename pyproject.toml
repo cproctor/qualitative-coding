@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qualitative-coding"
-version = "1.4.2"
+version = "1.5.1"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
 documentation = "https://qualitative-coding.readthedocs.io"
@@ -26,10 +26,17 @@ structlog = "^24.4.0"
 rich = "^13.7.1"
 more-itertools = "^10.4.0"
 spacy = "^3.7.5"
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz", optional = true }
+
+[tool.poetry.group.docs]
+optional = true
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.3.7"
 sphinx-rtd-theme = "^2.0.0"
+
+[tool.poetry.extras]
+models = ["en-core-web-sm"]
 
 [build-system]
 requires = ["poetry-core"]
