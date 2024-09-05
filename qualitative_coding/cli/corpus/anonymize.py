@@ -57,7 +57,7 @@ def anonymize(settings, pattern, filenames, key, reverse, out_dir, update, dryru
         if reverse:
             raise QCError("Cannot use --reverse unless key file exists")
         doc_paths = [corpus.corpus_dir / doc.file_path for doc in docs]
-        generate_key_file(key, doc_paths)
+        generate_key_file(key, doc_paths, log)
 
 def replace_keys(keys, source, dest):
     text = source.read_text()
@@ -76,18 +76,24 @@ def reverse_keys(keys):
             rkeys[v] = k
     return rkeys
 
-def generate_key_file(key, file_paths):
+def generate_key_file(key, file_paths, log):
     """Generates a YAML file containing keys for anonymization.
     A key file is required to anonymize a corpus. 
     """
+    model_name = 'en_core_web_sm'
+    if spacy.util.is_package(model_name):
+        log.debug(f"Using spacy model {model_name}")
+    else:
+        log.info(f"Downloading spacy model {model_name}")
+        spacy.cli.download(model_name)
     try:
         nlp = spacy.load('en_core_web_sm')
     except OSError:
         raise QCError(
-            "A language model is required to run this task. " + 
-            "Please install the optional models dependencies. " + 
-            "For example, if you installed qc with pipx, run:\n" + 
-            "pipx install qualitative-coding --with models"
+            "A language model is required to run this task. " +
+            f"Automatic downloading of spacy model {model_name} " +
+            "failed. Please install the language model manually:\n" +
+            "python -m spacy download en_core_web_sm"
         )
     entities = defaultdict(set)
     for file_path in tqdm(file_paths, desc="Processing documents"):

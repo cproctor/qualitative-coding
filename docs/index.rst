@@ -55,13 +55,6 @@ install ``qc`` globally on your system, the cleanest approach is to use
 
    % pipx install qualitative-coding
 
-.. note::
-
-   Some ``qc`` commands depend on a langauge model which is included
-   as an optional dependency. If you wish to install the langauge 
-   model, add ``--with models`` to the command above.
-
-
 Install as a dependency
 ~~~~~~~~~~~~~~~~~~~~~~~
 
