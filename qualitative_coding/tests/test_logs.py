@@ -8,7 +8,7 @@ class TestLogs(QCTestCase):
         configure_logger(self.testpath / "settings.yaml")
         log = structlog.get_logger()
         log.info("test")
-        self.assertFileExists("qc.log")
-        with open(self.testpath / "qc.log") as fh:
+        self.assertFileExists("qualitative_coding.log")
+        with open(self.testpath / "qualitative_coding.log") as fh:
             lines = list(fh)
         self.assertTrue(len(lines) > 0)

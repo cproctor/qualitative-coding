@@ -4,6 +4,8 @@ import structlog
 import logging
 import sys
 
+DEFAULT_LOG_FILE = "qualitative_coding.log"
+
 def configure_logger(settings_path):
     """Configures logging and structlog so that future calls to 
     structlog.get_logger() will return a properly-behaved logger.
@@ -22,11 +24,11 @@ def configure_logger(settings_path):
     if Path(settings_path).exists():
         settings = read_settings(settings_path)
         verbose = settings.get('verbose', False)
-        log_file_path = Path(settings.get('log_path', 'qc.log'))
+        log_file_path = Path(settings.get('log_path', DEFAULT_LOG_FILE))
         if not log_file_path.is_absolute():
             log_file_path = Path(settings_path).parent / log_file_path
     else:
-        log_file_path = "qc.log"
+        log_file_path = DEFAULT_LOG_FILE
         verbose = False
 
     root_logger = logging.getLogger()

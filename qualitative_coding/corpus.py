@@ -67,7 +67,7 @@ DEFAULT_SETTINGS = {
     'memos_dir': 'memos',
     'codebook': 'codebook.yaml',
     'editor': 'code',
-    'log_file': 'qc.log',
+    'log_file': 'qualitative_coding.log',
     'verbose': False,
 }
 
