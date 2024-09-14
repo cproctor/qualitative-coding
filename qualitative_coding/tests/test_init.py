@@ -7,6 +7,8 @@ import yaml
 # - Ensure that init catches validation errors when editors is malformed.
 # - Ensure that init catches validation errors when editor not in editors.
 # - Ensure that init catches files in corpus_dir which have not been imported
+# - Ensure that init functions properly when the settings file is a relative
+#   and an absolute path.
 
 class TestInit(QCTestCase):
     def setUp(self):

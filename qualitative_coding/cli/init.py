@@ -7,11 +7,10 @@ from pathlib import Path
 
 @click.command()
 @click.option("-s", "--settings", type=click.Path(), help="Settings file")
-@click.option("-y", "--accept-defaults", "accept_defaults", is_flag=True, 
-        help="Use default values")
+@click.option("-w", "--write-settings-file", is_flag=True, help="Create a settings file but do not create directories")
 @click.option("-i", "--import", "_import", help="Import an existing qdpx project")
 @handle_qc_errors
-def init(settings, accept_defaults, _import):
+def init(settings, write_settings_file, _import):
     "Initialize a qc project"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     if _import:
@@ -20,6 +19,6 @@ def init(settings, accept_defaults, _import):
         reader.unpack_project(Path.cwd())
     else:
         log = configure_logger(settings_path)
-        log.info("init", accept_defaults=accept_defaults)
+        log.info("init", write_settings_file=write_settings_file)
         from qualitative_coding.corpus import QCCorpus
-        QCCorpus.initialize(settings_path, accept_defaults)
+        QCCorpus.initialize(settings_path, write_settings_file)

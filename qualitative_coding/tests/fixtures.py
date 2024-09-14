@@ -27,7 +27,6 @@ class QCTestCase(TestCase):
         self.tempdir = TemporaryDirectory()
         self.testpath = Path(self.tempdir.name)
         self.run_in_testpath("qc init")
-        self.run_in_testpath("qc init")
         if self.verbose:
             self.update_settings('verbose', True)
         (self.testpath / "macbeth.txt").write_text(MACBETH)

@@ -433,17 +433,13 @@ and intialize a new project.
    % cd ~/Desktop
    % mkdir qc_project
    % cd qc_project
-   % qc init -y
+   % qc init
 
-When ``qc init`` is run in a directory which does not have
-``settings.yaml``, a settings file is created with default values. When
-``qc init`` finds a settings file, it uses those settings to create
-project assets in the specified locations. In the code above, we used
-the ``--accept-defaults`` (``-y``) flag to combine these two steps. If
-you plan to use vim or emacs instead of Visual Studio Code, update the
-value of ``editor`` in ``settings.yaml`` accordingly.
+When ``qc init`` is run, a settings file (``settings.yaml`` by default)
+is created with default values, and project assets are created in 
+in the locations specified in the settings file. 
 
-Now let’s import a document into the corpus. When you import a document,
+Let’s import a document into the corpus. When you import a document,
 ``qc`` creates a plain-text formatted copy within ``corpus`` and adds
 document metadata to the database. Select a text document (let’s assume
 it’s ``~/Desktop/interview_transcript.docx``) and run the following
@@ -549,13 +545,21 @@ of available options for each command.
 General commands
 ----------------
 
+.. _init: 
+
 init
 ~~~~
 
-Initializes a new coding project. If ``settings.yaml`` is not present,
-writes the settings file with default values. Make any desired edits,
-and then run ``qc init`` again. You can skip this step by passing
-``--accept-defaults`` (``-y``) to the first invocation of ``qc init``.
+Initializes a new coding project. If the settings file is not present,
+writes the settings file with default values and then initializes project
+assets (e.g. the corpus directory, the codebook, the database, the log file)
+as specified in the settings file.
+
+If you wish to edit the settings file before creating project assets (e.g. 
+to specify a different location for the corpus directory), use the 
+``--write-settings-file`` (``-w``) flag. This will write the settings file and 
+then stop. Make any desired edits, and then run ``qc init`` again.
+
 It is safe to re-run ``qc init``.
 
 .. code-block:: console
@@ -874,7 +878,8 @@ codebook with different code trees.
 The settings file can also be specified via the ``QC_SETTINGS``
 environment variable. This makes it easy to check multiple settings
 files into version control (e.g. for users with different preferences,
-or to try out different codebook structures).
+or to try out different codebook structures) while still using the 
+intended settings file without needing to specify it. 
 
 Filter the corpus
 ~~~~~~~~~~~~~~~~~
@@ -918,6 +923,8 @@ Output and formatting
 -  ``--outfile`` ``outfile`` (``-o``): Save tabular results to a csv
    file instead of displaying them to the screen. This is particularly
    useful in scripts.
+
+ .. _settings: 
 
 Settings
 --------

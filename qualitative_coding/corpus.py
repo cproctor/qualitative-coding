@@ -86,7 +86,7 @@ class QCCorpus:
     units = ["line", "paragraph", "document"]
 
     @classmethod
-    def initialize(cls, settings_path="settings.yaml", accept_defaults=False):
+    def initialize(cls, settings_path="settings.yaml", only_write_settings_file=False):
         """
         Initializes a qc project.
         If the settings file does not exist, create it.
@@ -94,33 +94,33 @@ class QCCorpus:
         directories and files.
         """
         settings_path = Path(settings_path)
-        if settings_path.exists() or accept_defaults:
+        if only_write_settings_file:
+            if settings_path.exists():
+                raise QCError(f"Settings file {settings_path} already exists.")
+            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
+        else:
             if not settings_path.exists():
                 settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
+            project_root = settings_path.parent
             cls.validate_settings(settings_path)
             settings = yaml.safe_load(settings_path.read_text())
             for needed_dir in ["corpus_dir", "memos_dir"]:
-                dirpath = Path(settings[needed_dir])
+                dirpath = project_root / Path(settings[needed_dir])
                 if dirpath.exists() and not dirpath.is_dir():
                     raise QCError(f"Cannot create dir {dirpath}; there is a file with that name.")
                 if not dirpath.exists():
                     dirpath.mkdir()
-            codebook_path = Path(settings["codebook"])
+            codebook_path = project_root / Path(settings["codebook"])
             if codebook_path.exists() and codebook_path.is_dir():
-                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
+                raise QCError(f"Cannot create {codebook_path}; there is a directory with that name.")
             if not codebook_path.exists():
                 codebook_path.touch()
-            if Path(settings["database"]).is_absolute():
-                db_path = Path(settings["database"])
-            else:
-                db_path = settings_path.resolve().parent / settings["database"]
-            if db_path.exists() and db_path.is_dir():
-                raise QCError(f"Cannot create {dirpath}; there is a directory with that name.")
-            if not db_path.exists():
-                engine = create_engine(f"sqlite:///{db_path}")
+            database_path = project_root / Path(settings["database"])
+            if database_path.exists() and database_path.is_dir():
+                raise QCError(f"Cannot create {database_path}; there is a directory with that name.")
+            if not database_path.exists():
+                engine = create_engine(f"sqlite:///{database_path}")
                 Base.metadata.create_all(engine)
-        else:
-            settings_path.write_text(yaml.dump(DEFAULT_SETTINGS))
 
     @classmethod
     def validate_settings(cls, settings_path):
