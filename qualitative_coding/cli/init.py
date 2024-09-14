@@ -6,7 +6,7 @@ from os import getcwd
 from pathlib import Path
 
 @click.command()
-@click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")
+@click.option("-s", "--settings", type=click.Path(), help="Settings file")
 @click.option("-y", "--accept-defaults", "accept_defaults", is_flag=True, 
         help="Use default values")
 @click.option("-i", "--import", "_import", help="Import an existing qdpx project")
