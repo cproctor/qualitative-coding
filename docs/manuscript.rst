@@ -210,6 +210,8 @@ constructing SQL queries. This design is also informed by the UNIX
 philosophy (McIlroy, PInson, and Tague 1978), that programs should do
 one thing but do it well.
 
+.. _textfiles:
+
 Storing data in text files
 --------------------------
 
@@ -223,6 +225,8 @@ All files related to a ``qc`` project are contained within a directory:
    │   ├── admin.txt
    │   ├── board_member.txt
    │   └── teacher.txt
+   ├── memos
+   ├── qualitative_coding.log
    ├── qualitative_coding.sqlite3
    └── settings.yaml
 
@@ -239,7 +243,8 @@ a straightforward schema which could be integrated into other
 applications. (The initial version of ``qc`` stored all data in text
 files; the database was added to improve performance.) In almost all of
 our existing ``qc`` projects, QDA is part of an analytical pipeline. The
-prior and subsequent processes operate on
+prior and subsequent processes operate on these standard interfaces, 
+supporting flexible and creative uses of qualitative coding.
 
 Vignette
 ========
@@ -260,11 +265,11 @@ Installation
 
 Start by following the steps in :ref:`installation`. 
 
-Exploring an existing project
------------------------------
+Explore an existing project
+---------------------------
 
 The fastest way to experience what ``qc`` has to offer is to start with
-an exisitng project: an excerpt from the coded interview transcripts
+an existing project: an excerpt from the coded interview transcripts
 from members of a committee considering whether to add computer science
 to the district’s primary and secondard schools (Proctor, Bigman, and
 Blikstein 2019). The commands below create a directory on the Desktop,
@@ -418,15 +423,55 @@ other formats for inclusion in a publication.
 Create a new project
 --------------------
 
-This section is a guide to setting up a new ``qc`` project. Before
-starting, select one or more documents to add to your project’s corpus.
-These could be text documents in almost any file format (the default
+Setup
+~~~~~
+
+This section is a guide to starting a new ``qc`` project. Either save
+the excerpt below as ``teacher_2.txt`` on your Desktop (another teacher 
+interview from the project described in the previous section), or select 
+one or more of your own documents to work with.
+These could be in any text-based file format (the default
 importer uses `Pandoc <https://pandoc.org/>`__, and so can handle any
-file format supported by Pandoc.)
+file format supported by Pandoc.) 
+
+.. code-block:: console
+
+   Research_Assistant:         So just to start, it would be helpful to 
+   understand what your background is in computer science and also with 
+   Location 63.
+
+   Person_121:    So, I worked for years in the tech industry before I decided
+   to teach elementary school. I wasn't, so my background is engineering but not 
+   computer science, though the work I was doing was programming. And so after 
+   fifteen years in the tech industry, I lost my job, I went back to school, I 
+   did my multiple subject credential, and I started teaching as an elementary 
+   school teacher in Location 63.
+
+   Person_121:    So I literally just started as a classroom teacher, nothing 
+   else. I had no CS in mind at that time. And right about the time I started in 
+   Year was around the time Location 63 was getting smart boards in the classroom, 
+   one by one and I got to test that.  And then one thing led to another and I 
+   noticed how students who otherwise may not be motivated learning were motivated 
+   by the use of technology, so I got more into using technology with teaching to 
+   engage the students and engage them as a result.
+
+   Person_121:    During the course of that, I stumbled upon Scratch, and 
+   you're probably familiar with Scratch, I'm not sure, but it's the language 
+   developed at MIT Media Lab with children in mind. While I was still a fifth 
+   grade classroom teacher, I stumbled upon that and I thought oh this is 
+   fantastic and it'll be great to use with my classroom. So, I created a unit 
+   that I started doing that spring, and every single child was not only super 
+   engaged, but it was the creative aspect, the problem solving and the teamwork 
+   that went with it and all of these other skills that I noticed that. And then 
+   made learning more fun, of course. And they were learning a lot. So this was 
+   like in, I don't know, many years ago and the only thing that existed at that 
+   time was Scratch for children. And I think Scratch was probably usable at that 
+   time, til maybe fourth grade, but that would also be pushing it a little, but 
+   fifth was just sort of right.
 
 Create a new directory on your filesystem. In this example, we will
-create a directory called ``qc_project`` on the current user’s desktop,
-and intialize a new project.
+initialize a new project in a directory called ``qc_project`` on the current 
+user’s desktop, and intialize a new project.
 
 .. code-block:: console
 
@@ -437,103 +482,315 @@ and intialize a new project.
 
 When ``qc init`` is run, a settings file (``settings.yaml`` by default)
 is created with default values, and project assets are created in 
-in the locations specified in the settings file. 
-
-Let’s import a document into the corpus. When you import a document,
-``qc`` creates a plain-text formatted copy within ``corpus`` and adds
-document metadata to the database. Select a text document (let’s assume
-it’s ``~/Desktop/interview_transcript.docx``) and run the following
-command. If you want to keep a text document’s existing formatting, use
-``--importer verbatim`` to tell ``qc`` not to apply any formatting.
+in the locations specified in the settings file. Running ``ls`` will show 
+the contents of our project. (See :ref:`textfiles` for details.)
 
 .. code-block:: console
 
-   $ qc corpus import ~/Desktop/interview_transcript.docx
+   ~/Desktop/qc_project % ls
+   codebook.yaml
+   corpus
+   memos
+   qc.log
+   qualitative_coding.sqlite3
+   settings.yaml
+
+Import documents
+~~~~~~~~~~~~~~~~
+
+Now let’s import the document. When you import a document,
+``qc`` creates a plain-text formatted copy within ``corpus`` and adds
+document metadata to the database. If you are going to import your own document, 
+use its file path instead of ``~/Desktop/teacher_2.txt`` in the command below.
+If you want to keep a text document’s existing formatting, use
+``--importer verbatim`` to tell ``qc`` not to apply any formatting. 
+
+.. code-block:: console
+
+   $ qc corpus import ~/Desktop/teacher_2.txt
 
 We can confirm that the document was imported by listing corpus
-documents.
+documents. 
 
 .. code-block:: console
 
    % qc corpus list
-   interview_transcript.txt
+   teacher_2.txt
 
-Now we will code the document using ``qc code user``, where ``user`` is
-the username you want to use while coding. The coding interface is
-intentionally simple: the document to be coded and ``codes.txt``, an empty document for
-codes, are presented side-by-side in your editor of choice, as shown in
-Figure 1. Codes are added in the blank document, corresponding to lines
-in the corpus document. Each code may be any combination of letters,
+Coding
+~~~~~~
+
+Now we will code the document.
+What kind of codes should be used? This is a broad topic beyond the scope of this vignette; 
+a well-designed qualitative research project should clearly articulate its methodological 
+choices and ground them in a theoretical framework. For this example, we will be
+a bit informal: we will use open coding (codes are not restricted to a predefined codebook)
+with a mix of in vivo (using participants' words as codes) and in vitro (using the coder's 
+interpretation as codes) coding, with an analytical focus guided by the codebook in the 
+previous section. 
+
+You will code your document using a text editor. Visual Studio Code is the default editor; 
+see :ref:`editor` for other options. Run ``qc code user``, where ``user`` is
+the username you want to use while coding. This will launch your editor with 
+the document to be coded and ``codes.txt`` (containing any existing codes, otherwise empty) 
+side-by-side as shown in Figure 1. Add codes to ``codes.txt`` on the line corresponding
+to a line in the corpus document. Each code may be any combination of letters,
 numbers, and underscores; when multiple codes are applied to a line,
-separate them with a comma. Save and close the files in your editor to end the
-coding session.
+separate them with a comma. Save your changes and close the editor to end the
+coding session. ``qc`` will read ``codes.txt``, update the database 
+with changes in coded lines, and then delete ``codes.txt``. 
 
 .. note::
 
-   If you are using Sublime Text, the document and the coding file will
-   probably open in separate tabs. Drag them so they are side-by-side, 
-   and then enable the Scroll Sync extension if installed, to keep 
-   the line numbers synchronized.
+   If you are using Visual Studio Code, the document and the coding file will
+   probably open in separate tabs. Split the view (View -> Editor Layout -> Split Right),
+   drag them so they are side-by-side, and then enable the Scroll Sync extension 
+   if installed, to keep the line numbers in each document aligned.
 
-.. figure:: coding.png
-   :alt: Figure 1. Screen shot of the coding interface using the vim editor
+.. figure:: coding_vscode.png
+   :alt: Figure 1. Screen shot of the coding interface using Visual Studio Code.
 
-   Figure 1. Screen shot of the coding interface using the vim editor
+   Figure 1. Screen shot of the coding interface using Visual Studio Code.
 
-After each coding session, ``qc`` reads ``codes.txt``, updates the database 
-with changes in coded lines, and then deletes ``codes.txt``. This file 
-therefore serves as an interface between ``qc`` and your editor. 
+Organizing the codebook
+~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note::
+Now that you have finished coding, ``qc`` will have updated your codebook with all new codes. 
+To continue the cycle of "notice things," "think about things," and "collect
+things" (Seidel 1998, 2), let's see a summary of our coding. 
 
-   You could automatically apply codes to a document by writing a script and 
-   defining it as an editor (see :ref:`editor`); the script would receive the 
-   path to a corpus file and the codes file, and would write codes into the codes 
-   file. This opens the possibility of methodological innovation. For example, 
-   when we were analyzing student-written computer programs, we combined 
-   manual qualitative coding with automated static analysis of the programs, 
-   which added codes marking syntactic structures and manipulation of variables.
-   This allowed us to integrate what students were doing (via our qualitative coding)
-   with how they were doing it (via static analysis). 
+.. code-block:: console
 
-Depending on the qualitative
-methodology being used, you might want to iterate between coding and
-organizing the codebook. Commands are provided for renaming codes as the
-coding scheme stabilizes (see ``qc codes rename`` below). After open
+   % qc codes stats
+
+   Code                       Count
+   -----------------------  -------
+   creativity                     1
+   developmental_fit              1
+   elementary                     1
+   engineering                    1
+   i_had_no_cs_on_my_mind         1
+   increased_motivation           1
+   made_learning_fun              1
+   problem_solving                1
+   professional_experience        1
+   scratch                        2
+   smart_boards                   1
+   stumbled_upon_tech             1
+   teacher_agency                 1
+
+A simple count of discrete codes might be just right for some projects, but 
+if we want to start making sense of the coding it would help to organize the 
+codebook, grouping similar codes together. To do this, edit the nested structure
+of codes in ``codebook.yaml``. (Run ``code codebook.yaml`` to open the codebook in 
+Visual Studio Code). Initially, the codebook is just a list of codes:
+
+.. code-block:: yaml
+
+   - creativity
+   - developmental_fit
+   - elementary
+   - engineering
+   - i_had_no_cs_on_my_mind
+   - increased_motivation
+   - made_learning_fun
+   - problem_solving
+   - professional_experience
+   - scratch
+   - smart_boards
+   - stumbled_upon_tech
+   - teacher_agency
+
+Some of these codes belong together. For example, "scratch" and "smart_boards"
+are both technologies. "creativity," "increased_motivation," "made_learning_fun,"
+and "problem_solving" were all named as reasons for teaching computer science. 
+(As with coding, different qualitative methodologies have different approaches to organizing
+codes.) After grouping codes together, our codebook looks like this:
+
+.. code-block:: yaml
+
+   - reasons_for_teaching_cs:
+     - creativity
+     - increased_motivation
+     - made_learning_fun
+     - problem_solving
+   - teacher_identity:
+     - elementary
+     - engineering
+     - professional_experience
+   - technologies:
+     - scratch
+     - smart_boards
+   - trajectory:
+     - developmental_fit
+     - i_had_no_cs_on_my_mind
+     - stumbled_upon_tech
+     - teacher_agency
+
+Now the stats are more meaningful, especially if we show codes in 
+their nested structure (``--recursive-codes``, ``-r``) and the 
+sum of each code and its children (``--recursive-counts``, ``-a``). 
+
+.. code-block:: console
+
+   % qc codes stats -ra
+   Code                          Count    Total
+   --------------------------  -------  -------
+   reasons_for_teaching_cs           0        4
+   .  creativity                     1        1
+   .  increased_motivation           1        1
+   .  made_learning_fun              1        1
+   .  problem_solving                1        1
+   teacher_identity                  0        3
+   .  elementary                     1        1
+   .  engineering                    1        1
+   .  professional_experience        1        1
+   technologies                      0        3
+   .  scratch                        2        2
+   .  smart_boards                   1        1
+   trajectory                        0        4
+   .  developmental_fit              1        1
+   .  i_had_no_cs_on_my_mind         1        1
+   .  stumbled_upon_tech             1        1
+   .  teacher_agency                 1        1
+
+Depending on the qualitative methodology being used, you might want to 
+iterate between coding and organizing the codebook. After open
 coding, we often have multiple codes with similar meanings. Sometimes we
-choose to rename codes to reduce the total number of distinct codes, but
+choose to rename or merge codes to reduce the total number of distinct codes, but
 more often we just group similar codes together as subcodes, and then
-use the parent code in our analysis. For example, the codebook excerpt
-below shows several layers of nested codes.
+use the parent code in our analysis. 
 
-::
+Commands are provided for renaming and merging codes
+(:ref:`codes_rename`), dele
+coding scheme stabilizes 
 
-   - committee_participation:
-     - committee_inclusion
-     - community_engagement
-     - educating_stakeholders:
-       - board_education
-       - community_education
-       - educate_committee
-       - educating_community
-     - lack_of_cs_understanding
-     - self_censorship
-     - stakeholders
+
+Viewing coded text
+~~~~~~~~~~~~~~~~~~
+
+If you want to think about the meaning of a group of codes, it is helpful to 
+see relevant excerpts from the document. Let's view excerpts which were coded
+with "trajectory," using ``--recursive-codes`` or ``-r`` to also include its 
+children.
+
+.. code-block:: console
+
+   % qc codes find trajectory -r
+   
+   teacher_2.txt (4)
+   ================================================================================
+   [9:14]
+                                                                                    | 
+   Person_121: So I literally just started as a classroom teacher, nothing else. I  | 
+   had no CS in mind at that time. And right about the time I started in Year was   | i_had_no_cs_on_my_mind
+   around the time Location 63 was getting smart boards in the classroom, one by    | 
+   one and I got to test that. And then one thing led to another and I noticed how  | 
+   
+   [19:25]
+   probably familiar with Scratch, I’m not sure, but it’s the language developed at | 
+   MIT Media Lab with children in mind. While I was still a fifth grade classroom   | 
+   teacher, I stumbled upon that and I thought oh this is fantastic and it’ll be    | stumbled_upon_tech
+   great to use with my classroom. So, I created a unit that I started doing that   | teacher_agency
+   spring, and every single child was not only super engaged, but it was the        | 
+   creative aspect, the problem solving and the teamwork that went with it and all  | 
+   
+   [27:30]
+   years ago and the only thing that existed at that time was Scratch for children. | 
+   And I think Scratch was probably usable at that time, til maybe fourth grade,    | 
+   but that would also be pushing it a little, but fifth was just sort of right.    | developmental_fit
+
+Memoing
+~~~~~~~
+
+Often, looking at groups of codes together leads to conceptual insights worth documenting. 
+``qc`` provides a simple integrated memoing function which uses your text editor to open 
+a new file in your memos directory. 
+
+.. code-block:: console
+
+   % qc memo chris --message "How teachers get involved with CS"
+
+.. figure:: memo.png
+   :alt: Figure 3. A memo.
+
+   Figure 3. A memo.
+
+From here, you are ready to import more documents, continue coding, 
+refining the codebook, and 
+the iterative cycle of "notice things," "think about things,"
+and "collect things" which characterizes QDA. Please feel free to
+contact the authors for support, or to share your experience with
+``qc``.
+
+Advanced patterns
+-----------------
+
+Collaboration in heterogeneous groups
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Preferences and comfort levels with tools often varies across research teams, 
+and requiring the use of specific tools can be a source of inequitable gate-keeping.
+We have successfully used ``qc`` in several research collaborations 
+where some team members preferred to code in a shared spreadsheet. 
+By importing members' coding into ``qc``, 
+we have been able to access the full power of ``qc``, while allowing everyone
+to use a tool that is comfortable.
+
+Here is one simple workflow: copy a corpus document into a shared spreadsheet, 
+and then create a column for each coder, as shown in Figure 2.
+When you are ready to transfer codes into ``qc``, open the document for 
+coding (e.g. ``qc code chris``), and replace the entire contents of 
+``codes.txt`` with the appropriate column from the spreadsheet. Save and close
+the editor. 
+
+.. figure:: coding_google_docs.png
+   :alt: Figure 2. An online spreadsheet ready for coding.
+
+   Figure 2. An online spreadsheet ready for coding.
+
+Automated coding
+~~~~~~~~~~~~~~~~
+
+You could automatically apply codes to a document by writing a script and 
+defining it as an editor (see :ref:`editor`); the script would receive the 
+path to a corpus file and the codes file, and would write codes into the codes 
+file. For example, when we were analyzing student-written computer programs, we combined 
+manual qualitative coding with automated static analysis of the programs, 
+which added codes marking syntactic structures and manipulation of variables.
+This allowed us to integrate what students were doing (via our qualitative coding)
+with how they were doing it (via static analysis). 
+
+This technique could easily be used to automatically code documents using large
+language models (LLMs), sending the document to the LLM along with a prompt asking 
+for codes on separate lines. Most major QDA tools now offer AI-assisted coding.
+We have major methodological concerns, but feel that if researchers are going to
+rely on AI, they ought to understand what is being done and participate in 
+guiding the AI, likely through a human-in-the-loop workflow. 
+We are currently prototyping extensions to ``qc`` to support AI-assisted coding.
+
+Multiple codebooks
+~~~~~~~~~~~~~~~~~~
 
 Much of ``qc``\ ’s power comes from the ability to quickly and easily
 iterate the structure of the codebook, and then to see the results
 through flexible and powerful queries which use the codebook. Sometimes
-it even makes sense to maintain multiple codebooks (See “Specify the
-settings file” below for details.) Alternatively, if the project is
+it even makes sense to maintain multiple codebooks. For example, after a large
+and messy initial round of coding, we often want to significantly refactor
+the codebook, merging and deleting codes, and organizing them according 
+to the constructs we have decided to focus on. We prefer to do this refactoring
+in new codebooks so that it is easy to explore multiple alternatives. 
+We also use multiple codebooks when we are re-coding an existing corpus for a
+new analysis focused on different constructs.
+
+The easiest way to work with multiple codebooks is to have multiple settings
+files, each specifying a different codebook. Then specify the desired settings
+file when running ``qc`` commands. See :ref:`settings` for details.
+
+Alternatively, if the project is
 stored in a version control system such as git (highly recommended),
 changes to the codebook can be maintained in separate branches of the
 repository.
-
-From here, you are ready to import more documents, continue coding, and
-continue the iterative cycle of “notice things,” “think about things,”
-and “collect things” which characterizes QDA. Please feel free to
-contact the authors for support, or to share your experience with
-``qc``.
 
 Package documentation
 =====================
@@ -578,9 +835,9 @@ Checks that all required files and directories are in place.
 code
 ~~~~
 
-Opens a split-screen window in your editor of choice, with a corpus file
-and the corresponding code file. The name of the coder is a required
-positional argument. After optionally filtering using common options
+Opens your text editor with a corpus file and a temporary coding file. 
+The name of the coder is a required positional argument. After optionally 
+filtering the corpus using common options
 (below), select a document with no existing codes (for this coder) using
 ``--first`` (``-1``) or ``--random`` (``-r``). Otherwise, you will be
 presented with a list of corpus files and asked to choose which to code.
@@ -810,6 +1067,8 @@ Lists all the codes currently in the codebook.
 .. code-block:: console
 
    % qc codes list --expanded
+
+.. _codes_rename: 
 
 codes rename
 ~~~~~~~~~~~~
