@@ -28,7 +28,7 @@ class REFIQDAReader:
             raise QCError(f"Cannot import project to {dest_path}; no such directory.")
         if len(list(self.dest_path.iterdir())) > 0:
             raise QCError("You can only import a project into an empty directory.")
-        QCCorpus.initialize(accept_defaults=True)
+        QCCorpus.initialize()
         self.corpus = QCCorpus(self.dest_path / "settings.yaml")
         (self.dest_path / "source").mkdir()
         with zipfile.ZipFile(self.qdpxfile, 'r', zipfile.ZIP_DEFLATED) as zf:
