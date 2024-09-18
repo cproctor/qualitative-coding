@@ -61,8 +61,9 @@ def anonymize(settings, pattern, filenames, key, reverse, out_dir, update, dryru
 
 def replace_keys(keys, source, dest):
     text = source.read_text()
-    for k, v in keys.items():
-        text = text.replace(k, v)
+    keys_by_length = [k for l, k in reversed(sorted((len(k), k) for k in keys.keys()))]
+    for key in keys_by_length:
+        text = text.replace(key, keys[key])
     dest.write_text(text)
 
 def reverse_keys(keys):
