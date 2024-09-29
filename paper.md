@@ -66,10 +66,10 @@ doing for you.
 
 Although there are numerous well-known commercial QDA software 
 packages such as NVivo [@dhakal2022nvivo], Dedoose [@salmona2019qualitative], 
-Atlas.TI [@smit2002atlas], and MaxQDA [@kuckartz2010realizing], they do not 
+ATLAS.ti [@smit2002atlas], and MAXQDA [@kuckartz2010realizing], they do not 
 provide affordances for users desiring more active engagement with the data and 
 processes underlying QDA. `qc` better-supports such users, providing a scriptable 
-command-line interface with powerful and flexible queries, wht data stored in simple 
+command-line interface with powerful and flexible queries, what data stored in simple 
 and standardized formats. `qc` adopts the "unix philosophy" [@mcilroy1978] 
 of building tools which do one thing well while being composable into 
 flexible workflows, and the values of "plain-text social science" [@healy2020], emphasizing 
