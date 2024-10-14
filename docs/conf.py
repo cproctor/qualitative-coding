@@ -9,7 +9,7 @@
 project = 'Qualitative Coding'
 copyright = '2024, Chris Proctor'
 author = 'Chris Proctor'
-release = '1.6.0'
+release = '1.6.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

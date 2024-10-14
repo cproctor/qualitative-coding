@@ -795,9 +795,8 @@ repository.
 Package documentation
 =====================
 
-All ``qc`` commands are described below with their most common options,
-as of version ``1.3.2``. Use ``--help`` for a full and up-to-date list
-of available options for each command.
+All ``qc`` commands are described below with their most common options.
+Use ``--help`` for a full and up-to-date list of available options for each command.
 
 General commands
 ----------------
