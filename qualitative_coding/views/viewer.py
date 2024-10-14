@@ -1,6 +1,5 @@
 from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.helpers import prompt_for_choice
-from qualitative_coding.views.coding_ui import CodingUI
 from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
 from tabulate import tabulate
