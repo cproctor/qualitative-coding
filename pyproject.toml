@@ -7,7 +7,7 @@ documentation = "https://qualitative-coding.readthedocs.io"
 license = "AGPL3"
 readme = "README.md"
 packages = [{include = "qualitative_coding"}]
-include = ["refi_qda/schema.xml"]
+include = ["refi_qda/schema.xml", "refi_qda/nvivo_project.qdpx"]
 
 [tool.poetry.urls]
 repository = "https://github.com/cproctor/qualitative-coding"
