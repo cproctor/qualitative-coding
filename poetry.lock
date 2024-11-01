@@ -1859,6 +1859,18 @@ typer = ">=0.3.0,<1.0.0"
 wasabi = ">=0.9.1,<1.2.0"
 
 [[package]]
+name = "webvtt-py"
+version = "0.5.1"
+description = "WebVTT reader, writer and segmenter"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "webvtt-py-0.5.1.tar.gz", hash = "sha256:2040dd325277ddadc1e0c6cc66cbc4a1d9b6b49b24c57a0c3364374c3e8a3dc1"},
+    {file = "webvtt_py-0.5.1-py3-none-any.whl", hash = "sha256:9d517d286cfe7fc7825e9d4e2079647ce32f5678eb58e39ef544ffbb932610b7"},
+]
+
+[[package]]
 name = "wrapt"
 version = "1.16.0"
 description = "Module for decorators, wrappers and monkey patching."
@@ -1981,4 +1993,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "9ce67c0eef9204d7aed2c4bb8cfe79cb093e00c98cde71c8469e8d451601b665"
+content-hash = "72d8bcf330cd4aa2da63da372197c709eff56896e21386f866fc9bc80a322925"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qualitative-coding"
-version = "1.6.1"
+version = "1.6.2"
 description = "Qualitative coding tools for computer scientists"
 authors = ["Chris Proctor <chris@chrisproctor.net>"]
 documentation = "https://qualitative-coding.readthedocs.io"
@@ -26,6 +26,7 @@ structlog = "^24.4.0"
 rich = "^13.7.1"
 more-itertools = "^10.4.0"
 spacy = "^3.7.5"
+webvtt-py = "^0.5.1"
 
 [tool.poetry.group.docs]
 optional = true
