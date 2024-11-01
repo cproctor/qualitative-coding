@@ -946,8 +946,11 @@ directory, you could run:
 Several importers are available to format files, and can be specified
 using ``--importer`` (``-i``). The default importer, ``pandoc``, uses
 `Pandoc <https://pandoc.org/>`__ to convert files into plain-text, and
-then hard-wrap them at 80 characters. ``verbatim`` imports text files
-without making any changes. Future importers will include text
+then hard-wrap them at 80 characters. ``vtt`` imports VTT files 
+(a closed-caption format produced by Zoom and other services which 
+transcribe audio), stripping away the timestamps and collapsing adjacent
+captions with the same speaker. ``verbatim`` imports text files without 
+making any changes. Future importers will include text
 extraction from PDFs and automatic transcription of audio files.
 
 corpus move (mv)
