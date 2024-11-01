@@ -21,5 +21,7 @@ class VTTImporter(BaseMediaImporter):
                 current_speech = speech
         turns.append({'speaker': current_speaker, 'speech': current_speech})
         with open(output_filename, 'w') as fh:
-            for turn in turns:
-                fh.write('\n' + fill(turn['speaker'] + ': ' + turn['speech'], width=80))
+            for i, turn in enumerate(turns):
+                if i > 0:
+                    fh.write('\n\n')
+                fh.write(fill(turn['speaker'] + ': ' + turn['speech'], width=80))
