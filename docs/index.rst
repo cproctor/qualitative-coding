@@ -36,6 +36,8 @@ need to be familiar with using a command line in order to use ``qc``.
 * A code editor. You should install 
   `Visual Studio Code <https://code.visualstudio.com/>`__, the default
   editor, unless you prefer a different editor such as emacs or vim.
+* Terminal bindings for the code editor, allowing the code editor to be 
+  opened from Terminal. `Here are instructions for Visual Studio Code <https://code.visualstudio.com/docs/setup/mac#_launching-from-the-command-line>`_.
 * The `Sync Scroll <https://marketplace.visualstudio.com/items?itemName=dqisme.sync-scroll>`__
   extension for Visual Studio Code.
 
