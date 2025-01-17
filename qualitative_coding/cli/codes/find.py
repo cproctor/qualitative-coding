@@ -24,15 +24,19 @@ from qualitative_coding.logs import configure_logger
         help="Number of lines before the code to show")
 @click.option("-C", "--after", default=2, type=int, 
         help="Number of lines after the code to show")
-@click.option("-l", "--no-codes", "no_codes", is_flag=True,
+@click.option("-o", "--no-codes", "no_codes", is_flag=True,
         help="Do not show matching codes")
+@click.option("-l", "--no-line-numbers", "no_line_numbers", is_flag=True,
+        help="Do not show line numbers")
 @click.option("-j", "--json", is_flag=True, help="Export as JSON")
 @handle_qc_errors
 def find(codes, settings, pattern, filenames, coders, depth, unit, recursive_codes, 
-         before, after, no_codes, json):
+         before, after, no_codes, no_line_numbers, json):
     "Find all coded text"
     if no_codes and json:
         raise IncompatibleOptions("--no-codes and --json are incompatible")
+    if no_line_numbers and json:
+        raise IncompatibleOptions("--no-line_numbers and --json are incompatible")
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     log = configure_logger(settings_path)
     log.info("codes find", codes=codes, pattern=pattern, filenames=filenames, coders=coders,
@@ -64,5 +68,6 @@ def find(codes, settings, pattern, filenames, coders, depth, unit, recursive_cod
             file_list=read_file_list(filenames),
             coders=coders,
             show_codes=not no_codes,
+            show_line_numbers=not no_line_numbers,
         )
 

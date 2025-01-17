@@ -341,6 +341,7 @@ class QCCorpusViewer:
             pattern=None,
             file_list=None,
             show_codes=True,
+            show_line_numbers=True,
         ):
         """Displays lines from corpus documents with their codes.
         """
@@ -367,7 +368,8 @@ class QCCorpusViewer:
                 print(f"\n{doc_path} ({doc_code_counts[doc_path]})")
                 print("=" * text_width)
                 for r in ranges:
-                    print("[{}:{}]".format(r.start, r.stop))
+                    if show_line_numbers:
+                        print("[{}:{}]".format(r.start, r.stop))
                     if show_codes:
                         self.show_text_with_codes(
                             [lines[i] for i in r],
@@ -395,7 +397,8 @@ class QCCorpusViewer:
                 print("=" * text_width)
                 for (para_start, para_end), codes in coded_paras.items():
                     r = range(para_start, para_end)
-                    print("[{}:{}]".format(r.start, r.stop))
+                    if show_line_numbers:
+                        print("[{}:{}]".format(r.start, r.stop))
                     if show_codes:
                         self.show_text_with_codes(
                             [lines[i] for i in r],
