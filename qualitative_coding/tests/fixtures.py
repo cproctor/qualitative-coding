@@ -8,12 +8,12 @@ from io import StringIO
 import yaml
 import csv
 import sys
-
+import os
 
 class QCTestCase(TestCase):
     """A subclass of TestCase with methods for instantiating a QC project.
     """
-    verbose = False
+    verbose = bool(os.environ.get('VERBOSE'))
 
     def setUp(self):
         self.set_up_qc_project()
