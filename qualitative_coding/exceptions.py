@@ -13,3 +13,6 @@ class SettingsError(QCError):
 class CodeFileParseError(QCError):
     pass
 
+class CodebookParseError(QCError):
+    pass
+

@@ -3,6 +3,7 @@
 
 import yaml
 from functools import total_ordering
+from qualitative_coding.exceptions import CodebookParseError
 
 @total_ordering
 class TreeNode:
@@ -17,6 +18,16 @@ class TreeNode:
     @classmethod
     def read_yaml(cls, filename):
         with open(filename) as f:
+            try:
+                data = yaml.safe_load(f)
+            except yaml.scanner.ScannerError as err:
+                m = err.problem_mark
+                message = f"Error reading {filename} on line {m.line}: {err.problem}"
+                raise CodebookParseError(message)
+            except yaml.parser.ParserError as err:
+                m = err.problem_mark
+                message = f"Error reading {filename} on line {m.line}: {err.problem}"
+                raise CodebookParseError(message)
             return TreeNode({cls.root: yaml.safe_load(f)})
 
     @classmethod
