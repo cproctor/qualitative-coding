@@ -1241,7 +1241,7 @@ the following configuration in ``settings.yaml``:
 
    editor: sublime
    editors: 
-     - sublime:
+     sublime:
        name: Sublime Text
        code_command: 'subl "{corpus_file_path}" "{codes_file_path}" --command "new_pane" --wait'
        memo_command: 'subl "{memo_file_path}" --wait'
