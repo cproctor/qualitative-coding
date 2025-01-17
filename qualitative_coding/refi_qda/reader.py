@@ -11,6 +11,9 @@ import xml.etree.ElementTree as ET
 import importlib.resources
 import shutil
 import zipfile
+import structlog
+
+log = structlog.get_logger()
 
 class REFIQDAReader:
     """Imports an existing REFI-QDA project.
@@ -31,6 +34,7 @@ class REFIQDAReader:
         QCCorpus.initialize()
         self.corpus = QCCorpus(self.dest_path / "settings.yaml")
         (self.dest_path / "source").mkdir()
+        (self.dest_path / "source" / "import").mkdir()
         with zipfile.ZipFile(self.qdpxfile, 'r', zipfile.ZIP_DEFLATED) as zf:
             zf.extractall((self.dest_path / "source"))
         tree = ET.parse(self.dest_path / "source" / "project.qde")
@@ -47,7 +51,7 @@ class REFIQDAReader:
                 self.unpack_codebook(child)
         for child in root:
             if child.tag.endswith("Variables"):
-                self.log("{self.qdpxfile} contains Variables, which are not supported by qc.")
+                log.warning("{self.qdpxfile} contains Variables, which are not supported by qc.")
         self.unpack_unsupported(root, "Variables")
         self.unpack_unsupported(root, "Cases")
         for child in root:
@@ -62,7 +66,7 @@ class REFIQDAReader:
     def unpack_unsupported(self, root, tagname):
         for child in root:
             if child.tag.endswith(tagname):
-                self.log(f"{self.qdpxfile} contains {tagname}, which are not supported by qc.")
+                log.warning(f"{self.qdpxfile} contains {tagname}, which are not supported by qc.")
 
     def unpack_coders(self, users):
         for user in users:
@@ -102,11 +106,23 @@ class REFIQDAReader:
     def unpack_sources(self, sources):
         self.document_guids = {}
         for source in sources:
+            if not source.get('plainTextPath'):
+                log.warning(
+                    f"Skipping import of source {source['name']}; " + 
+                    "only text sources are supported."
+                )
+                continue
             guid = source.attrib['guid']
-            file_path = source.attrib['plainTextPath']
-            self.document_guids[guid] = file_path
-            self.corpus.import_media(self.dest_path / "source" / "sources" / file_path, importer="verbatim")
-            line_positions = self.line_positions(file_path)
+            plain_text_path = source.attrib['plainTextPath'].replace("internal://", "")
+            qdpx_path = self.dest_path / "source" / "sources" / plain_text_path
+            importable_path = (self.dest_path / "source" / "import" / source.attrib['name']).with_suffix(
+                qdpx_path.suffix
+            )
+            log.info(f"Copying {qdpx_path} -> {importable_path}")
+            shutil.copyfile(qdpx_path, importable_path)
+            self.document_guids[guid] = importable_path.name
+            self.corpus.import_media(importable_path, importer="verbatim")
+            line_positions = self.line_positions(importable_path)
             coded_lines = defaultdict(list)
             for selection in source:
                 if selection.tag.endswith("PlainTextSelection"):
@@ -125,7 +141,7 @@ class REFIQDAReader:
                                     code = self.code_guids[coderef.attrib['targetGUID']]
                                     coded_lines[coder].append({'line': line, 'code_id': code})
             for coder, cls in coded_lines.items():
-                self.corpus.update_coded_lines(file_path, coder, cls)
+                self.corpus.update_coded_lines(importable_path.name, coder, cls)
 
     def get_line_for_position(self, position, line_positions):
         for line, (start, end) in enumerate(line_positions):
@@ -165,9 +181,6 @@ class REFIQDAReader:
             lines.append((start, end))
             index += len(line)
         return lines
-
-    def log(self, message):
-        self.corpus.log.info(message)
 
     def print_tree(self, project_path):
         result = run("tree", cwd=project_path, capture_output=True, text=True, shell=True)
