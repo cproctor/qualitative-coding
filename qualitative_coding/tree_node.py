@@ -20,6 +20,7 @@ class TreeNode:
         with open(filename) as f:
             try:
                 data = yaml.safe_load(f)
+                return TreeNode({cls.root: data})
             except yaml.scanner.ScannerError as err:
                 m = err.problem_mark
                 message = f"Error reading {filename} on line {m.line}: {err.problem}"
@@ -28,7 +29,6 @@ class TreeNode:
                 m = err.problem_mark
                 message = f"Error reading {filename} on line {m.line}: {err.problem}"
                 raise CodebookParseError(message)
-            return TreeNode({cls.root: yaml.safe_load(f)})
 
     @classmethod
     def write_yaml(cls, filename, tree_node):
