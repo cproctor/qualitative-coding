@@ -10,18 +10,18 @@ class TestList(QCTestCase):
         code_tree = [{'line': ['one', 'two']}]
         (self.testpath / "codebook.yaml").write_text(yaml.dump(code_tree))
 
-    def test_find_shows_codes(self):
+    def test_list_shows_codes(self):
         result = self.run_in_testpath("qc codes list")
         self.assertTrue("line" in result.stdout)
         self.assertTrue("one" in result.stdout)
         self.assertTrue("two" in result.stdout)
 
-    def test_find_respects_depth(self):
+    def test_list_respects_depth(self):
         result = self.run_in_testpath("qc codes list --depth 1")
         self.assertTrue("line" in result.stdout)
         self.assertTrue("one" not in result.stdout)
 
-    def test_find_respects_expanded(self):
+    def test_list_respects_expanded(self):
         result = self.run_in_testpath("qc codes list --expanded")
         self.assertTrue("line:one" in result.stdout)
 
