@@ -106,7 +106,7 @@ class REFIQDAReader:
     def unpack_sources(self, sources):
         self.document_guids = {}
         for source in sources:
-            if not source.get('plainTextPath'):
+            if not source.attrib.get('plainTextPath'):
                 log.warning(
                     f"Skipping import of source {source['name']}; " + 
                     "only text sources are supported."

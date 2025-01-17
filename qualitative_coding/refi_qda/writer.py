@@ -1,7 +1,7 @@
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.exceptions import QCError, InvalidParameter
 from tempfile import TemporaryDirectory
-from shutil import copytree
+from shutil import copyfile
 from pathlib import Path
 from subprocess import run
 from collections import defaultdict
@@ -15,6 +15,9 @@ from xml.etree.ElementTree import (
     Comment,
     tostring,
 )
+import structlog
+
+log = structlog.get_logger()
 
 class REFIQDAWriter:
     """Exports a QC project as a REFI-QDA project.
@@ -32,8 +35,8 @@ class REFIQDAWriter:
             raise InvalidParameter("REFI-QDA projects must have suffix .qdpx")
         with TemporaryDirectory() as tempdir:
             project_path = Path(tempdir)
-            self.write_xml(project_path / "project.qde")
-            self.write_corpus(project_path / "sources")
+            qde = self.write_xml(project_path / "project.qde")
+            self.write_corpus(qde, project_path / "sources")
             if self.debug:
                 self.print_tree(project_path)
             with ZipFile(outpath, 'w', ZIP_DEFLATED) as zf:
@@ -50,9 +53,17 @@ class REFIQDAWriter:
         if self.debug:
             print(tostring(root, encoding="unicode"))
         outpath.write_text(tostring(root, encoding="unicode"))
+        return root
 
-    def write_corpus(self, outpath):
-        copytree(self.corpus.corpus_dir, outpath)
+    def write_corpus(self, qde, outpath):
+        outpath.mkdir()
+        for child in qde:
+            if child.tag.endswith("Sources"):
+                for source in child:
+                    project_path = self.corpus.corpus_dir / source.attrib['name']
+                    export_path = outpath / source.attrib['plainTextPath'].replace("internal://", "")
+                    log.info(f"Copying {project_path} -> {export_path}")
+                    copyfile(project_path, export_path)
 
     def print_tree(self, project_path):
         result = run("tree", cwd=project_path, capture_output=True, text=True, shell=True)
@@ -110,12 +121,15 @@ class REFIQDAWriter:
     def sources_to_xml(self):
         sources = Element("Sources")
         with self.corpus.session():
-            docs = self.corpus.get_documents()
             sources = Element("Sources")
-            for doc in docs:
+            for doc in self.corpus.get_documents():
                 source = Element("TextSource")
-                source.set("plainTextPath", doc.file_path)
-                source.set("guid", self.guid(doc.file_path))
+                source_guid = self.guid(doc.file_path)
+                suffix = Path(doc.file_path).suffix
+                internal_path = str(Path(source_guid).with_suffix(suffix))
+                source.set("plainTextPath", "internal://" + internal_path)
+                source.set("guid", source_guid)
+                source.set("name", doc.file_path)
                 doc_line_positions = self.line_positions(doc.file_path)
                 coded_lines = self.corpus.get_coded_lines(file_list=[doc.file_path])
                 lines_with_codes = defaultdict(list)
