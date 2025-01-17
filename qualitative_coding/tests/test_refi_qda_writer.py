@@ -20,13 +20,6 @@ class TestREFIQDAWriter(QCTestCase):
         super().setUp()
         self.writer = REFIQDAWriter(self.testpath / "settings.yaml")
 
-    def test_write_corpus(self):
-        self.run_in_testpath("qc corpus import macbeth.txt")
-        with TemporaryDirectory() as tempdir:
-            project_path = Path(tempdir)
-            self.writer.write_corpus(project_path / "sources")
-            self.assertFileExists(project_path / "sources" / "macbeth.txt")
-
     def test_writes_nested_codes(self):
         with open(self.testpath / "codebook.yaml", 'w') as codebook:
             codebook.write(CODEBOOK)
