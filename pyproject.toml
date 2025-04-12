@@ -24,6 +24,10 @@ dependencies = [
     "webvtt-py (>=0.5.1,<0.6.0)"
 ]
 
+[project.urls]
+homepage = "https://qualitative-coding.readthedocs.io"
+repository = "https://github.com/cproctor/qualitative-coding"
+
 [project.scripts]
 qc = "qualitative_coding.cli:cli"
 
