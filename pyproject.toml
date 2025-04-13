@@ -5,7 +5,7 @@ description = "Qualitative coding tools to support computational thinking"
 authors = [
     {name = "Chris Proctor",email = "chris@chrisproctor.net"}
 ]
-license = "AGPL3"
+license = "AGPL-3.0"
 license-files = ["AGPL3.txt"]
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
