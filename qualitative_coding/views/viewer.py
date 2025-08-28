@@ -561,7 +561,7 @@ class QCCorpusViewer:
             file_paths = set(doc.file_path for doc in docs)
             if uncoded:
                 coded_docs = self.corpus.get_coded_documents(pattern=pattern,
-                        file_list=file_list, coder=coder)
+                        file_list=file_list, coders=[coder])
                 coded_file_paths = set(fp for code, coder, fp in coded_docs)
                 file_paths = file_paths - coded_file_paths
             file_paths = sorted(file_paths)
