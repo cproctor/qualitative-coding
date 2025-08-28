@@ -1,6 +1,6 @@
 [project]
 name = "qualitative-coding"
-version = "1.7.4"
+version = "1.7.5"
 description = "Qualitative coding tools to support computational thinking"
 authors = [
     {name = "Chris Proctor",email = "chris@chrisproctor.net"}
