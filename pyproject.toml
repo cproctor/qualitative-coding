@@ -24,6 +24,10 @@ dependencies = [
     "spacy (>=3.8.7,<4.0.0)"
 ]
 
+[project.urls]
+homepage = "https://qualitative-coding.readthedocs.io"
+repository = "https://github.com/cproctor/qualitative-coding"
+
 [project.scripts]
 qc = "qualitative_coding.cli:cli"
 
