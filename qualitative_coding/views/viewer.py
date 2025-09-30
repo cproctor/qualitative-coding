@@ -23,7 +23,7 @@ class QCCorpusViewer:
 
     codes_file = "codes.txt"
     coding_session_metadata_file = ".coding_session"
-    code_pattern = "^[a-zA-Z0-9_\-]+$"
+    code_pattern = r"^[a-zA-Z0-9_\-]+$"
 
     def __init__(self, corpus):
         self.corpus = corpus

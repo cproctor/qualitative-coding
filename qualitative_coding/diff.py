@@ -100,7 +100,7 @@ def read_hunk(lines):
         return ops
 
 def read_line_number(hunk_preamble):
-    match = re.match('\s*@@ \-(\d+)', hunk_preamble)
+    match = re.match(r'\s*@@ \-(\d+)', hunk_preamble)
     return int(match.group(1))
 
 def in_git_repo():
