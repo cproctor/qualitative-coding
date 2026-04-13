@@ -115,6 +115,7 @@ class REFIQDAReader:
             guid = source.attrib['guid']
             plain_text_path = source.attrib['plainTextPath'].replace("internal://", "")
             qdpx_path = self.dest_path / "source" / "sources" / plain_text_path
+            breakpoint()
             importable_path = (self.dest_path / "source" / "import" / source.attrib['name']).with_suffix(
                 qdpx_path.suffix
             )
@@ -126,7 +127,7 @@ class REFIQDAReader:
             coded_lines = defaultdict(list)
             for selection in source:
                 if selection.tag.endswith("PlainTextSelection"):
-                    match = re.match("line:(\d+)", selection.attrib.get("name", ""))
+                    match = re.match(r"line:(\d+)", selection.attrib.get("name", ""))
                     if match:
                         line = int(match.group(1))
                     else:
