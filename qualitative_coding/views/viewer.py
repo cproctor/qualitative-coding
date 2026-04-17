@@ -599,7 +599,9 @@ class QCCorpusViewer:
         text = [f.read_text() for f in sorted(self.corpus.memos_dir.glob("*.md"))]
         return "\n\n".join(text)
 
-    def open_editor(self, corpus_file_path, coder_name, write_codes_file=True):
+    def open_editor(self, corpus_file_path, coder_name, write_codes_file=True,
+                    suggest_from=None, train_coders=None, threshold=None,
+                    no_hierarchy=False):
         """Opens an editor for coding. 
         corpus_file_path should be a string naming a path relative to the corpus_dir.
         """
@@ -607,7 +609,19 @@ class QCCorpusViewer:
         codes_file_path = self.corpus.resolve_path(self.codes_file)
         full_path = self.corpus.corpus_dir / corpus_file_path
         if write_codes_file:
-            codes_file_path.write_text(self.codes_file_text(corpus_file_path, coder_name))
+            if suggest_from is not None:
+                codes_file_path.write_text(
+                    self._auto_codes_file_text(
+                        corpus_file_path, coder_name,
+                        train_coders=train_coders,
+                        threshold=threshold,
+                        no_hierarchy=no_hierarchy,
+                    )
+                )
+            else:
+                codes_file_path.write_text(
+                    self.codes_file_text(corpus_file_path, coder_name)
+                )
         command = self.get_code_command(full_path, codes_file_path)
         try:
             p = run(command, shell=True, check=True)
@@ -743,6 +757,38 @@ class QCCorpusViewer:
             except QCError as e:
                 print(e)
 
+    def _auto_codes_file_text(self, corpus_file_path, coder_name,
+                              train_coders=None, threshold=None, no_hierarchy=False):
+        """Generate codes.txt pre-populated with autocode predictions."""
+        from qualitative_coding.autocode.embedder import CorpusEmbedder
+        from qualitative_coding.autocode.trainer import AutocodeTrainer
+        from qualitative_coding.autocode.predictor import AutocodePredictor
+
+        embedder = CorpusEmbedder(self.corpus)
+        if threshold is not None:
+            self.corpus.settings["autocode_confidence_threshold"] = threshold
+        trainer = AutocodeTrainer(self.corpus, embedder)
+        classifiers = trainer.train(
+            coders=train_coders,
+            file_list=[str(corpus_file_path)],
+        )
+        predictor = AutocodePredictor(self.corpus, embedder, classifiers)
+
+        # Get predictions per line (without writing to DB)
+        codes_by_line = defaultdict(list)
+        if classifiers:
+            embedder.ensure_embedded(str(corpus_file_path))
+            matrix, line_numbers = embedder.get_embeddings(str(corpus_file_path))
+            for idx, line_num in enumerate(line_numbers):
+                raw = predictor.predict_line(matrix[idx])
+                predicted = predictor.apply_tree_descent(raw, not no_hierarchy)
+                for code in predicted:
+                    codes_by_line[line_num].append(code)
+
+        text = (self.corpus.corpus_dir / corpus_file_path).read_text().splitlines()
+        lines = [', '.join(sorted(codes_by_line[i])) for i in range(len(text))]
+        return '\n'.join(lines) + '\n'
+
     def codes_file_text(self, corpus_file_path, coder):
         """Formats codes for a temporary coding file.
         """
@@ -798,6 +844,214 @@ class QCCorpusViewer:
             if raw_choice.isdigit() and int(raw_choice) in range(1, len(options)+1):
                 return int(raw_choice) - 1
             print("Sorry, that's not a valid choice.")
+
+    def show_agreement(self, codes=None, coders=None, metric="alpha",
+                       recursive_codes=False, depth=None, pattern=None,
+                       file_list=None, format=None, outfile=None, folds=5):
+        "Compute and display inter-rater agreement between coders."
+        if metric == "cv":
+            self._show_agreement_cv(
+                codes=codes, coders=coders, depth=depth, pattern=pattern,
+                file_list=file_list, format=format, outfile=outfile, folds=folds,
+            )
+            return
+        import krippendorff
+        from sklearn.metrics import cohen_kappa_score, f1_score, precision_score, recall_score
+
+        with self.corpus.session():
+            tree = self.corpus.get_codebook()
+            if codes:
+                nodes = sum([tree.find(c) for c in codes], [])
+                if recursive_codes:
+                    nodes = set(sum([n.flatten(depth=depth) for n in nodes], []))
+            else:
+                nodes = tree.flatten(depth=depth)
+
+            all_coders = list(coders) if coders else sorted(
+                c.name for c in self.corpus.get_all_coders()
+            )
+
+            # Build {code: {coder: set(lines)}} mapping
+            coded = defaultdict(lambda: defaultdict(set))
+            for code_id, coder_id, line, doc_id in self.corpus.get_coded_lines(
+                codes=[n.name for n in nodes],
+                coders=list(coders) if coders else None,
+                pattern=pattern,
+                file_list=file_list,
+            ):
+                coded[code_id][coder_id].add((doc_id, line))
+
+            # All units: every line in every relevant document.
+            # Using all lines (not just coded ones) ensures the domain has both
+            # 0s and 1s for codes that aren't applied to every line.
+            all_units = sorted(
+                (doc.file_path, line_num)
+                for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                for line_num in range(
+                    sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+                )
+            )
+            if not all_units:
+                print("No documents found for the given filters.")
+                return
+            coded_any = set(
+                unit
+                for coder_map in coded.values()
+                for units in coder_map.values()
+                for unit in units
+            )
+            if not coded_any:
+                print("No coded lines found for the given filters.")
+                return
+
+        results = []
+        if metric == "alpha":
+            cols = ["Code", "Alpha", "Examples", "Units"]
+            for node in sorted(nodes):
+                coder_map = coded[node.name]
+                examples = sum(len(v) for v in coder_map.values())
+                if examples == 0:
+                    results.append([node.name, "—", 0, len(all_units)])
+                    continue
+                # reliability_data: shape (n_coders, n_units); NaN = no annotation
+                data = []
+                for coder in all_coders:
+                    row = [1.0 if u in coder_map[coder] else 0.0 for u in all_units]
+                    data.append(row)
+                try:
+                    alpha = krippendorff.alpha(
+                        reliability_data=data, level_of_measurement="nominal"
+                    )
+                    alpha_str = round(alpha, 3)
+                except ValueError:
+                    # Undefined when all values are identical (perfect agreement)
+                    all_vals = [v for row in data for v in row]
+                    alpha_str = 1.0 if len(set(all_vals)) == 1 else "N/A"
+                results.append([node.name, alpha_str, examples, len(all_units)])
+
+        elif metric == "kappa":
+            coder_a, coder_b = all_coders[0], all_coders[1]
+            cols = ["Code", "Kappa", "Examples", "Units"]
+            for node in sorted(nodes):
+                coder_map = coded[node.name]
+                examples = sum(len(v) for v in coder_map.values())
+                y_a = [1 if u in coder_map[coder_a] else 0 for u in all_units]
+                y_b = [1 if u in coder_map[coder_b] else 0 for u in all_units]
+                if sum(y_a) == 0 and sum(y_b) == 0:
+                    results.append([node.name, "—", 0, len(all_units)])
+                    continue
+                kappa = cohen_kappa_score(y_a, y_b)
+                results.append([node.name, round(kappa, 3), examples, len(all_units)])
+
+        elif metric == "f1":
+            gold_coder, pred_coder = all_coders[0], all_coders[1]
+            cols = ["Code", "Precision", "Recall", "F1", "Examples", "Units"]
+            for node in sorted(nodes):
+                coder_map = coded[node.name]
+                examples = sum(len(v) for v in coder_map.values())
+                y_true = [1 if u in coder_map[gold_coder] else 0 for u in all_units]
+                y_pred = [1 if u in coder_map[pred_coder] else 0 for u in all_units]
+                if sum(y_true) == 0 and sum(y_pred) == 0:
+                    results.append([node.name, "—", "—", "—", 0, len(all_units)])
+                    continue
+                p = precision_score(y_true, y_pred, zero_division=0)
+                r = recall_score(y_true, y_pred, zero_division=0)
+                f = f1_score(y_true, y_pred, zero_division=0)
+                results.append([node.name, round(p, 3), round(r, 3), round(f, 3),
+                                 examples, len(all_units)])
+
+        if outfile:
+            with open(outfile, 'w') as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(results)
+        else:
+            print(tabulate(results, cols, tablefmt=format))
+
+    def _show_agreement_cv(self, codes=None, coders=None, depth=None,
+                           pattern=None, file_list=None, format=None,
+                           outfile=None, folds=5):
+        """Cross-validation mode for show_agreement. Requires embeddings."""
+        from qualitative_coding.autocode.embedder import CorpusEmbedder
+        from qualitative_coding.autocode.trainer import AutocodeTrainer
+        from sklearn.model_selection import cross_validate
+        from sklearn.svm import LinearSVC
+        from sklearn.calibration import CalibratedClassifierCV
+        from collections import defaultdict
+        import numpy as np
+
+        embedder = CorpusEmbedder(self.corpus)
+        trainer = AutocodeTrainer(self.corpus, embedder)
+
+        # Load all coded line embeddings
+        all_embeddings = trainer._load_all_embeddings(
+            coders=list(coders) if coders else None,
+            pattern=pattern,
+            file_list=file_list,
+        )
+        if not all_embeddings:
+            print("No embeddings found. Run `qc autocode embed` first.")
+            return
+
+        with self.corpus.session():
+            tree = self.corpus.get_codebook()
+            if codes:
+                nodes = sum([tree.find(c) for c in codes], [])
+            else:
+                nodes = tree.flatten(depth=depth)
+            all_coded = self.corpus.get_coded_lines(
+                codes=[n.name for n in nodes] if nodes else None,
+                coders=list(coders) if coders else None,
+                pattern=pattern,
+                file_list=file_list,
+            )
+
+        by_code = defaultdict(set)
+        for code_id, coder_id, line, doc_id in all_coded:
+            by_code[code_id].add((doc_id, line))
+
+        all_units = set(all_embeddings.keys())
+        results = []
+        cols = ["Code", "Examples", "Precision", "Recall", "F1"]
+        min_examples = trainer.min_examples
+
+        for code_name, positive_units in sorted(by_code.items()):
+            positives = [u for u in positive_units if u in all_embeddings]
+            n_pos = len(positives)
+            if n_pos < min_examples:
+                results.append([code_name, n_pos, "(skipped)", "", ""])
+                continue
+            negative_pool = list(all_units - positive_units)
+            from random import sample as _sample
+            n_neg = min(len(negative_pool), 2 * n_pos)
+            negatives = _sample(negative_pool, n_neg) if negative_pool else []
+            X = np.array(
+                [all_embeddings[u] for u in positives]
+                + [all_embeddings[u] for u in negatives]
+            )
+            y = [1] * len(positives) + [0] * len(negatives)
+            cv = min(folds, n_pos, len(negatives)) if negatives else 2
+            clf = CalibratedClassifierCV(LinearSVC(max_iter=2000), cv=cv)
+            try:
+                cv_results = cross_validate(
+                    clf, X, y,
+                    cv=cv,
+                    scoring=["precision_macro", "recall_macro", "f1_macro"],
+                )
+                p = round(cv_results["test_precision_macro"].mean(), 3)
+                r = round(cv_results["test_recall_macro"].mean(), 3)
+                f = round(cv_results["test_f1_macro"].mean(), 3)
+                results.append([code_name, n_pos, p, r, f])
+            except Exception as e:
+                results.append([code_name, n_pos, f"error: {e}", "", ""])
+
+        if outfile:
+            with open(outfile, "w") as fh:
+                writer = csv.writer(fh)
+                writer.writerow(cols)
+                writer.writerows(results)
+        else:
+            print(tabulate(results, cols, tablefmt=format))
 
     def merge_ranges(self, ranges, clamp=None):
         "Overlapping ranges? Let's fix that. Optionally supply clamp=[0, 100]"

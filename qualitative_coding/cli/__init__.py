@@ -11,6 +11,7 @@ from qualitative_coding.cli.code import code
 from qualitative_coding.cli.coders import coders
 from qualitative_coding.cli.memo import memo
 from qualitative_coding.cli.upgrade import upgrade
+from qualitative_coding.cli.autocode import autocode_group
 import logging
 import structlog
 
@@ -29,4 +30,5 @@ cli.add_command(code)
 cli.add_command(coders)
 cli.add_command(memo)
 cli.add_command(upgrade)
+cli.add_command(autocode_group, aliases=["ac"])
 
