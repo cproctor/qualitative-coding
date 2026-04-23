@@ -246,6 +246,226 @@ our existing ``qc`` projects, QDA is part of an analytical pipeline. The
 prior and subsequent processes operate on these standard interfaces, 
 supporting flexible and creative uses of qualitative coding.
 
+.. _principled-llms:
+
+Principled use of LLMs
+----------------------
+
+The argument for CT in QDA cuts in two directions. It supports the case
+for tools like ``qc``: a researcher who can hold computational structures
+in mind will be a more effective analyst. But it also generates a
+obligation: such a researcher should apply the same critical,
+transparent thinking to AI tools that they apply to their other
+methods. The emergence of large language models (LLMs) in qualitative
+research warrants exactly this kind of scrutiny.
+
+Most major QDA software packages now offer AI-assisted coding, typically
+implemented by sending excerpts to an LLM along with a prompt. The LLM
+reads the text and returns suggested codes. This approach is efficient,
+but it raises all four of the concerns Seidel originally directed at QDA
+software—with greater force. An LLM "just coding" a transcript is
+opaque: it is not clear what the model is responding to, whether its
+judgments are consistent, or how those judgments relate to the
+researcher's own evolving interpretations. It is difficult to reproduce:
+LLM outputs may vary across API versions, prompt changes, or random
+seeds. And it risks being dehumanizing not only for the researcher
+(reducing their role to prompt engineer) but also for the research
+participants, whose words are processed by a system optimized to produce
+plausible-sounding text.
+
+``qc``\ 's approach to AI-assisted coding is shaped by three principles.
+First, AI should *augment* the researcher's efficiency and quality, not
+replace the researcher's judgment. The autocode system trains on the
+researcher's own prior coding, so predictions are grounded in and
+calibrated against the analyst's interpretive framework. The model
+identifies its own uncertainty and asks the researcher to resolve it,
+keeping the researcher's judgment at the center of the process. Second,
+AI use should be *transparent and reproducible*. Every autocode session
+logs the exact hyperparameters (embedding model, unit of analysis,
+classifier settings) and training-data provenance that produced
+predictions. Because classifiers are always rebuilt from cached embeddings
+and the current database, any later point in the project's git history
+is exactly reproducible. Third, the relationship between researcher and
+AI tool should be *humanizing*. The active-learning loop makes the
+researcher's categories and uncertainty visible to them, supporting
+reflection on what the codes mean rather than simply affirming the
+researcher's existing judgments. The human reviews, corrects, and
+extends predictions; the AI handles scale and surfaces its own
+limitations honestly.
+
+These principles are not merely rhetorical. They have direct
+architectural consequences: no trained model is persisted to disk (the
+classifier is always rebuilt fresh from data the researcher controls);
+predictions are written as a named coder and can be compared against
+human coding with inter-rater agreement statistics; and the researcher
+can discard an entire round of predictions with a single command if the
+quality is unsatisfactory.
+
+.. _autocode:
+
+AI in QDA
+=========
+
+This section provides a conceptual introduction to the techniques
+underlying ``qc``\ 's autocode features. It is intended to be accessible
+to researchers without a machine-learning background, while also
+justifying the specific design choices to readers who are familiar with
+these methods.
+
+Embeddings: from text to numbers
+---------------------------------
+
+The core challenge in automating any part of text analysis is that
+computers do not understand language. What they can do is perform
+arithmetic on numbers. The first step in autocode is therefore to
+convert each piece of text—a line, paragraph, or document—into a list
+of numbers that represents its meaning. This conversion is called
+*embedding*.
+
+An embedding is a list of typically hundreds or thousands of numbers
+(a *vector*) that places a piece of text in a high-dimensional
+space. The key property is that texts with similar meanings end up
+close together in this space. "Every student deserves a chance" and
+"All kids should have access to CS" would have similar embeddings;
+"The budget meeting is at 3 pm" would be far from both. This
+proximity relation is meaningful enough to support a surprisingly
+wide range of analytical tasks.
+
+``qc`` obtains embeddings by sending text to an OpenAI-compatible
+embedding API—either a locally-hosted model (such as `Ollama
+<https://ollama.com>`__ or `LM Studio <https://lmstudio.ai>`__) or a
+cloud-based service. The ``autocode_api_base`` and
+``autocode_api_model`` settings configure which service is used. Using
+a local model keeps all data on the researcher's own machine, which is
+important for research involving sensitive or confidential data.
+
+For the *line* unit of analysis, ``qc`` embeds each line together with
+a small window of surrounding lines (configurable with
+``autocode_window``), providing the classifier with context. For the
+*paragraph* unit, the full paragraph text is embedded; for the
+*document* unit, the full document. Embeddings are cached on disk, so
+the API is only called once per document; subsequent retraining,
+prediction, and analysis draw on the cached values.
+
+Classification: learning from the researcher's codes
+----------------------------------------------------
+
+With embeddings in hand, the question becomes: given a new piece of
+text, does it belong to a particular code? This is a *binary
+classification* problem—for each code, every piece of text is either
+an instance of the code or it is not.
+
+``qc`` trains one classifier per code, using the researcher's existing
+human coding as training data. Lines coded with, say, ``equity`` are
+*positive examples*; a random sample of other coded lines serves as
+*negative examples*. The classifier learns a boundary in the embedding
+space that separates the two groups.
+
+The specific classifier used is a *Support Vector Machine* (SVM) with
+a linear kernel. SVMs are a well-established method for high-dimensional
+classification problems. Conceptually, an SVM finds the hyperplane in
+the embedding space that maximally separates positive from negative
+examples—maximizing the *margin* between the boundary and the nearest
+examples on each side. This maximum-margin property tends to produce
+classifiers that generalize well to new examples without requiring large
+amounts of training data, which suits the typical scale of a QDA
+project (tens to hundreds of coded examples per code rather than
+thousands).
+
+Because the raw SVM does not produce probability estimates, ``qc`` wraps
+it in a calibration layer (Platt scaling) that converts the model's
+output to a confidence score between 0 and 1. This score represents the
+model's estimated probability that a given piece of text belongs to the
+code. Confidence scores are used to threshold predictions
+(``autocode_confidence_threshold``), to navigate the code tree
+(``autocode_child_threshold``), and to identify uncertain cases during
+active learning.
+
+No trained model is ever written to disk. Classifiers are rebuilt
+on-demand from the cached embeddings and the current state of the
+database. Rebuilding takes milliseconds, so there is no practical cost
+to this approach, and it ensures that the researcher always knows
+exactly what data produced the predictions currently in their database.
+
+Evaluating the model
+--------------------
+
+Before committing to autocode predictions on unreviewed documents,
+it is useful to estimate the model's likely quality. ``qc`` supports
+two complementary approaches.
+
+**Inter-rater agreement** (``qc codes agreement``) quantifies the
+agreement between two or more coders' judgments about the same
+documents. *Krippendorff's alpha* is appropriate when multiple coders
+have coded the same material on equal footing; it handles unequal
+numbers of ratings and missing data gracefully, which is common in
+qualitative research. *Cohen's kappa* is a pairwise, chance-corrected
+agreement coefficient appropriate when exactly two coders are being
+compared. Both metrics treat each text unit (line, paragraph, or
+document) as a binary judgment for each code: is this code present or
+absent? Values above 0.80 are generally considered excellent; above
+0.60 is acceptable; below 0.40 suggests substantial disagreement.
+*F1 score* is appropriate when one coder is treated as the authoritative
+reference (e.g., evaluating autocode predictions against a gold-standard
+human coder): *precision* measures what fraction of the model's
+predictions are correct; *recall* measures what fraction of the true
+positive cases the model identified.
+
+**Cross-validation** (``qc codes agreement --metric cv``) provides an
+estimate of how well the model will perform on *new, unseen* examples,
+before any new predictions are written to the database. The procedure
+divides the existing human-coded examples into groups (*folds*),
+repeatedly training on all but one fold and evaluating on the held-out
+fold. The resulting precision, recall, and F1 scores estimate the
+model's likely quality on the unreviewed documents. Because this
+evaluation is entirely internal to the human-coded portion of the
+corpus, it costs nothing in terms of new coding effort or API calls
+(embeddings are already cached). Cross-validation is most informative
+when each code has at least ten to twenty coded examples; the minimum
+required for training is set by ``autocode_min_examples`` (default: 5).
+
+**A note on what these numbers mean**: a cross-validated F1 of 0.75
+for a code does not mean that 25% of predictions will be wrong—it is
+an estimate under the distributional assumptions of the training data.
+Codes whose examples are semantically coherent (few near-synonyms in
+the embedding space, clear contrast with other codes) tend to achieve
+higher scores. Scattered codes, or codes that are conceptually very
+close to one another, tend to score lower. This diagnostic information
+helps the researcher decide which codes to trust for bulk prediction
+and which require more human-in-the-loop review.
+
+Active learning: making uncertainty productive
+----------------------------------------------
+
+Uncertainty is not a limitation of the model to be minimized; it is
+information about where the researcher's attention would be most
+valuable. *Active learning* operationalizes this insight: rather than
+applying the classifier blindly to all unreviewed documents, ``qc``
+identifies the specific pieces of text where the model is most confused
+and presents them to the researcher for review.
+
+``qc`` uses *margin sampling* to rank text units by uncertainty. For
+each unreviewed piece of text, the model produces confidence scores for
+all trained codes. The *margin* is the difference between the highest
+and second-highest confidence score. A small margin means the model
+cannot decide between two competing codes—exactly the kind of ambiguous
+case that most benefits from human judgment.
+
+After the researcher codes a high-uncertainty unit, the classifiers are
+retrained with the new annotation and the uncertainty ranking is
+recomputed. Each annotation propagates immediately to future
+uncertainty estimates—the system is always learning. The session
+continues until the researcher stops or until all remaining uncertainty
+falls below a configurable threshold, at which point bulk prediction
+can proceed with greater confidence.
+
+This loop—embedding, training, uncertainty-driven human review,
+retraining—implements a form of *online learning*, where the model
+and the researcher are continuously in dialogue. Unlike a static
+classifier trained once and deployed, the system's predictions become
+progressively better-aligned with the researcher's specific
+interpretive framework as the project develops.
+
 Vignette
 ========
 
@@ -716,12 +936,148 @@ a new file in your memos directory.
 
    Figure 3. A memo.
 
-From here, you are ready to import more documents, continue coding, 
-refining the codebook, and 
+From here, you are ready to import more documents, continue coding,
+refining the codebook, and
 the iterative cycle of "notice things," "think about things,"
 and "collect things" which characterizes QDA. Please feel free to
 contact the authors for support, or to share your experience with
 ``qc``.
+
+Autocoding
+~~~~~~~~~~
+
+As you accumulate hand-coded documents, ``qc`` can use them to train a
+machine learning classifier that predicts codes for new documents. The
+technical background is given in :ref:`autocode`; here we describe how
+autocoding integrates into the coding workflow.
+
+**Checking readiness.** Start by confirming that you have enough coded
+examples per code to train useful classifiers. The ``autocode_min_examples``
+setting (default: 5) is the required floor; 10–20 examples per code
+gives meaningfully better classifiers in practice.
+
+.. code-block:: console
+
+   % qc codes stats --recursive-codes --recursive-counts --coders chris
+
+   Code                       Count
+   -----------------------  -------
+   professional_experience       14
+   cs_entry                      11
+   increased_motivation           8
+   scratch                        4
+
+Codes with very few examples — like ``scratch`` here — may be skipped
+during training. Continue hand-coding until you have enough examples for
+the codes that matter most.
+
+**Embedding the corpus.** Autocoding requires corpus documents to be
+converted to numerical embeddings using a text embedding API. This is a
+one-time cost; results are cached on disk and reused until the documents
+change. The embedding API is configured in ``settings.yaml`` via
+``autocode_api_base``, ``autocode_api_model``, and ``autocode_api_key``;
+``qc``\ 's defaults use a locally-running model (e.g. via
+`LM Studio <https://lmstudio.ai>`__ or `Ollama <https://ollama.com>`__),
+which keeps all data on your machine.
+
+.. code-block:: console
+
+   % qc autocode embed
+   Embedding corpus... ████████████████ 40/40 documents
+
+**Cross-validation.** Before writing any predictions to the database,
+use ``qc codes agreement --metric cv`` to estimate per-code classifier
+quality via k-fold cross-validation. No predictions are written at this
+step.
+
+.. code-block:: console
+
+   % qc codes agreement -c chris --metric cv
+
+   Code                      Examples    Precision    Recall      F1
+   ----------------------  ----------  -----------  --------  ------
+   professional_experience         14         0.82      0.78    0.80
+   cs_entry                        11         0.71      0.65    0.68
+   increased_motivation             8         0.60      0.55    0.57
+   scratch                          4        (skipped — too few examples)
+
+Codes with low F1 scores or with too few examples need more hand-coded
+examples before autocoding will be reliable. Continue coding and re-run
+until you are satisfied.
+
+**Bulk applying predictions.** Apply the trained classifiers to documents
+not yet coded by any human coder. The ``--auto --no-edit`` flags write
+predictions directly to the database under a separate coder name (here,
+``auto.v1``), so they can be inspected or discarded independently of your
+hand-coding.
+
+.. code-block:: console
+
+   % qc code auto.v1 --auto --no-edit -c chris
+   Wrote 1,240 predictions across 22 codes for 30 documents.
+
+Because autocode predictions are stored under a named coder, all existing
+``qc codes`` commands work with them normally. To inspect predictions:
+
+.. code-block:: console
+
+   % qc codes stats --coders auto.v1
+   % qc codes find cs_entry --coders auto.v1
+
+To discard a round of predictions entirely and start over:
+
+.. code-block:: console
+
+   % qc coders delete auto.v1
+
+**Interactive active learning.** The classifier knows which lines it is
+most uncertain about. The ``qc autocode`` command uses that uncertainty
+to direct your coding effort where it is most valuable. Its invocation is
+analogous to ``qc code CODER``:
+
+.. code-block:: console
+
+   % qc autocode human.v2 --train-coders chris auto.v1
+
+``qc`` shows the most uncertain line in context, along with ranked
+candidate codes and confidence scores:
+
+.. code-block:: console
+
+   ─────────────────────────────────────────────────────────────────
+   Document: round2/teacher_3.txt  [Lines 42–48]
+   ─────────────────────────────────────────────────────────────────
+     42  they started coming to me and asking questions about
+     43  whether their kids could learn to program, and I thought
+   → 44  every student deserves that opportunity, regardless of
+     45  whether they come from a wealthy family or not. I kept
+     46  saying, this is for everyone.
+   ─────────────────────────────────────────────────────────────────
+   Candidate codes (by confidence):
+     equity                  0.58  ← most uncertain
+     every_student           0.41
+     participation           0.38
+     rationales              0.72
+
+   Enter codes (comma-separated), or press Enter to skip:
+
+After each response, the model retrains and moves to the next most
+uncertain line. Press Ctrl-C or type ``quit`` to end the session at any
+point; all annotations are saved immediately to the database.
+
+**Evaluating predictions.** To assess how well autocode predictions agree
+with a human coder, use ``qc codes agreement --metric f1``. The first
+``-c`` coder is treated as ground truth:
+
+.. code-block:: console
+
+   % qc codes agreement -c chris auto.v1 --metric f1
+
+   Code                      Precision    Recall      F1
+   ----------------------  -----------  --------  ------
+   professional_experience        0.85      0.80    0.82
+   cs_entry                       0.76      0.70    0.73
+   increased_motivation           0.65      0.61    0.63
 
 Advanced patterns
 -----------------
@@ -752,22 +1108,20 @@ the editor.
 Automated coding
 ~~~~~~~~~~~~~~~~
 
-You could automatically apply codes to a document by writing a script and 
-defining it as an editor (see :ref:`editor`); the script would receive the 
-path to a corpus file and the codes file, and would write codes into the codes 
-file. For example, when we were analyzing student-written computer programs, we combined 
-manual qualitative coding with automated static analysis of the programs, 
+You could automatically apply codes to a document by writing a script and
+defining it as an editor (see :ref:`editor`); the script would receive the
+path to a corpus file and the codes file, and would write codes into the codes
+file. For example, when we were analyzing student-written computer programs, we combined
+manual qualitative coding with automated static analysis of the programs,
 which added codes marking syntactic structures and manipulation of variables.
 This allowed us to integrate what students were doing (via our qualitative coding)
-with how they were doing it (via static analysis). 
+with how they were doing it (via static analysis).
 
-This technique could easily be used to automatically code documents using large
-language models (LLMs), sending the document to the LLM along with a prompt asking 
-for codes on separate lines. Most major QDA tools now offer AI-assisted coding.
-We have major methodological concerns, but feel that if researchers are going to
-rely on AI, they ought to understand what is being done and participate in 
-guiding the AI, likely through a human-in-the-loop workflow. 
-We are currently prototyping extensions to ``qc`` to support AI-assisted coding.
+``qc`` also supports machine-learning-assisted coding through the ``autocode``
+command group, described in :ref:`autocode` and demonstrated in the Vignette. Unlike
+approaches that send documents to LLMs with a prompt, ``qc``\ 's autocode system trains
+on the researcher's own prior coding using word embeddings and support vector machines,
+keeping the researcher's analytical judgment at the center of the process.
 
 Multiple codebooks
 ~~~~~~~~~~~~~~~~~~
@@ -834,8 +1188,8 @@ Checks that all required files and directories are in place.
 code
 ~~~~
 
-Opens your text editor with a corpus file and a temporary coding file. 
-The name of the coder is a required positional argument. After optionally 
+Opens your text editor with a corpus file and a temporary coding file.
+The name of the coder is a required positional argument. After optionally
 filtering the corpus using common options
 (below), select a document with no existing codes (for this coder) using
 ``--first`` (``-1``) or ``--random`` (``-r``). Otherwise, you will be
@@ -850,6 +1204,28 @@ your editor crashes or your battery dies before you finish coding, your
 saved changes are persisted in ``codes.txt``. Run ``qc code <coder> --recover``
 to resume the coding session, or ``qc code <coder> --abandon`` to delete
 the coding session.
+
+**Automated coding.** Adding ``--auto`` uses trained classifiers (see
+:ref:`autocode`) to pre-populate the coding file with predictions before
+the editor opens, so the researcher reviews and corrects rather than
+coding from scratch. Use ``-c TRAIN_CODERS`` to specify which coder(s)
+provide training data; embeddings must already be generated (see
+``qc autocode embed``).
+
+.. code-block:: console
+
+   % qc code auto -1 --auto -c chris
+
+Adding ``--no-edit`` writes predictions directly to the database without
+opening an editor. This is the bulk prediction mode: predictions are
+applied to all corpus documents not already coded by any human coder, and
+the coding is saved under the given coder name. Use ``--threshold`` to
+override the confidence threshold from settings, and ``--no-hierarchy``
+to disable tree-descent post-processing.
+
+.. code-block:: console
+
+   % qc code auto.v1 --auto --no-edit -c chris
 
 codebook (cb)
 ~~~~~~~~~~~~~
@@ -870,6 +1246,16 @@ List all coders in the current project.
 .. code-block:: console
 
    % qc coders
+
+coders delete
+~~~~~~~~~~~~~
+
+Delete all coded lines for the named coder and remove the coder record.
+This is the primary mechanism for reverting autocode predictions cleanly:
+
+.. code-block:: console
+
+   % qc coders delete auto.v1
 
 memo
 ~~~~
@@ -1122,6 +1508,128 @@ display more columns.
 
    % qc codes crosstab planning implementation evaluation --recursive-codes --depth 1 --probs
 
+codes agreement
+~~~~~~~~~~~~~~~
+
+Computes inter-rater agreement or classifier quality across all selected
+codes. The ``--metric`` option selects the measure; ``-c`` specifies the
+coders to include.
+
+- ``--metric alpha`` (default): Krippendorff's Alpha. Handles multiple
+  coders and missing data; the current methodological recommendation for
+  reporting IRR in qualitative research.
+- ``--metric kappa``: Cohen's Kappa. Pairwise, chance-corrected
+  agreement; requires exactly two coders.
+- ``--metric f1``: Precision, Recall, and F1. Appropriate when one coder
+  is treated as ground truth (e.g. evaluating autocode predictions
+  against a human coder). Requires exactly two coders; the first ``-c``
+  coder is treated as ground truth.
+- ``--metric cv``: K-fold cross-validation (``--folds N``, default 5).
+  Trains a classifier on each fold and reports estimated Precision,
+  Recall, and F1. Requires embeddings (see ``qc autocode embed``). Used
+  to assess classifier quality *before* writing any predictions.
+
+.. code-block:: console
+
+   % qc codes agreement -c chris anna --metric alpha
+   % qc codes agreement -c chris auto.v1 --metric f1
+   % qc codes agreement -c chris --metric cv --folds 5
+
+Each corpus line is treated as a binary judgment unit (coded / not coded
+with this code) for each rater. Output follows the standard tabulate
+format and respects ``--format``, ``--outfile``, and all common corpus
+filter options.
+
+Autocode commands
+-----------------
+
+The following commands are grouped under ``qc autocode`` (alias: ``qc ac``).
+They require embeddings to have been generated first with ``qc autocode embed``.
+See :ref:`autocode` for a technical overview and the Vignette for a
+worked example.
+
+autocode embed
+~~~~~~~~~~~~~~
+
+Embed all corpus documents using the configured embedding API. Skips
+documents whose embedding cache is already valid; use ``--force`` to
+re-embed everything. Accepts the standard ``--pattern`` and
+``--filenames`` corpus filter options.
+
+.. code-block:: console
+
+   % qc autocode embed
+   % qc autocode embed --force -p round2
+
+autocode describe
+~~~~~~~~~~~~~~~~~
+
+Show a description of the classifier that would be trained given the
+current settings and coded data — without actually training it. Displays
+all autocode hyperparameters from ``settings.yaml`` and a per-code
+summary (positive example count, training status). Use this to document
+the configuration before or after a batch of predictions.
+
+.. code-block:: console
+
+   % qc autocode describe -c chris --recursive-codes
+
+autocode CODER
+~~~~~~~~~~~~~~
+
+Interactive active learning loop. Analogous to ``qc code CODER``, but
+``qc`` selects lines to show based on classifier uncertainty rather than
+document order. Use ``--train-coders`` to specify which coders' coding
+trains the classifier.
+
+.. code-block:: console
+
+   % qc autocode human.v2 --train-coders chris auto.v1
+
+For each iteration, ``qc`` displays the most uncertain line in context
+along with ranked candidate codes and confidence scores, then prompts for
+codes. After each response, the classifier retrains and selects the next
+most uncertain line. Press Ctrl-C or type ``quit`` to end the session;
+all annotations are saved immediately. Use ``--context N`` to control
+how many surrounding lines are shown (default: 3), and
+``--uncertainty-threshold`` to set the confidence floor below which lines
+are still presented.
+
+autocode outliers
+~~~~~~~~~~~~~~~~~
+
+For each code, identify coded lines whose embeddings are farthest from
+the centroid of that code's training examples — likely miscodes or edge
+cases worth reviewing. Use ``-n N`` to control how many outliers are
+reported per code.
+
+.. code-block:: console
+
+   % qc autocode outliers -c chris --recursive-codes -n 5
+
+autocode density
+~~~~~~~~~~~~~~~~
+
+Report per-code cohesion as mean pairwise cosine distance among coded
+lines' embeddings. A small mean distance indicates a tight, well-defined
+code; a large distance suggests a vague or over-broad code that may
+benefit from splitting.
+
+.. code-block:: console
+
+   % qc autocode density -c chris
+
+autocode similar
+~~~~~~~~~~~~~~~~
+
+Find pairs of codes whose centroids are close in embedding space —
+candidates for merging. Use ``--threshold FLOAT`` to control the
+similarity cutoff (default: 0.9).
+
+.. code-block:: console
+
+   % qc autocode similar -c chris --threshold 0.85
+
 Common options
 --------------
 
@@ -1167,7 +1675,11 @@ Filter code selection
    select.
 -  ``--unit`` ``unit`` (``-n``): Unit of analysis for reporting.
    Currently “line”, “paragraph”, and “document” are supported.
-   Paragraphs are delimted by blank lines.
+   Paragraphs are delimited by blank lines. When ``--unit`` is not
+   supplied on the command line, the value of the ``unit`` key in
+   ``settings.yaml`` is used (default: ``line``). Setting ``unit``
+   in ``settings.yaml`` also controls how embeddings are generated
+   for autocode (see :ref:`autocode`).
 -  ``--recursive-counts`` (``-a``): When counting codes, also count
    instances of codes’ children. In contrast to ``--recursive-codes``,
    which controls which codes will be reported, this option controls how
@@ -1262,6 +1774,56 @@ verbose
 ~~~~~~~
 When set to ``true``, human-readable logs will be printed to the screen after each command,
 providing more detail about commands. Default: ``false``.
+
+unit
+~~~~
+Unit of analysis for reporting commands (``qc codes stats``, ``qc codes find``,
+``qc codes crosstab``) and for generating embeddings. Supported values: ``line``
+(default), ``paragraph`` (blank-line delimited), ``document``. Individual commands
+can override this via ``--unit`` (``-n``); when the flag is omitted, this setting
+is used.
+
+Autocode settings
+~~~~~~~~~~~~~~~~~
+
+The following settings configure the ``qc autocode`` command group. All have
+sensible defaults; most projects only need to set the embedding API connection.
+
+``autocode_embeddings_dir``
+  Directory for cached embeddings. Default: ``embeddings``. Add this directory
+  to ``.gitignore`` — embeddings can be large and are reproducibly regenerated
+  from the corpus.
+
+``autocode_window``
+  List of ``[lines_before, lines_after]`` included in each line's embedding
+  text. Larger windows give classifiers more context; smaller windows are
+  faster. Default: ``[2, 2]``. Only relevant when ``unit: line``.
+
+``autocode_min_examples``
+  Minimum number of positive examples required to train a classifier for a
+  code. Codes with fewer examples are skipped. Default: ``5``.
+
+``autocode_confidence_threshold``
+  Minimum classifier confidence required to write a prediction. Default:
+  ``0.6``.
+
+``autocode_child_threshold``
+  When walking the code tree, minimum confidence required to prefer a child
+  code over its parent. Default: ``0.4``.
+
+``autocode_api_base``
+  Base URL for the OpenAI-compatible embedding API. Default:
+  ``http://localhost:1234/v1``. Set to ``https://api.openai.com/v1`` for
+  OpenAI, or use any compatible local server (LM Studio, Ollama).
+
+``autocode_api_key``
+  API key for the embedding service. Default: empty string (suitable for local
+  servers). Can alternatively be set via the ``QC_AUTOCODE_API_KEY``
+  environment variable.
+
+``autocode_api_model``
+  Name of the embedding model on the configured server. Default:
+  ``text-embedding-nomic-embed-text-v1.5``.
 
 Logging
 -------

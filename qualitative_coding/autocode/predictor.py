@@ -102,10 +102,16 @@ class AutocodePredictor:
                     ):
                         existing.add(cl[2])  # line number
 
+            unit = self.embedder.unit
             coded_line_data = []
             for idx, line_num in enumerate(line_numbers):
-                if only_uncoded and line_num in existing:
-                    continue
+                if only_uncoded:
+                    # For document unit, skip entire document if anything is coded.
+                    # For line/paragraph, skip the specific representative line.
+                    if unit == "document" and existing:
+                        continue
+                    elif unit != "document" and line_num in existing:
+                        continue
                 embedding = matrix[idx]
                 raw = self.predict_line(embedding)
 

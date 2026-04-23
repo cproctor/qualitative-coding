@@ -115,7 +115,6 @@ class REFIQDAReader:
             guid = source.attrib['guid']
             plain_text_path = source.attrib['plainTextPath'].replace("internal://", "")
             qdpx_path = self.dest_path / "source" / "sources" / plain_text_path
-            breakpoint()
             importable_path = (self.dest_path / "source" / "import" / source.attrib['name']).with_suffix(
                 qdpx_path.suffix
             )

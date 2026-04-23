@@ -19,7 +19,7 @@ from qualitative_coding.logs import configure_logger
         help="File path containing a list of filenames to use")
 @click.option("-c", "--coders", help="Coders", multiple=True)
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
-@click.option("-n", "--unit", default="line", help="Unit of analysis",
+@click.option("-n", "--unit", default=None, help="Unit of analysis (default from settings)",
         type=click.Choice(['line', 'paragraph', 'document']))
 @click.option("-r", "--recursive-codes", "recursive_codes", is_flag=True, 
         help="Include child codes")
@@ -64,6 +64,7 @@ def crosstab(codes, settings, pattern, filenames, coders, depth, unit, recursive
              outfile=outfile, probs=probs, compact=compact, tidy=tidy, _max=_max,
              _min=_min)
     corpus = QCCorpus(settings_path)
+    unit = unit or corpus.settings.get("unit", "line")
     viewer = QCCorpusViewer(corpus)
     if tidy:
         viewer.tidy_codes(

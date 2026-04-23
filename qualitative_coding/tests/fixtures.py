@@ -97,7 +97,7 @@ class QCTestCase(TestCase):
         """Updates settings['editor'] to the mock editor.
         Also reinitializes corpus.
         """
-        command = str(Path("tests/mock_editor.py").resolve())
+        command = str(Path(__file__).parent / "mock_editor.py")
         if verbose: 
             command += " --verbose"
         if crash: 

@@ -15,6 +15,10 @@ def make_mock_embedder(corpus, n_lines=10):
     mock = MagicMock()
     mock.get_embeddings.return_value = (matrix, line_numbers)
     mock.ensure_embedded.return_value = None
+    mock.unit = "line"
+    mock.embedding_key_for_line.side_effect = (
+        lambda line, lnums: line if line in lnums else None
+    )
     mock.corpus = corpus
     return mock
 

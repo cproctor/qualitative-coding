@@ -28,10 +28,10 @@ def _get_code_embeddings(corpus, embedder, codes=None, coders=None,
     for doc_id, lines in by_doc.items():
         embedder.ensure_embedded(doc_id)
         matrix, line_numbers = embedder.get_embeddings(doc_id)
-        line_to_idx = {ln: idx for idx, ln in enumerate(line_numbers)}
         for line in lines:
-            if line in line_to_idx:
-                vec = matrix[line_to_idx[line]]
+            idx = embedder.embedding_key_for_line(line, line_numbers)
+            if idx is not None:
+                vec = matrix[idx]
                 for code in line_to_codes[doc_id][line]:
                     code_vecs[code].append((doc_id, line, vec))
 

@@ -42,10 +42,10 @@ class AutocodeTrainer:
         for doc_id, lines in by_doc.items():
             self.embedder.ensure_embedded(doc_id)
             matrix, line_numbers = self.embedder.get_embeddings(doc_id)
-            line_to_idx = {ln: idx for idx, ln in enumerate(line_numbers)}
             for line in lines:
-                if line in line_to_idx:
-                    embeddings[(doc_id, line)] = matrix[line_to_idx[line]]
+                idx = self.embedder.embedding_key_for_line(line, line_numbers)
+                if idx is not None:
+                    embeddings[(doc_id, line)] = matrix[idx]
         return embeddings
 
     def describe(self, codes=None, coders=None, pattern=None, file_list=None):

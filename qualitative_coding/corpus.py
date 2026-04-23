@@ -69,6 +69,7 @@ DEFAULT_SETTINGS = {
     'editor': 'code',
     'log_file': 'qualitative_coding.log',
     'verbose': False,
+    'unit': 'line',
 }
 
 LATEST_MIGRATION = Version.parse("1.4.0")

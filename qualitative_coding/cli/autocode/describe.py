@@ -32,6 +32,7 @@ def describe(codes, settings, coders, recursive_codes, pattern, filenames,
     # Print hyperparameters
     click.echo("Hyperparameters:")
     for key in [
+        "unit",
         "autocode_api_base", "autocode_api_model", "autocode_window",
         "autocode_min_examples", "autocode_confidence_threshold",
         "autocode_child_threshold", "autocode_embeddings_dir",

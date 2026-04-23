@@ -1,11 +1,12 @@
 from pathlib import Path
+import bisect
 import structlog
 
 log = structlog.get_logger()
 
 
 class UncertaintySampler:
-    """Ranks corpus lines by classifier uncertainty for active learning.
+    """Ranks corpus units by classifier uncertainty for active learning.
 
     Uses margin sampling: margin = P(top code) - P(second code).
     Lower margin = higher uncertainty = higher priority for human review.
@@ -22,7 +23,7 @@ class UncertaintySampler:
         Args:
             codes: restrict uncertainty to this subset of codes
             pattern/file_list: corpus filter
-            exclude_coded_by: skip lines already coded by any of these coders
+            exclude_coded_by: skip units already coded by any of these coders
         """
         all_scores = self.predictor.score_all_lines(
             pattern=pattern, file_list=file_list
@@ -64,16 +65,25 @@ class UncertaintySampler:
         return ranked
 
     def get_context(self, document_id, line, context_lines=3):
-        """Return (lines_list, target_idx) for display.
+        """Return a list of (line_number, text, is_target) tuples for display.
 
-        lines_list: list of (line_number, text, is_target) tuples
+        For paragraph unit: shows the full paragraph containing `line`.
+        For document unit: shows a window around line 0.
+        For line unit: shows ±context_lines around `line`.
         """
         corpus_path = self.corpus.corpus_dir / document_id
         all_lines = corpus_path.read_text().splitlines()
-        start = max(0, line - context_lines)
-        end = min(len(all_lines), line + context_lines + 1)
-        window = [
-            (i, all_lines[i], i == line)
-            for i in range(start, end)
-        ]
-        return window
+        unit = self.predictor.embedder.unit
+
+        if unit == "paragraph":
+            # line is a paragraph start_line; find the paragraph's end from sidecar
+            _, para_starts = self.predictor.embedder.get_embeddings(document_id)
+            idx = bisect.bisect_left(para_starts, line)
+            para_end = (para_starts[idx + 1]
+                        if idx + 1 < len(para_starts)
+                        else len(all_lines))
+            return [(i, all_lines[i], i == line) for i in range(line, para_end)]
+        else:
+            start = max(0, line - context_lines)
+            end = min(len(all_lines), line + context_lines + 1)
+            return [(i, all_lines[i], i == line) for i in range(start, end)]

@@ -122,3 +122,84 @@ class TestCorpusEmbedder(QCTestCase):
         # A windowed text should contain newlines when window > 0
         multi_line = [t for t in captured_texts if "\n" in t]
         self.assertGreater(len(multi_line), 0)
+
+
+class TestCorpusEmbedderParagraph(QCTestCase):
+    """Tests for paragraph and document unit embeddings."""
+
+    MULTI_PARA = "Line zero.\nLine one.\n\nLine three.\nLine four.\n"
+
+    def setUp(self):
+        super().setUp()
+        (self.testpath / "multi.txt").write_text(self.MULTI_PARA)
+        self.run_in_testpath("qc corpus import multi.txt --importer verbatim")
+
+    def _make_embedder(self, unit):
+        self.update_settings("unit", unit)
+        self.corpus = __import__(
+            "qualitative_coding.corpus", fromlist=["QCCorpus"]
+        ).QCCorpus(self.testpath / "settings.yaml")
+        from qualitative_coding.autocode.embedder import CorpusEmbedder
+        return CorpusEmbedder(self.corpus)
+
+    def _mock_embed(self, embedder, n_texts):
+        mock_item = lambda i: MagicMock(embedding=[float(i)] * 4)
+        mock_response = MagicMock()
+        mock_response.data = [mock_item(i) for i in range(n_texts)]
+        mock_client = MagicMock()
+        mock_client.embeddings.create.return_value = mock_response
+        return patch.object(embedder, "_client", return_value=mock_client)
+
+    def test_paragraph_unit_one_embedding_per_paragraph(self):
+        embedder = self._make_embedder("paragraph")
+        # MULTI_PARA has two paragraphs (split by blank line)
+        with self._mock_embed(embedder, 2):
+            embedder.embed_corpus()
+        matrix, line_numbers = embedder.get_embeddings("multi.txt")
+        self.assertEqual(matrix.shape[0], 2)
+        self.assertEqual(len(line_numbers), 2)
+
+    def test_paragraph_unit_sidecar_indexes_by_start_line(self):
+        embedder = self._make_embedder("paragraph")
+        with self._mock_embed(embedder, 2):
+            embedder.embed_corpus()
+        import json
+        sidecar = json.loads(embedder.sidecar_path("multi.txt").read_text())
+        self.assertEqual(sidecar["unit"], "paragraph")
+        # First paragraph starts at line 0, second at line 3
+        self.assertEqual(sidecar["lines"], [0, 3])
+
+    def test_document_unit_one_embedding_per_document(self):
+        embedder = self._make_embedder("document")
+        with self._mock_embed(embedder, 1):
+            embedder.embed_corpus()
+        matrix, line_numbers = embedder.get_embeddings("multi.txt")
+        self.assertEqual(matrix.shape[0], 1)
+        self.assertEqual(line_numbers, [0])
+
+    def test_cache_invalidated_by_unit_change(self):
+        embedder = self._make_embedder("line")
+        corpus_path = self.corpus.corpus_dir / "multi.txt"
+        n_lines = sum(1 for l in corpus_path.read_text().splitlines() if l.strip())
+        with self._mock_embed(embedder, n_lines):
+            embedder.embed_corpus()
+        self.assertTrue(embedder.is_cache_valid("multi.txt"))
+        embedder.unit = "paragraph"
+        self.assertFalse(embedder.is_cache_valid("multi.txt"))
+
+    def test_embedding_key_for_line_paragraph(self):
+        embedder = self._make_embedder("paragraph")
+        # Para 0: lines 0-1, Para 1: lines 3-4
+        para_starts = [0, 3]
+        # Any line within para 0 → index 0
+        self.assertEqual(embedder.embedding_key_for_line(0, para_starts), 0)
+        self.assertEqual(embedder.embedding_key_for_line(1, para_starts), 0)
+        # Any line within para 1 → index 1
+        self.assertEqual(embedder.embedding_key_for_line(3, para_starts), 1)
+        self.assertEqual(embedder.embedding_key_for_line(4, para_starts), 1)
+
+    def test_embedding_key_for_line_document(self):
+        embedder = self._make_embedder("document")
+        self.assertEqual(embedder.embedding_key_for_line(0, [0]), 0)
+        self.assertEqual(embedder.embedding_key_for_line(5, [0]), 0)
+        self.assertEqual(embedder.embedding_key_for_line(42, [0]), 0)

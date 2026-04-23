@@ -1,5 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
+import bisect
 import json
 import numpy as np
 import structlog
@@ -19,12 +20,19 @@ BATCH_SIZE = 100
 
 
 class CorpusEmbedder:
-    """Embeds corpus lines using an OpenAI-compatible embedding API.
+    """Embeds corpus documents using an OpenAI-compatible embedding API.
 
-    Embeddings are cached on disk as .npy files (one per document) with
-    .json sidecars recording the model, window, and document hash. The
-    cache is always whole-document: a document is either fully cached or
-    absent — there is no partial state.
+    The unit of analysis (line/paragraph/document) is read from settings
+    and determines how each document is chunked before embedding:
+
+    - line:      one embedding per non-blank line, optionally windowed with
+                 surrounding context (autocode_window setting).
+    - paragraph: one embedding per paragraph (delimited by blank lines).
+    - document:  one embedding per document.
+
+    Embeddings are cached on disk as .npy files with .json sidecars. The
+    cache is whole-document: a document is either fully cached or absent.
+    Changing unit, model, or (for line unit) window invalidates the cache.
     """
 
     def __init__(self, corpus):
@@ -42,6 +50,7 @@ class CorpusEmbedder:
                                     AUTOCODE_DEFAULTS["autocode_api_key"])
         self.model = settings.get("autocode_api_model",
                                   AUTOCODE_DEFAULTS["autocode_api_model"])
+        self.unit = settings.get("unit", "line")
 
     def _client(self):
         from openai import OpenAI
@@ -52,15 +61,15 @@ class CorpusEmbedder:
         self.embeddings_dir.mkdir(parents=True, exist_ok=True)
         with self.corpus.session():
             documents = self.corpus.get_documents(pattern=pattern, file_list=file_list)
-        total_lines = 0
+        total_units = 0
         for doc in tqdm(documents, desc="Embedding documents"):
             if not force and self.is_cache_valid(doc.file_path):
                 continue
             n = self._embed_document(doc.file_path)
-            total_lines += n
-        log.info("autocode embed", total_lines=total_lines,
-                 embeddings_dir=str(self.embeddings_dir))
-        return total_lines
+            total_units += n
+        log.info("autocode embed", total_units=total_units,
+                 unit=self.unit, embeddings_dir=str(self.embeddings_dir))
+        return total_units
 
     def ensure_embedded(self, document_id):
         """Embed a single document on demand if its cache is missing or stale."""
@@ -72,36 +81,29 @@ class CorpusEmbedder:
             self._embed_document(document_id)
 
     def _embed_document(self, document_id):
-        """Embed all lines of a document and write cache files."""
+        """Embed a document according to the current unit of analysis."""
         corpus_path = self.corpus.corpus_dir / document_id
         lines = corpus_path.read_text().splitlines()
-        windowed_texts = []
-        line_numbers = []
-        for i, line in enumerate(lines):
-            # Skip completely blank lines
-            if not line.strip():
-                continue
-            start = max(0, i - self.window_before)
-            end = min(len(lines), i + self.window_after + 1)
-            context = "\n".join(lines[start:end])
-            windowed_texts.append(context)
-            line_numbers.append(i)
 
-        if not windowed_texts:
+        if self.unit == "document":
+            texts, line_numbers = self._chunks_document(lines)
+        elif self.unit == "paragraph":
+            texts, line_numbers = self._chunks_paragraph(corpus_path, lines)
+        else:
+            texts, line_numbers = self._chunks_line(lines)
+
+        if not texts:
             return 0
 
-        # Embed in batches
         client = self._client()
         all_vectors = []
-        for batch_start in range(0, len(windowed_texts), BATCH_SIZE):
-            batch = windowed_texts[batch_start:batch_start + BATCH_SIZE]
+        for batch_start in range(0, len(texts), BATCH_SIZE):
+            batch = texts[batch_start:batch_start + BATCH_SIZE]
             response = client.embeddings.create(model=self.model, input=batch)
-            batch_vectors = [item.embedding for item in response.data]
-            all_vectors.extend(batch_vectors)
+            all_vectors.extend(item.embedding for item in response.data)
 
         matrix = np.array(all_vectors, dtype=np.float32)
-        npy_path = self.cache_path(document_id)
-        np.save(npy_path, matrix)
+        np.save(self.cache_path(document_id), matrix)
 
         with self.corpus.session():
             doc = self.corpus.get_documents(file_list=[document_id])[0]
@@ -109,20 +111,55 @@ class CorpusEmbedder:
 
         sidecar = {
             "model": self.model,
+            "unit": self.unit,
             "window": [self.window_before, self.window_after],
             "hash": file_hash,
             "lines": line_numbers,
         }
         self.sidecar_path(document_id).write_text(json.dumps(sidecar))
         log.debug("autocode embed document", document_id=document_id,
-                  n_lines=len(line_numbers))
+                  unit=self.unit, n_units=len(line_numbers))
         return len(line_numbers)
+
+    def _chunks_line(self, lines):
+        """One embedding per non-blank line, with windowed context."""
+        texts, line_numbers = [], []
+        for i, line in enumerate(lines):
+            if not line.strip():
+                continue
+            start = max(0, i - self.window_before)
+            end = min(len(lines), i + self.window_after + 1)
+            texts.append("\n".join(lines[start:end]))
+            line_numbers.append(i)
+        return texts, line_numbers
+
+    def _chunks_paragraph(self, corpus_path, lines):
+        """One embedding per paragraph, indexed by paragraph start line."""
+        from qualitative_coding.helpers import iter_paragraph_lines
+        texts, line_numbers = [], []
+        with open(corpus_path) as fh:
+            for p_start, p_end in iter_paragraph_lines(fh):
+                text = "\n".join(lines[p_start:p_end])
+                if not text.strip():
+                    continue
+                texts.append(text)
+                line_numbers.append(p_start)
+        return texts, line_numbers
+
+    def _chunks_document(self, lines):
+        """One embedding for the whole document, indexed at line 0."""
+        text = "\n".join(lines)
+        if not text.strip():
+            return [], []
+        return [text], [0]
 
     def get_embeddings(self, document_id) -> tuple:
         """Load cached embeddings for a document.
 
-        Returns (matrix of shape [n_lines, n_dims], list of line numbers).
-        Raises RuntimeError if cache is missing or stale.
+        Returns (matrix of shape [n_units, n_dims], list of representative line numbers).
+        For line unit: line numbers of non-blank lines.
+        For paragraph unit: start lines of paragraphs.
+        For document unit: [0].
         """
         if not self.is_cache_valid(document_id):
             raise RuntimeError(
@@ -132,6 +169,26 @@ class CorpusEmbedder:
         matrix = np.load(self.cache_path(document_id))
         sidecar = json.loads(self.sidecar_path(document_id).read_text())
         return matrix, sidecar["lines"]
+
+    def embedding_key_for_line(self, line, line_numbers):
+        """Return the matrix row index for a corpus line number.
+
+        For line unit:      exact match (or None if line was blank/skipped).
+        For paragraph unit: finds the paragraph whose start_line <= line.
+        For document unit:  always 0.
+
+        line_numbers must be sorted ascending (as returned by get_embeddings).
+        """
+        if self.unit == "document":
+            return 0 if line_numbers else None
+        elif self.unit == "paragraph":
+            idx = bisect.bisect_right(line_numbers, line) - 1
+            return idx if idx >= 0 else None
+        else:  # line
+            idx = bisect.bisect_left(line_numbers, line)
+            if idx < len(line_numbers) and line_numbers[idx] == line:
+                return idx
+            return None
 
     def cache_path(self, document_id) -> Path:
         """Returns path to .npy cache file for a document."""
@@ -145,20 +202,22 @@ class CorpusEmbedder:
         return self.cache_path(document_id).with_suffix(".json")
 
     def is_cache_valid(self, document_id) -> bool:
-        """True if sidecar exists and its hash matches Document.file_hash.
+        """True if cache exists and matches current settings.
 
-        Cache entries are always whole-document; there is no partial state.
+        Checks: file hash, model, unit. For line unit also checks window.
         """
         sidecar_p = self.sidecar_path(document_id)
         npy_p = self.cache_path(document_id)
         if not sidecar_p.exists() or not npy_p.exists():
             return False
         sidecar = json.loads(sidecar_p.read_text())
-        # Also check model and window match current settings
         if sidecar.get("model") != self.model:
             return False
-        if sidecar.get("window") != [self.window_before, self.window_after]:
+        if sidecar.get("unit", "line") != self.unit:
             return False
+        if self.unit == "line":
+            if sidecar.get("window") != [self.window_before, self.window_after]:
+                return False
         with self.corpus.session():
             doc = self.corpus.get_documents(file_list=[document_id])
             if not doc:

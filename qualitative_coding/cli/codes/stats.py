@@ -21,7 +21,7 @@ from tabulate import tabulate_formats
 @click.option("-C", "--by-coder", is_flag=True, help="Report stats separately for each coder")
 @click.option("-D", "--by-document", is_flag=True, help="Report stats separately for each document")
 @click.option("-d", "--depth", help="Maximum depth in code tree", type=int)
-@click.option("-n", "--unit", default="line", help="Unit of analysis",
+@click.option("-n", "--unit", default=None, help="Unit of analysis (default from settings)",
         type=click.Choice(['line', 'paragraph', 'document']))
 @click.option("-r", "--recursive-codes", "recursive_codes", is_flag=True, 
         help="Include child codes")
@@ -50,6 +50,7 @@ def stats(codes, settings, pattern, filenames, coders, by_coder, by_document, de
              by_coder=by_coder, by_document=by_document, depth=depth, unit=unit,
              recursive_codes=recursive_codes)
     corpus = QCCorpus(settings_path)
+    unit = unit or corpus.settings.get("unit", "line")
     viewer = QCCorpusViewer(corpus)
     if by_coder and by_document:
         viewer.show_document_coders_pivot_table(
