@@ -78,4 +78,10 @@ Chris Proctor (chrisp@buffalo.edu), the project lead.
    :maxdepth: 1
    :caption: Contents:
 
-   manuscript
+   introduction
+   background
+   walkthrough
+   documentation
+   contributing
+   acknowledgements
+   references
