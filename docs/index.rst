@@ -41,12 +41,12 @@ need to be familiar with using a command line in order to use ``qc``.
 * The `Sync Scroll <https://marketplace.visualstudio.com/items?itemName=dqisme.sync-scroll>`__
   extension for Visual Studio Code.
 
-Install with pip or pipx
-~~~~~~~~~~~~~~~~~~~~~~~~
+Install as a tool on your system
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``qc`` is distributed via the Python Package Index (PYPI). If you want to
 install ``qc`` globally on your system, the cleanest approach is to use
-`pipx <https://pipx.pypa.io/stable/>`__.
+`[uv](https://docs.astral.sh/uv/getting-started/installation/)`__.
 
 .. note::
 
@@ -59,7 +59,7 @@ install ``qc`` globally on your system, the cleanest approach is to use
 
 .. code-block:: console
 
-   % pipx install qualitative-coding
+   % uv tool install qualitative-coding
 
 Install as a dependency
 ~~~~~~~~~~~~~~~~~~~~~~~

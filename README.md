@@ -45,10 +45,10 @@ data structures.
 `qc` is distributed via the Python Package Index (PYPI), and can be
 installed on any POSIX system (Linux, Unix, Mac OS, or Windows Subsystem
 for Linux) which has Python 3.9 or higher installed. If you want to install
-`qc` globally on your system, the cleanest approaach is to use 
-[pipx](https://pipx.pypa.io/stable/). 
+`qc` globally on your system, the cleanest approach is to use 
+[uv](https://docs.astral.sh/uv/getting-started/installation/). 
 
-    pipx install qualitative-coding
+    uv tool install qualitative-coding
 
 If your research project
 is already contained within a Python package and you want to install `qc` 
