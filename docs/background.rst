@@ -345,23 +345,35 @@ Evaluation
 
 Evaluating the quality of coding—whether human or machine—is important
 for establishing the credibility of an analysis. ``qc`` supports several
-complementary approaches via ``qc codes agreement``.
+complementary approaches via ``qc codes agreement``. These fall into two
+broad cases: situations where multiple coders' judgments are considered
+equally valid and the goal is to measure their agreement, and situations
+where one set of codes is treated as authoritative and another is being
+evaluated against it (as when validating an autocoder against
+human-coded examples).
 
 **Inter-rater agreement** quantifies the agreement between two or more
-coders' judgments about the same documents. *Krippendorff's alpha* is
-appropriate when multiple coders have coded the same material on equal
-footing; it handles unequal numbers of ratings and missing data
+coders when all are treated as equally authoritative. *Krippendorff's
+alpha* is appropriate when multiple coders have coded the same material
+on equal footing; it handles unequal numbers of ratings and missing data
 gracefully, which is common in qualitative research. *Cohen's kappa* is
 a pairwise, chance-corrected agreement coefficient appropriate when
 exactly two coders are being compared. Both metrics treat each text unit
 (line, paragraph, or document) as a binary judgment for each code: is
 this code present or absent? Values above 0.80 are generally considered
 excellent; above 0.60 is acceptable; below 0.40 suggests substantial
-disagreement. *F1 score* is appropriate when one coder is treated as the
-authoritative reference (e.g., evaluating autocode predictions against a
-gold-standard human coder): *precision* measures what fraction of the
-model's predictions are correct; *recall* measures what fraction of the
-true positive cases the model identified.
+disagreement.
+
+**Comparison against a reference** is appropriate when one coder's
+judgments are treated as the authoritative ground truth—for example,
+when evaluating autocode predictions against a gold-standard human
+coder. *Precision* measures what fraction of the predicted positive cases
+are correct (how often the model's predictions agree with the
+reference). *Recall* measures what fraction of the true positive cases
+were identified (how many real instances the model found). *F1 score* is
+the harmonic mean of precision and recall, providing a single summary of
+overall performance that penalizes both over-prediction and
+under-prediction.
 
 **Cross-validation** (``qc codes agreement --metric cv``) provides an
 estimate of how well the autocode model will perform on *new, unseen*
