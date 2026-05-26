@@ -637,24 +637,6 @@ the editor.
 
    Figure 2. An online spreadsheet ready for coding.
 
-Automated coding
-~~~~~~~~~~~~~~~~
-
-You could automatically apply codes to a document by writing a script and
-defining it as an editor (see :ref:`editor`); the script would receive the
-path to a corpus file and the codes file, and would write codes into the codes
-file. For example, when we were analyzing student-written computer programs, we combined
-manual qualitative coding with automated static analysis of the programs,
-which added codes marking syntactic structures and manipulation of variables.
-This allowed us to integrate what students were doing (via our qualitative coding)
-with how they were doing it (via static analysis).
-
-``qc`` also supports machine-learning-assisted coding through the ``autocode``
-command group, described in :ref:`autocode` and demonstrated in the Vignette. Unlike
-approaches that send documents to LLMs with a prompt, ``qc``\ 's autocode system trains
-on the researcher's own prior coding using word embeddings and support vector machines,
-keeping the researcher's analytical judgment at the center of the process.
-
 Multiple codebooks
 ~~~~~~~~~~~~~~~~~~
 

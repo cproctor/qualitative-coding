@@ -16,14 +16,14 @@ from qualitative_coding.logs import configure_logger
 @click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
               metavar="[tabulate_formats]")
 @handle_qc_errors
-def density(codes, settings, coders, recursive_codes, pattern, filenames, _format):
-    "Report per-code embedding cohesion (low distance = tight, well-defined code)"
+def cohesion(codes, settings, coders, recursive_codes, pattern, filenames, _format):
+    "Report per-code embedding cohesion (variance explained by first principal component)"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     configure_logger(settings_path)
     corpus = QCCorpus(settings_path)
 
     from qualitative_coding.autocode.embedder import CorpusEmbedder
-    from qualitative_coding.autocode.analytics import compute_density
+    from qualitative_coding.autocode.analytics import compute_cohesion
 
     embedder = CorpusEmbedder(corpus)
 
@@ -35,7 +35,7 @@ def density(codes, settings, coders, recursive_codes, pattern, filenames, _forma
     else:
         filter_codes = list(codes) if codes else None
 
-    result = compute_density(
+    result = compute_cohesion(
         corpus, embedder,
         codes=filter_codes,
         coders=list(coders) if coders else None,
@@ -44,9 +44,9 @@ def density(codes, settings, coders, recursive_codes, pattern, filenames, _forma
     )
 
     rows = [
-        [name, info["examples"], info["mean_distance"] or "—", info["suggestion"]]
+        [name, info["examples"], info["variance_explained"] or "—", info["suggestion"]]
         for name, info in sorted(result.items())
     ]
     click.echo(tabulate(rows,
-                        ["Code", "Examples", "Mean Distance", "Suggestion"],
+                        ["Code", "Examples", "Variance Explained", "Suggestion"],
                         tablefmt=_format))

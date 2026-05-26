@@ -17,12 +17,13 @@ from qualitative_coding.logs import configure_logger
 @click.option("-f", "--filenames", help="File path containing a list of filenames")
 @handle_qc_errors
 def outliers(codes, settings, coders, top_n, recursive_codes, pattern, filenames):
-    "Find coded lines that are outliers for their code (possible miscodes)"
+    "Find coded lines that are outliers for their code (lowest classifier confidence)"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     configure_logger(settings_path)
     corpus = QCCorpus(settings_path)
 
     from qualitative_coding.autocode.embedder import CorpusEmbedder
+    from qualitative_coding.autocode.trainer import AutocodeTrainer
     from qualitative_coding.autocode.analytics import compute_outliers
 
     embedder = CorpusEmbedder(corpus)
@@ -35,8 +36,16 @@ def outliers(codes, settings, coders, top_n, recursive_codes, pattern, filenames
     else:
         filter_codes = list(codes) if codes else None
 
+    trainer = AutocodeTrainer(corpus, embedder)
+    classifiers = trainer.train(
+        codes=filter_codes,
+        coders=list(coders) if coders else None,
+        pattern=pattern,
+        file_list=read_file_list(filenames),
+    )
+
     result = compute_outliers(
-        corpus, embedder,
+        corpus, embedder, classifiers,
         codes=filter_codes,
         coders=list(coders) if coders else None,
         pattern=pattern,
@@ -45,12 +54,12 @@ def outliers(codes, settings, coders, top_n, recursive_codes, pattern, filenames
     )
 
     for code_name in sorted(result):
-        click.echo(f"\n{code_name} — top {top_n} outliers:")
+        click.echo(f"\n{code_name} — {top_n} least confident positives:")
         rows = []
-        for doc_id, line, dist in result[code_name]:
+        for doc_id, line, confidence in result[code_name]:
             corpus_path = corpus.corpus_dir / doc_id
             all_lines = corpus_path.read_text().splitlines()
             text = all_lines[line][:60] if line < len(all_lines) else ""
-            rows.append([doc_id, line, round(dist, 3), text])
-        click.echo(tabulate(rows, ["Document", "Line", "Distance", "Text"],
+            rows.append([doc_id, line, round(confidence, 3), text])
+        click.echo(tabulate(rows, ["Document", "Line", "Confidence", "Text"],
                             tablefmt="simple"))

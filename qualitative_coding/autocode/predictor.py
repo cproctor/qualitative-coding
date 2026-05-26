@@ -31,6 +31,9 @@ class AutocodePredictor:
         """Return {code: P(positive)} for all trained codes."""
         result = {}
         vec = embedding.reshape(1, -1)
+        norm = np.linalg.norm(vec)
+        if norm > 0:
+            vec = vec / norm
         for code_name, clf in self.classifiers.items():
             proba = clf.predict_proba(vec)[0]
             # proba[1] is P(positive label)

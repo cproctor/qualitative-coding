@@ -450,37 +450,41 @@ are still presented.
 autocode outliers
 ~~~~~~~~~~~~~~~~~
 
-For each code, identify coded lines whose embeddings are farthest from
-the centroid of that code's training examples — likely miscodes or edge
-cases worth reviewing. Use ``-n N`` to control how many outliers are
-reported per code.
+For each code, identify the coded lines that the trained classifier
+assigns lowest confidence — these lie nearest the decision boundary and
+are likely miscodes or edge cases worth reviewing. Use ``-n N`` to
+control how many outliers are reported per code.
 
 .. code-block:: console
 
    % qc autocode outliers -c chris --recursive-codes -n 5
 
-autocode density
-~~~~~~~~~~~~~~~~
+autocode cohesion
+~~~~~~~~~~~~~~~~~
 
-Report per-code cohesion as mean pairwise cosine distance among coded
-lines' embeddings. A small mean distance indicates a tight, well-defined
-code; a large distance suggests a vague or over-broad code that may
-benefit from splitting.
+Report per-code semantic cohesion as the fraction of embedding variance
+explained by the first principal component. A high value indicates a
+tight, well-defined code whose examples cluster in one semantic
+direction; a low value suggests the code covers disparate concepts and
+may benefit from splitting.
 
 .. code-block:: console
 
-   % qc autocode density -c chris
+   % qc autocode cohesion -c chris
 
 autocode similar
 ~~~~~~~~~~~~~~~~
 
-Find pairs of codes whose centroids are close in embedding space —
-candidates for merging. Use ``--threshold FLOAT`` to control the
-similarity cutoff (default: 0.9).
+Find pairs of codes whose trained classifiers generalize to each other's
+positive examples. For each pair, reports mean P(B | A's examples) and
+mean P(A | B's examples). High scores in both directions suggest merge
+candidates; asymmetric scores suggest a subset relationship. Use
+``--threshold FLOAT`` to control the minimum score to report (default:
+0.5).
 
 .. code-block:: console
 
-   % qc autocode similar -c chris --threshold 0.85
+   % qc autocode similar -c chris --threshold 0.7
 
 Common options
 --------------

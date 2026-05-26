@@ -122,6 +122,10 @@ class AutocodeTrainer:
                 [all_embeddings[u] for u in positives]
                 + [all_embeddings[u] for u in negatives]
             )
+            # L2-normalize: for unit vectors, linear SVM is equivalent to cosine SVM
+            norms = np.linalg.norm(X, axis=1, keepdims=True)
+            norms = np.where(norms == 0, 1, norms)
+            X = X / norms
             y = [1] * len(positives) + [0] * len(negatives)
 
             cv = min(5, n_pos, len(negatives)) if negatives else 2

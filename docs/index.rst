@@ -46,7 +46,7 @@ Install as a tool on your system
 
 ``qc`` is distributed via the Python Package Index (PYPI). If you want to
 install ``qc`` globally on your system, the cleanest approach is to use
-`[uv](https://docs.astral.sh/uv/getting-started/installation/)`__.
+`uv <https://docs.astral.sh/uv/getting-started/installation/>`__.
 
 .. note::
 

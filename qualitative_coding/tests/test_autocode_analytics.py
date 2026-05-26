@@ -1,5 +1,5 @@
 from tests.fixtures import QCTestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import numpy as np
 
 EMBED_DIM = 8
@@ -30,42 +30,50 @@ class TestEmbeddingAnalytics(QCTestCase):
                 {"line": 0, "code_id": "pace"},
                 {"line": 1, "code_id": "pace"},
                 {"line": 2, "code_id": "pace"},
-                {"line": 3, "code_id": "light"},
-                {"line": 4, "code_id": "light"},
+                {"line": 3, "code_id": "pace"},
+                {"line": 4, "code_id": "pace"},
                 {"line": 5, "code_id": "light"},
+                {"line": 6, "code_id": "light"},
+                {"line": 7, "code_id": "light"},
+                {"line": 8, "code_id": "light"},
+                {"line": 9, "code_id": "light"},
             ])
         self.mock_embedder = make_mock_embedder(self.corpus)
+        from qualitative_coding.autocode.trainer import AutocodeTrainer
+        trainer = AutocodeTrainer(self.corpus, self.mock_embedder)
+        self.classifiers = trainer.train()
 
     def test_compute_outliers_returns_results(self):
         from qualitative_coding.autocode.analytics import compute_outliers
-        result = compute_outliers(self.corpus, self.mock_embedder)
+        result = compute_outliers(self.corpus, self.mock_embedder, self.classifiers)
         self.assertIn("pace", result)
         self.assertIn("light", result)
         for items in result.values():
-            for doc_id, line, dist in items:
-                self.assertIsInstance(dist, float)
-                self.assertGreaterEqual(dist, 0)
+            for doc_id, line, confidence in items:
+                self.assertIsInstance(confidence, float)
+                self.assertGreaterEqual(confidence, 0.0)
+                self.assertLessEqual(confidence, 1.0)
 
-    def test_compute_density_returns_results(self):
-        from qualitative_coding.autocode.analytics import compute_density
-        result = compute_density(self.corpus, self.mock_embedder)
+    def test_compute_cohesion_returns_results(self):
+        from qualitative_coding.autocode.analytics import compute_cohesion
+        result = compute_cohesion(self.corpus, self.mock_embedder)
         self.assertIn("pace", result)
         self.assertIn("light", result)
         for info in result.values():
             self.assertIn("examples", info)
-            self.assertIn("mean_distance", info)
+            self.assertIn("variance_explained", info)
             self.assertIn("suggestion", info)
 
     def test_compute_similar_returns_list(self):
         from qualitative_coding.autocode.analytics import compute_similar
-        # With random embeddings and threshold=0 all pairs should appear
-        pairs = compute_similar(self.corpus, self.mock_embedder, threshold=0.0)
-        # Should have at least one pair (pace, light)
-        code_pairs = {(min(a, b), max(a, b)) for a, b, _ in pairs}
+        pairs = compute_similar(self.corpus, self.mock_embedder, self.classifiers,
+                                threshold=0.0)
+        code_pairs = {(min(a, b), max(a, b)) for a, b, _, _ in pairs}
         self.assertIn(("light", "pace"), code_pairs)
 
     def test_compute_similar_threshold_filters(self):
         from qualitative_coding.autocode.analytics import compute_similar
-        # Very high threshold should return empty list (random vectors unlikely to be similar)
-        pairs = compute_similar(self.corpus, self.mock_embedder, threshold=0.999)
+        # Threshold above maximum possible probability — always empty
+        pairs = compute_similar(self.corpus, self.mock_embedder, self.classifiers,
+                                threshold=2.0)
         self.assertEqual(pairs, [])

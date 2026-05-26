@@ -4,7 +4,7 @@ from qualitative_coding.cli.autocode.embed import embed
 from qualitative_coding.cli.autocode.describe import describe
 from qualitative_coding.cli.autocode.interactive import autocode_interactive
 from qualitative_coding.cli.autocode.outliers import outliers
-from qualitative_coding.cli.autocode.density import density
+from qualitative_coding.cli.autocode.cohesion import cohesion
 from qualitative_coding.cli.autocode.similar import similar
 
 @click.group(name="autocode", cls=ClickAliasedGroup, invoke_without_command=True)
@@ -42,5 +42,5 @@ def autocode_group(ctx, coder, codes, settings, train_coders, context_lines,
 autocode_group.add_command(embed)
 autocode_group.add_command(describe)
 autocode_group.add_command(outliers)
-autocode_group.add_command(density)
+autocode_group.add_command(cohesion)
 autocode_group.add_command(similar)

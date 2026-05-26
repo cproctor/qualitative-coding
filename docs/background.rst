@@ -434,19 +434,20 @@ the API is only called once per document; subsequent retraining,
 prediction, and analysis draw on the cached values.
 
 Beyond classification, embeddings support several diagnostic analyses
-that do not require any new API calls once the cache is populated. The
-*centroid* of a code's embeddings is the average position of all
-coded lines in embedding space; this geometric summary enables three
-analytical commands. ``qc autocode outliers`` identifies coded lines
-whose embeddings are far from their code's centroid—these are likely
-miscodes or edge cases worth reviewing. ``qc autocode density`` reports
-per-code cohesion as mean pairwise cosine distance among a code's
-embeddings; a tight cluster indicates a well-defined code, while a
-scattered distribution suggests a vague or over-broad code that may
-benefit from splitting. ``qc autocode similar`` computes pairwise
-distances between code centroids and surfaces pairs of codes that are
-close in embedding space—candidates for merging or for scrutiny of how
-the researcher has drawn conceptual boundaries.
+that do not require any new API calls once the cache is populated.
+``qc autocode outliers`` uses the trained classifier directly: positive
+examples that the classifier assigns low confidence lie near the
+decision boundary and are likely miscodes or edge cases worth reviewing.
+``qc autocode cohesion`` measures per-code semantic coherence as the
+fraction of embedding variance explained by the first principal
+component—a high value indicates a well-defined code whose examples
+cluster tightly in one semantic direction, while a low value suggests
+the code covers disparate concepts and may benefit from splitting.
+``qc autocode similar`` evaluates cross-code generalization: for each
+pair of codes, it reports how confidently each code's classifier scores
+the other code's positive examples. High mutual scores suggest the codes
+are candidates for merging; asymmetric scores point to a potential
+subset relationship.
 
 Classification
 ~~~~~~~~~~~~~~
@@ -472,6 +473,14 @@ classifiers that generalize well to new examples without requiring large
 amounts of training data, which suits the typical scale of a QDA
 project (tens to hundreds of coded examples per code rather than
 thousands).
+
+Text embedding models are designed so that semantic similarity
+corresponds to cosine similarity—embeddings lie on or near a
+high-dimensional unit sphere. Before fitting, ``qc`` L2-normalizes all
+embeddings. For unit-length vectors the linear kernel inner product
+equals the cosine similarity, making the linear SVM geometrically
+equivalent to a cosine-similarity classifier—the natural choice for
+this embedding geometry.
 
 Because the raw SVM does not produce probability estimates, ``qc`` wraps
 it in a calibration layer (Platt scaling) that converts the model's
