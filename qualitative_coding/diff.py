@@ -97,7 +97,7 @@ def read_hunk(lines):
                 ops.append((op_start_line_number, plus - minus))
             elif plus - minus < 0:
                 ops.append((op_start_line_number + minus - plus - 1, plus - minus))
-        return ops
+    return ops
 
 def read_line_number(hunk_preamble):
     match = re.match(r'\s*@@ \-(\d+)', hunk_preamble)
