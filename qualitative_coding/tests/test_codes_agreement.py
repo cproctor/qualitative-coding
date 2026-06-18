@@ -1,5 +1,79 @@
 from tests.fixtures import QCTestCase
 
+PARAGRAPHS_DOC = """Paragraph one line one.
+Paragraph one line two.
+
+Paragraph two line one.
+Paragraph two line two.
+"""
+
+class TestAgreementUnits(QCTestCase):
+    def setUp(self):
+        super().setUp()
+        (self.testpath / "doc.txt").write_text(PARAGRAPHS_DOC)
+        self.run_in_testpath("qc corpus import doc.txt --importer verbatim")
+        with self.corpus.session():
+            # chris and varun code different lines within the same first
+            # paragraph (lines 0 and 1), and never overlap on the second
+            # paragraph (lines 3 and 4).
+            self.corpus.update_coded_lines("doc.txt", "chris", [
+                {"line": 0, "code_id": "pace"},
+                {"line": 3, "code_id": "light"},
+            ])
+            self.corpus.update_coded_lines("doc.txt", "varun", [
+                {"line": 1, "code_id": "pace"},
+                {"line": 4, "code_id": "light"},
+            ])
+
+    def test_agreement_unit_defaults_to_line_from_settings(self):
+        result = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric kappa"
+        )
+        self.assertEqual(result.returncode, 0)
+        line_level = result.stdout
+
+        result = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric kappa -n line"
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(line_level, result.stdout)
+
+    def test_agreement_unit_paragraph_overrides_default(self):
+        # At line granularity, chris and varun never code the same line, so
+        # both lines look like disagreements.
+        line_level = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric alpha -n line"
+        )
+        self.assertEqual(line_level.returncode, 0)
+
+        # At paragraph granularity, lines 0 and 1 fall in the same paragraph,
+        # so chris and varun agree that the first paragraph contains "pace".
+        paragraph_level = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric alpha -n paragraph"
+        )
+        self.assertEqual(paragraph_level.returncode, 0)
+        self.assertNotEqual(line_level.stdout, paragraph_level.stdout)
+
+    def test_agreement_unit_setting_changes_default(self):
+        self.update_settings("unit", "paragraph")
+        explicit = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric alpha -n paragraph"
+        )
+        default = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric alpha"
+        )
+        self.assertEqual(explicit.returncode, 0)
+        self.assertEqual(default.returncode, 0)
+        self.assertEqual(explicit.stdout, default.stdout)
+
+    def test_agreement_cv_rejects_explicit_unit(self):
+        result = self.run_in_testpath(
+            "qc codes agreement --metric cv -n document"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--unit is not supported with --metric cv", result.stderr)
+
+
 class TestAgreement(QCTestCase):
     def setUp(self):
         super().setUp()

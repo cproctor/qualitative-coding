@@ -847,7 +847,8 @@ class QCCorpusViewer:
 
     def show_agreement(self, codes=None, coders=None, metric="alpha",
                        recursive_codes=False, depth=None, pattern=None,
-                       file_list=None, format=None, outfile=None, folds=5):
+                       file_list=None, format=None, outfile=None, folds=5,
+                       unit="line"):
         "Compute and display inter-rater agreement between coders."
         if metric == "cv":
             self._show_agreement_cv(
@@ -871,34 +872,60 @@ class QCCorpusViewer:
                 c.name for c in self.corpus.get_all_coders()
             )
 
-            # Build {code: {coder: set(lines)}} mapping
+            # Build {code: {coder: set(units)}} mapping. Using every unit in the
+            # domain (not just coded ones) ensures the domain has both 0s and 1s
+            # for codes that aren't applied to every unit.
             coded = defaultdict(lambda: defaultdict(set))
-            for code_id, coder_id, line, doc_id in self.corpus.get_coded_lines(
-                codes=[n.name for n in nodes],
-                coders=list(coders) if coders else None,
-                pattern=pattern,
-                file_list=file_list,
-            ):
-                coded[code_id][coder_id].add((doc_id, line))
-
-            # All units: every line in every relevant document.
-            # Using all lines (not just coded ones) ensures the domain has both
-            # 0s and 1s for codes that aren't applied to every line.
-            all_units = sorted(
-                (doc.file_path, line_num)
-                for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
-                for line_num in range(
-                    sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+            if unit == "line":
+                for code_id, coder_id, line, doc_id in self.corpus.get_coded_lines(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add((doc_id, line))
+                all_units = sorted(
+                    (doc.file_path, line_num)
+                    for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                    for line_num in range(
+                        sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+                    )
                 )
-            )
+            elif unit == "paragraph":
+                for code_id, coder_id, doc_id, start_line, end_line in self.corpus.get_coded_paragraphs(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add((doc_id, start_line))
+                all_units = sorted(
+                    (doc_id, start_line)
+                    for doc_id, start_line, end_line in self.corpus.get_all_paragraphs(
+                        pattern=pattern, file_list=file_list,
+                    )
+                )
+            elif unit == "document":
+                for code_id, coder_id, doc_id in self.corpus.get_coded_documents(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add(doc_id)
+                all_units = sorted(
+                    doc.file_path
+                    for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                )
+
             if not all_units:
                 print("No documents found for the given filters.")
                 return
             coded_any = set(
-                unit
+                u
                 for coder_map in coded.values()
                 for units in coder_map.values()
-                for unit in units
+                for u in units
             )
             if not coded_any:
                 print("No coded lines found for the given filters.")
