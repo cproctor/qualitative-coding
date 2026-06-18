@@ -449,8 +449,8 @@ the configuration before or after a batch of predictions.
 
    % qc autocode describe -c chris --recursive-codes
 
-autocode interactive CODER
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+autocode CODER
+~~~~~~~~~~~~~~
 
 Interactive active learning loop. Analogous to ``qc code CODER``, but
 ``qc`` selects lines to show based on classifier uncertainty rather than
@@ -459,7 +459,7 @@ trains the classifier.
 
 .. code-block:: console
 
-   % qc autocode interactive human.v2 --train-coders chris auto.v1
+   % qc autocode human.v2 --train-coders chris auto.v1
 
 For each iteration, ``qc`` displays the most uncertain line in context
 along with ranked candidate codes and confidence scores, then prompts for

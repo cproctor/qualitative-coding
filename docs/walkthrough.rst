@@ -564,13 +564,13 @@ To discard a round of predictions entirely and start over:
    % qc coders delete auto.v1
 
 **Interactive active learning.** The classifier knows which lines it is
-most uncertain about. The ``qc autocode interactive`` command uses that
-uncertainty to direct your coding effort where it is most valuable. Its
-invocation is analogous to ``qc code CODER``:
+most uncertain about. The ``qc autocode`` command uses that uncertainty
+to direct your coding effort where it is most valuable. Its invocation is
+analogous to ``qc code CODER``:
 
 .. code-block:: console
 
-   % qc autocode interactive human.v2 --train-coders chris auto.v1
+   % qc autocode human.v2 --train-coders chris auto.v1
 
 ``qc`` shows the most uncertain line in context, along with ranked
 candidate codes and confidence scores:

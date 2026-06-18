@@ -25,8 +25,9 @@ def embed(settings, force, pattern, filenames):
         file_list=read_file_list(filenames),
     )
     click.echo(f"Embedded {n} lines. Cache saved to {embedder.embeddings_dir}.")
-    gitignore = corpus.settings_path.parent / ".gitignore"
-    embeddings_rel = embedder.embeddings_dir.relative_to(corpus.settings_path.parent)
+    settings_dir = corpus.settings_path.resolve().parent
+    gitignore = settings_dir / ".gitignore"
+    embeddings_rel = embedder.embeddings_dir.relative_to(settings_dir)
     if gitignore.exists():
         content = gitignore.read_text()
         if str(embeddings_rel) not in content:

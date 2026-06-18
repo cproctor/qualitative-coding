@@ -93,12 +93,8 @@ def autocode_interactive(coder, codes, settings, train_coders, context_lines,
             click.echo("─" * width)
 
             # Show candidate codes by confidence
-            with corpus.session():
-                raw = predictor.predict_line(
-                    embedder.get_embeddings(doc_id)[0][
-                        embedder.get_embeddings(doc_id)[1].index(line)
-                    ]
-                )
+            matrix, line_numbers = embedder.get_embeddings(doc_id)
+            raw = predictor.predict_line(matrix[line_numbers.index(line)])
             candidates = sorted(raw.items(), key=lambda x: abs(x[1] - 0.5))
             click.echo("Candidate codes (most uncertain first):")
             for code_name, conf in candidates[:8]:
