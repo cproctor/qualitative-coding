@@ -8,6 +8,7 @@ from qualitative_coding.migrations.migration_0_2_3 import Migrate_0_2_3
 from qualitative_coding.migrations.migration_1_0_0 import Migrate_1_0_0
 from qualitative_coding.migrations.migration_1_4_0 import Migrate_1_4_0
 from qualitative_coding.migrations.migration_1_4_1 import Migrate_1_4_1
+from qualitative_coding.migrations.migration_2_0_0 import Migrate_2_0_0
 from qualitative_coding.helpers import read_settings
 
 migrations = [
@@ -15,6 +16,7 @@ migrations = [
     Migrate_1_0_0(),
     Migrate_1_4_0(),
     Migrate_1_4_1(),
+    Migrate_2_0_0(),
 ]
 
 def migrate(settings_path, target=None):

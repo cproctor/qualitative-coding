@@ -6,16 +6,10 @@ import numpy as np
 import structlog
 from tqdm import tqdm
 from qualitative_coding.exceptions import QCError
+from qualitative_coding.optional_deps import import_ai_dependency
+from qualitative_coding.autocode.settings import get_autocode_settings
 
 log = structlog.get_logger()
-
-AUTOCODE_DEFAULTS = {
-    "autocode_embeddings_dir": "embeddings",
-    "autocode_window": [2, 2],
-    "autocode_api_base": "http://localhost:1234/v1",
-    "autocode_api_key": "",
-    "autocode_api_model": "text-embedding-nomic-embed-text-v1.5",
-}
 
 BATCH_SIZE = 100
 
@@ -27,7 +21,7 @@ class CorpusEmbedder:
     and determines how each document is chunked before embedding:
 
     - line:      one embedding per non-blank line, optionally windowed with
-                 surrounding context (autocode_window setting).
+                 surrounding context (autocode.window setting).
     - paragraph: one embedding per paragraph (delimited by blank lines).
     - document:  one embedding per document.
 
@@ -38,24 +32,17 @@ class CorpusEmbedder:
 
     def __init__(self, corpus):
         self.corpus = corpus
-        settings = corpus.settings
-        self.embeddings_dir = corpus.resolve_path(
-            settings.get("autocode_embeddings_dir",
-                         AUTOCODE_DEFAULTS["autocode_embeddings_dir"])
-        )
-        window = settings.get("autocode_window", AUTOCODE_DEFAULTS["autocode_window"])
-        self.window_before, self.window_after = window[0], window[1]
-        self.api_base = settings.get("autocode_api_base",
-                                     AUTOCODE_DEFAULTS["autocode_api_base"])
-        self.api_key = settings.get("autocode_api_key",
-                                    AUTOCODE_DEFAULTS["autocode_api_key"])
-        self.model = settings.get("autocode_api_model",
-                                  AUTOCODE_DEFAULTS["autocode_api_model"])
-        self.unit = settings.get("unit", "line")
+        ac = get_autocode_settings(corpus.settings)
+        self.embeddings_dir = corpus.resolve_path(ac["embeddings_dir"])
+        self.window_before, self.window_after = ac["window"]
+        self.api_base = ac["api_base"]
+        self.api_key = ac["api_key"]
+        self.model = ac["api_model"]
+        self.unit = corpus.settings.get("unit", "line")
 
     def _client(self):
-        from openai import OpenAI
-        return OpenAI(base_url=self.api_base, api_key=self.api_key or "no-key")
+        openai = import_ai_dependency("openai", "Embedding the corpus")
+        return openai.OpenAI(base_url=self.api_base, api_key=self.api_key or "no-key")
 
     def embed_corpus(self, force=False, pattern=None, file_list=None):
         """Embed all matching corpus documents, caching results on disk."""

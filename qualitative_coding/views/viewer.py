@@ -2,6 +2,8 @@ from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
+from qualitative_coding.optional_deps import import_ai_dependency
+from qualitative_coding.autocode.settings import set_autocode_setting
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -766,7 +768,7 @@ class QCCorpusViewer:
 
         embedder = CorpusEmbedder(self.corpus)
         if threshold is not None:
-            self.corpus.settings["autocode_confidence_threshold"] = threshold
+            set_autocode_setting(self.corpus.settings, "confidence_threshold", threshold)
         trainer = AutocodeTrainer(self.corpus, embedder)
         classifiers = trainer.train(
             coders=train_coders,
@@ -856,8 +858,16 @@ class QCCorpusViewer:
                 file_list=file_list, format=format, outfile=outfile, folds=folds,
             )
             return
-        import krippendorff
-        from sklearn.metrics import cohen_kappa_score, f1_score, precision_score, recall_score
+        krippendorff = import_ai_dependency(
+            "krippendorff", "Computing Krippendorff's Alpha"
+        )
+        sklearn_metrics = import_ai_dependency(
+            "sklearn.metrics", "Computing inter-rater agreement metrics"
+        )
+        cohen_kappa_score = sklearn_metrics.cohen_kappa_score
+        f1_score = sklearn_metrics.f1_score
+        precision_score = sklearn_metrics.precision_score
+        recall_score = sklearn_metrics.recall_score
 
         with self.corpus.session():
             tree = self.corpus.get_codebook()
@@ -1001,9 +1011,15 @@ class QCCorpusViewer:
         """Cross-validation mode for show_agreement. Requires embeddings."""
         from qualitative_coding.autocode.embedder import CorpusEmbedder
         from qualitative_coding.autocode.trainer import AutocodeTrainer
-        from sklearn.model_selection import cross_validate
-        from sklearn.svm import LinearSVC
-        from sklearn.calibration import CalibratedClassifierCV
+        cross_validate = import_ai_dependency(
+            "sklearn.model_selection", "Cross-validating autocode classifiers"
+        ).cross_validate
+        LinearSVC = import_ai_dependency(
+            "sklearn.svm", "Cross-validating autocode classifiers"
+        ).LinearSVC
+        CalibratedClassifierCV = import_ai_dependency(
+            "sklearn.calibration", "Cross-validating autocode classifiers"
+        ).CalibratedClassifierCV
         from collections import defaultdict
         import numpy as np
 

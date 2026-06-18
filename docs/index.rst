@@ -61,12 +61,22 @@ install ``qc`` globally on your system, the cleanest approach is to use
 
    % uv tool install qualitative-coding
 
+AI features (autocode, anonymize) depend on additional packages
+(``spacy``, ``openai``, ``scikit-learn``, ``krippendorff``) which are not
+installed by default. Install the ``ai`` extra to use these features:
+
+.. code-block:: console
+
+   % uv tool install "qualitative-coding[ai]"
+
 Install as a dependency
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 If your research project is already contained within a Python package
 and you want to install ``qc`` as a local dependency, simply add
 ``qualitative-coding`` to ``pyproject.toml`` or ``requirements.txt``.
+Add the ``ai`` extra (e.g. ``qualitative-coding[ai]``) if you plan to use
+``qc autocode`` or ``qc corpus anonymize``.
 
 Stuck?
 ~~~~~~

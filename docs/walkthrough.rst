@@ -484,9 +484,10 @@ technical background is given in :ref:`autocode`; here we describe how
 autocoding integrates into the coding workflow.
 
 **Checking readiness.** Start by confirming that you have enough coded
-examples per code to train useful classifiers. The ``autocode_min_examples``
-setting (default: 5) is the required floor; 10–20 examples per code
-gives meaningfully better classifiers in practice.
+examples per code to train useful classifiers. The
+``autocode.min_examples`` setting (default: 5) is the required floor;
+10–20 examples per code gives meaningfully better classifiers in
+practice.
 
 .. code-block:: console
 
@@ -506,11 +507,11 @@ the codes that matter most.
 **Embedding the corpus.** Autocoding requires corpus documents to be
 converted to numerical embeddings using a text embedding API. This is a
 one-time cost; results are cached on disk and reused until the documents
-change. The embedding API is configured in ``settings.yaml`` via
-``autocode_api_base``, ``autocode_api_model``, and ``autocode_api_key``;
-``qc``\ 's defaults use a locally-running model (e.g. via
-`LM Studio <https://lmstudio.ai>`__ or `Ollama <https://ollama.com>`__),
-which keeps all data on your machine.
+change. The embedding API is configured under the ``autocode`` table in
+``settings.yaml`` via ``api_base``, ``api_model``, and ``api_key`` (run
+``qc autocode init`` for an interactive setup); ``qc``\ 's defaults use
+a locally-running model (e.g. via `LM Studio <https://lmstudio.ai>`__ or
+`Ollama <https://ollama.com>`__), which keeps all data on your machine.
 
 .. code-block:: console
 
