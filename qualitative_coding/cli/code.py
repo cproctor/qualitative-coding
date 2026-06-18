@@ -8,6 +8,7 @@ from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
+from qualitative_coding.autocode.settings import set_autocode_setting
 
 @click.command()
 @click.argument("coder")
@@ -97,7 +98,7 @@ def _run_auto_no_edit(corpus, coder, train_coders, threshold, no_hierarchy,
     embedder = CorpusEmbedder(corpus)
     trainer = AutocodeTrainer(corpus, embedder)
     if threshold is not None:
-        corpus.settings["autocode_confidence_threshold"] = threshold
+        set_autocode_setting(corpus.settings, "confidence_threshold", threshold)
 
     classifiers = trainer.train(
         coders=list(train_coders) if train_coders else None,

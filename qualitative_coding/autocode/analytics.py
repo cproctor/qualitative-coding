@@ -2,6 +2,7 @@
 import numpy as np
 from collections import defaultdict
 import structlog
+from qualitative_coding.optional_deps import import_ai_dependency
 
 log = structlog.get_logger()
 
@@ -81,7 +82,9 @@ def compute_cohesion(corpus, embedder, codes=None, coders=None,
 
     Returns {code_name: {"examples": N, "variance_explained": float, "suggestion": str}}.
     """
-    from sklearn.decomposition import PCA
+    PCA = import_ai_dependency(
+        "sklearn.decomposition", "Computing code cohesion"
+    ).PCA
 
     code_data = _get_code_embeddings(corpus, embedder, codes=codes, coders=coders,
                                      pattern=pattern, file_list=file_list)

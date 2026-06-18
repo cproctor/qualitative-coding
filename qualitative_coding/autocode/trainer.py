@@ -2,6 +2,8 @@ from collections import defaultdict
 from random import sample
 import numpy as np
 import structlog
+from qualitative_coding.optional_deps import import_ai_dependency
+from qualitative_coding.autocode.settings import get_autocode_settings
 
 log = structlog.get_logger()
 
@@ -18,8 +20,8 @@ class AutocodeTrainer:
     def __init__(self, corpus, embedder):
         self.corpus = corpus
         self.embedder = embedder
-        settings = corpus.settings
-        self.min_examples = settings.get("autocode_min_examples", 5)
+        ac = get_autocode_settings(corpus.settings)
+        self.min_examples = ac["min_examples"]
 
     def _load_all_embeddings(self, coders=None, pattern=None, file_list=None):
         """Load embeddings for all relevant coded lines.
@@ -79,8 +81,12 @@ class AutocodeTrainer:
 
         Returns {code_name: fitted_classifier}.
         """
-        from sklearn.svm import LinearSVC
-        from sklearn.calibration import CalibratedClassifierCV
+        svm = import_ai_dependency("sklearn.svm", "Training autocode classifiers")
+        calibration = import_ai_dependency(
+            "sklearn.calibration", "Training autocode classifiers"
+        )
+        LinearSVC = svm.LinearSVC
+        CalibratedClassifierCV = calibration.CalibratedClassifierCV
 
         all_embeddings = self._load_all_embeddings(
             coders=coders, pattern=pattern, file_list=file_list

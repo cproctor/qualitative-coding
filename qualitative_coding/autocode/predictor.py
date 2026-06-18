@@ -1,13 +1,9 @@
 from collections import defaultdict
 import numpy as np
 import structlog
+from qualitative_coding.autocode.settings import get_autocode_settings
 
 log = structlog.get_logger()
-
-AUTOCODE_DEFAULTS = {
-    "autocode_confidence_threshold": 0.6,
-    "autocode_child_threshold": 0.4,
-}
 
 
 class AutocodePredictor:
@@ -17,15 +13,9 @@ class AutocodePredictor:
         self.corpus = corpus
         self.embedder = embedder
         self.classifiers = classifiers
-        s = corpus.settings
-        self.confidence_threshold = s.get(
-            "autocode_confidence_threshold",
-            AUTOCODE_DEFAULTS["autocode_confidence_threshold"],
-        )
-        self.child_threshold = s.get(
-            "autocode_child_threshold",
-            AUTOCODE_DEFAULTS["autocode_child_threshold"],
-        )
+        ac = get_autocode_settings(corpus.settings)
+        self.confidence_threshold = ac["confidence_threshold"]
+        self.child_threshold = ac["child_threshold"]
 
     def predict_line(self, embedding):
         """Return {code: P(positive)} for all trained codes."""
@@ -44,8 +34,8 @@ class AutocodePredictor:
         """Post-process predictions using tree-descent.
 
         Walks the codebook tree top-down. At each node: if confidence
-        exceeds autocode_confidence_threshold, consider children. If no
-        child exceeds autocode_child_threshold, predict the parent and
+        exceeds autocode.confidence_threshold, consider children. If no
+        child exceeds autocode.child_threshold, predict the parent and
         stop descending.
 
         When apply_hierarchy=False, simply threshold all predictions.

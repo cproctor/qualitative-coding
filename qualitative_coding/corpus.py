@@ -70,9 +70,10 @@ DEFAULT_SETTINGS = {
     'log_file': 'qualitative_coding.log',
     'verbose': False,
     'unit': 'line',
+    'autocode': {},
 }
 
-LATEST_MIGRATION = Version.parse("1.4.0")
+LATEST_MIGRATION = Version.parse("2.0.0")
 
 class QCCorpus:
     """Provides data access to the corpus of documents and codes. 

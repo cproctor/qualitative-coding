@@ -6,7 +6,7 @@ from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
 from qualitative_coding.exceptions import QCError
 
-@click.command(name="autocode")
+@click.command(name="interactive")
 @click.argument("coder")
 @click.argument("codes", nargs=-1)
 @click.option("-s", "--settings", type=click.Path(exists=True), help="Settings file")

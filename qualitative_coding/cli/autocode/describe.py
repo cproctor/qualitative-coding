@@ -5,7 +5,7 @@ from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
-from qualitative_coding.autocode.embedder import AUTOCODE_DEFAULTS
+from qualitative_coding.autocode.settings import get_autocode_settings
 
 @click.command()
 @click.argument("codes", nargs=-1)
@@ -27,18 +27,17 @@ def describe(codes, settings, coders, recursive_codes, pattern, filenames,
     log = configure_logger(settings_path)
     log.info("autocode describe", codes=codes, coders=coders)
     corpus = QCCorpus(settings_path)
-    s = corpus.settings
+    ac = get_autocode_settings(corpus.settings)
 
     # Print hyperparameters
     click.echo("Hyperparameters:")
+    click.echo(f"  unit: {corpus.settings.get('unit', 'line')}")
     for key in [
-        "unit",
-        "autocode_api_base", "autocode_api_model", "autocode_window",
-        "autocode_min_examples", "autocode_confidence_threshold",
-        "autocode_child_threshold", "autocode_embeddings_dir",
+        "api_base", "api_model", "window",
+        "min_examples", "confidence_threshold",
+        "child_threshold", "embeddings_dir",
     ]:
-        val = s.get(key, AUTOCODE_DEFAULTS.get(key, "—"))
-        click.echo(f"  {key}: {val}")
+        click.echo(f"  autocode.{key}: {ac[key]}")
     click.echo()
 
     from qualitative_coding.autocode.embedder import CorpusEmbedder
