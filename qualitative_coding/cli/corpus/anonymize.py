@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 import click
 import spacy
 import yaml
@@ -25,7 +27,10 @@ LABELS = {
 @click.option("-f", "--filenames", help="File path containing a list of filenames to use")
 @click.option("-k", "--key", default="key.yaml", help="Path to key file")
 @click.option("-r", "--reverse", is_flag=True, help="Un-anonymize documents")
-@click.option("-o", "--out-dir", default="anonymized", help="location for anonymized documemts")
+@click.option("-o", "--out-dir", default=None,
+        help="Location for anonymized documents. Defaults to 'anonymized'; "
+             "ignored if --update is given without --out-dir, in which case "
+             "a temporary directory is used and removed afterward.")
 @click.option("-u", "--update", is_flag=True, help="Update documents in place")
 @click.option("-d", "--dryrun", is_flag=True, help="Show diff instead of performing update")
 @handle_qc_errors
@@ -33,10 +38,11 @@ def anonymize(settings, pattern, filenames, key, reverse, out_dir, update, dryru
     "Anonymize corpus files"
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     key_file = Path(key)
-    out_path = Path(out_dir)
+    use_temp_dir = update and out_dir is None
+    out_path = Path(tempfile.mkdtemp()) if use_temp_dir else Path(out_dir or "anonymized")
     log = configure_logger(settings_path)
-    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key, 
-             reverse=reverse, out_dir=out_dir, update=update, dryrun=dryrun)
+    log.info("corpus anonymize", pattern=pattern, filenames=filenames, key=key,
+             reverse=reverse, out_dir=str(out_path), update=update, dryrun=dryrun)
     corpus = QCCorpus(settings_path)
     with corpus.session():
         docs = corpus.get_documents(pattern=pattern, file_list=read_file_list(filenames))
@@ -46,13 +52,17 @@ def anonymize(settings, pattern, filenames, key, reverse, out_dir, update, dryru
         if reverse:
             keys = reverse_keys(keys)
         out_path.mkdir(exist_ok=True, parents=True)
-        with corpus.session():
-            for doc in docs:
-                source = corpus.corpus_dir / doc.file_path
-                dest = out_path / doc.file_path
-                replace_keys(keys, source, dest)
-                if update:
-                    corpus.update_document(source, dest, dryrun)
+        try:
+            with corpus.session():
+                for doc in docs:
+                    source = corpus.corpus_dir / doc.file_path
+                    dest = out_path / doc.file_path
+                    replace_keys(keys, source, dest)
+                    if update:
+                        corpus.update_document(source, dest, dryrun)
+        finally:
+            if use_temp_dir:
+                shutil.rmtree(out_path, ignore_errors=True)
     else:
         if reverse:
             raise QCError("Cannot use --reverse unless key file exists")

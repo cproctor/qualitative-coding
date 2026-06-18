@@ -45,5 +45,17 @@ class TestCorpusAnonymize(QCTestCase):
         anon_news = (self.testpath / "anonymized" / "news.txt").read_text()
         self.assertTrue("Adeboyejo" not in anon_news)
 
+    def test_update_does_not_leave_out_dir_behind(self):
+        self.run_in_testpath("qc corpus anonymize --update")
+        news = (self.testpath / "corpus" / "news.txt").read_text()
+        self.assertTrue("Victor Adeboyejo" not in news)
+        self.assertFalse((self.testpath / "anonymized").exists())
+
+    def test_update_with_explicit_out_dir_keeps_it(self):
+        self.run_in_testpath("qc corpus anonymize --update -o kept")
+        news = (self.testpath / "corpus" / "news.txt").read_text()
+        self.assertTrue("Victor Adeboyejo" not in news)
+        self.assertTrue((self.testpath / "kept" / "news.txt").exists())
+
 
 
