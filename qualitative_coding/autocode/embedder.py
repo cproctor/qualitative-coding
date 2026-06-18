@@ -5,6 +5,7 @@ import json
 import numpy as np
 import structlog
 from tqdm import tqdm
+from qualitative_coding.exceptions import QCError
 
 log = structlog.get_logger()
 
@@ -162,8 +163,9 @@ class CorpusEmbedder:
         For document unit: [0].
         """
         if not self.is_cache_valid(document_id):
-            raise RuntimeError(
-                f"Embeddings for {document_id} are missing or stale. "
+            reason = self._cache_invalidity_reason(document_id)
+            raise QCError(
+                f"Embeddings for {document_id} are missing or stale ({reason}). "
                 "Run `qc autocode embed` first."
             )
         matrix = np.load(self.cache_path(document_id))
@@ -223,6 +225,31 @@ class CorpusEmbedder:
             if not doc:
                 return False
             return doc[0].file_hash == sidecar.get("hash")
+
+    def _cache_invalidity_reason(self, document_id) -> str:
+        """Diagnoses why is_cache_valid returned False, for error messages."""
+        sidecar_p = self.sidecar_path(document_id)
+        npy_p = self.cache_path(document_id)
+        if not sidecar_p.exists() or not npy_p.exists():
+            return "no cached embeddings found"
+        sidecar = json.loads(sidecar_p.read_text())
+        if sidecar.get("model") != self.model:
+            return f"embedded with model '{sidecar.get('model')}', settings now specify '{self.model}'"
+        sidecar_unit = sidecar.get("unit", "line")
+        if sidecar_unit != self.unit:
+            return (
+                f"embedded at unit '{sidecar_unit}', but settings now specify "
+                f"unit '{self.unit}'; re-embed after changing 'unit' in settings"
+            )
+        if self.unit == "line":
+            window = [self.window_before, self.window_after]
+            if sidecar.get("window") != window:
+                return f"embedded with window {sidecar.get('window')}, settings now specify {window}"
+        with self.corpus.session():
+            doc = self.corpus.get_documents(file_list=[document_id])
+            if not doc:
+                return "document no longer exists in corpus"
+        return "document content has changed since embedding"
 
     def invalidate(self, document_id):
         """Delete cached embeddings for a document (called after corpus update)."""

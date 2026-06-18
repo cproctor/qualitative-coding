@@ -68,6 +68,21 @@ class TestCorpusEmbedder(QCTestCase):
         self.embedder.invalidate("macbeth.txt")
         self.assertFalse(self.embedder.is_cache_valid("macbeth.txt"))
 
+    def test_get_embeddings_raises_qc_error_on_unit_mismatch(self):
+        from qualitative_coding.corpus import QCCorpus
+        from qualitative_coding.autocode.embedder import CorpusEmbedder
+        from qualitative_coding.exceptions import QCError
+
+        with self._mock_embed():
+            self.embedder.embed_corpus()
+
+        self.update_settings("unit", "paragraph")
+        corpus = QCCorpus(self.testpath / "settings.yaml")
+        embedder = CorpusEmbedder(corpus)
+        with self.assertRaises(QCError) as ctx:
+            embedder.get_embeddings("macbeth.txt")
+        self.assertIn("unit", str(ctx.exception))
+
     def test_embed_skips_valid_cache(self):
         with self._mock_embed() as mock_ctx:
             self.embedder.embed_corpus()
