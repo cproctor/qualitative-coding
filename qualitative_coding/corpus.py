@@ -72,7 +72,7 @@ DEFAULT_SETTINGS = {
     'unit': 'line',
 }
 
-LATEST_MIGRATION = Version.parse("1.4.0")
+LATEST_MIGRATION = Version.parse("1.4.1")
 
 class QCCorpus:
     """Provides data access to the corpus of documents and codes. 
