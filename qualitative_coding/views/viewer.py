@@ -2,6 +2,8 @@ from qualitative_coding.tree_node import TreeNode
 from qualitative_coding.helpers import prompt_for_choice
 from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
+from qualitative_coding.optional_deps import import_ai_dependency
+from qualitative_coding.autocode.settings import set_autocode_setting
 from tabulate import tabulate
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -766,7 +768,7 @@ class QCCorpusViewer:
 
         embedder = CorpusEmbedder(self.corpus)
         if threshold is not None:
-            self.corpus.settings["autocode_confidence_threshold"] = threshold
+            set_autocode_setting(self.corpus.settings, "confidence_threshold", threshold)
         trainer = AutocodeTrainer(self.corpus, embedder)
         classifiers = trainer.train(
             coders=train_coders,
@@ -847,7 +849,8 @@ class QCCorpusViewer:
 
     def show_agreement(self, codes=None, coders=None, metric="alpha",
                        recursive_codes=False, depth=None, pattern=None,
-                       file_list=None, format=None, outfile=None, folds=5):
+                       file_list=None, format=None, outfile=None, folds=5,
+                       unit="line"):
         "Compute and display inter-rater agreement between coders."
         if metric == "cv":
             self._show_agreement_cv(
@@ -855,8 +858,16 @@ class QCCorpusViewer:
                 file_list=file_list, format=format, outfile=outfile, folds=folds,
             )
             return
-        import krippendorff
-        from sklearn.metrics import cohen_kappa_score, f1_score, precision_score, recall_score
+        krippendorff = import_ai_dependency(
+            "krippendorff", "Computing Krippendorff's Alpha"
+        )
+        sklearn_metrics = import_ai_dependency(
+            "sklearn.metrics", "Computing inter-rater agreement metrics"
+        )
+        cohen_kappa_score = sklearn_metrics.cohen_kappa_score
+        f1_score = sklearn_metrics.f1_score
+        precision_score = sklearn_metrics.precision_score
+        recall_score = sklearn_metrics.recall_score
 
         with self.corpus.session():
             tree = self.corpus.get_codebook()
@@ -871,34 +882,60 @@ class QCCorpusViewer:
                 c.name for c in self.corpus.get_all_coders()
             )
 
-            # Build {code: {coder: set(lines)}} mapping
+            # Build {code: {coder: set(units)}} mapping. Using every unit in the
+            # domain (not just coded ones) ensures the domain has both 0s and 1s
+            # for codes that aren't applied to every unit.
             coded = defaultdict(lambda: defaultdict(set))
-            for code_id, coder_id, line, doc_id in self.corpus.get_coded_lines(
-                codes=[n.name for n in nodes],
-                coders=list(coders) if coders else None,
-                pattern=pattern,
-                file_list=file_list,
-            ):
-                coded[code_id][coder_id].add((doc_id, line))
-
-            # All units: every line in every relevant document.
-            # Using all lines (not just coded ones) ensures the domain has both
-            # 0s and 1s for codes that aren't applied to every line.
-            all_units = sorted(
-                (doc.file_path, line_num)
-                for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
-                for line_num in range(
-                    sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+            if unit == "line":
+                for code_id, coder_id, line, doc_id in self.corpus.get_coded_lines(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add((doc_id, line))
+                all_units = sorted(
+                    (doc.file_path, line_num)
+                    for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                    for line_num in range(
+                        sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+                    )
                 )
-            )
+            elif unit == "paragraph":
+                for code_id, coder_id, doc_id, start_line, end_line in self.corpus.get_coded_paragraphs(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add((doc_id, start_line))
+                all_units = sorted(
+                    (doc_id, start_line)
+                    for doc_id, start_line, end_line in self.corpus.get_all_paragraphs(
+                        pattern=pattern, file_list=file_list,
+                    )
+                )
+            elif unit == "document":
+                for code_id, coder_id, doc_id in self.corpus.get_coded_documents(
+                    codes=[n.name for n in nodes],
+                    coders=list(coders) if coders else None,
+                    pattern=pattern,
+                    file_list=file_list,
+                ):
+                    coded[code_id][coder_id].add(doc_id)
+                all_units = sorted(
+                    doc.file_path
+                    for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
+                )
+
             if not all_units:
                 print("No documents found for the given filters.")
                 return
             coded_any = set(
-                unit
+                u
                 for coder_map in coded.values()
                 for units in coder_map.values()
-                for unit in units
+                for u in units
             )
             if not coded_any:
                 print("No coded lines found for the given filters.")
@@ -974,9 +1011,15 @@ class QCCorpusViewer:
         """Cross-validation mode for show_agreement. Requires embeddings."""
         from qualitative_coding.autocode.embedder import CorpusEmbedder
         from qualitative_coding.autocode.trainer import AutocodeTrainer
-        from sklearn.model_selection import cross_validate
-        from sklearn.svm import LinearSVC
-        from sklearn.calibration import CalibratedClassifierCV
+        cross_validate = import_ai_dependency(
+            "sklearn.model_selection", "Cross-validating autocode classifiers"
+        ).cross_validate
+        LinearSVC = import_ai_dependency(
+            "sklearn.svm", "Cross-validating autocode classifiers"
+        ).LinearSVC
+        CalibratedClassifierCV = import_ai_dependency(
+            "sklearn.calibration", "Cross-validating autocode classifiers"
+        ).CalibratedClassifierCV
         from collections import defaultdict
         import numpy as np
 

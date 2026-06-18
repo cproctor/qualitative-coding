@@ -1,6 +1,5 @@
 import os
 import click
-import spacy
 import yaml
 from tqdm import tqdm
 from pathlib import Path
@@ -10,6 +9,7 @@ from qualitative_coding.exceptions import QCError, IncompatibleOptions
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.logs import configure_logger
+from qualitative_coding.optional_deps import import_ai_dependency
 
 LABELS = {
     "PERSON": "Person",
@@ -81,6 +81,7 @@ def generate_key_file(key, file_paths, log):
     """Generates a YAML file containing keys for anonymization.
     A key file is required to anonymize a corpus. 
     """
+    spacy = import_ai_dependency("spacy", "Anonymizing the corpus")
     model_name = 'en_core_web_sm'
     if spacy.util.is_package(model_name):
         log.debug(f"Using spacy model {model_name}")

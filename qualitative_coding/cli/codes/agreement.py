@@ -19,22 +19,30 @@ from tabulate import tabulate_formats
 @click.option("-r", "--recursive-codes", "recursive_codes", is_flag=True,
         help="Include child codes")
 @click.option("-d", "--depth", type=int, help="Maximum depth in code tree")
+@click.option("-n", "--unit", default=None, help="Unit of analysis (default from settings)",
+        type=click.Choice(['line', 'paragraph', 'document']))
 @click.option("-p", "--pattern", help="Pattern to filter corpus filenames")
 @click.option("-f", "--filenames", help="File path containing a list of filenames to use")
 @click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
         metavar="[tabulate_formats]", help="Output format")
 @click.option("-o", "--outfile", help="Filename for CSV export")
 @handle_qc_errors
-def agreement(codes, settings, coders, metric, folds, recursive_codes, depth, pattern,
+def agreement(codes, settings, coders, metric, folds, recursive_codes, depth, unit, pattern,
               filenames, _format, outfile):
     "Compute inter-rater agreement between coders"
     if metric in ("kappa", "f1") and len(coders) != 2:
         raise IncompatibleOptions(f"--metric {metric} requires exactly two --coders")
+    if metric == "cv" and unit is not None:
+        raise IncompatibleOptions(
+            "--unit is not supported with --metric cv; granularity is "
+            "determined by the unit embeddings were generated with."
+        )
     settings_path = settings or os.environ.get("QC_SETTINGS", "settings.yaml")
     log = configure_logger(settings_path)
     log.info("codes agreement", codes=codes, coders=coders, metric=metric,
-             recursive_codes=recursive_codes, pattern=pattern)
+             recursive_codes=recursive_codes, unit=unit, pattern=pattern)
     corpus = QCCorpus(settings_path)
+    unit = unit or corpus.settings.get("unit", "line")
     viewer = QCCorpusViewer(corpus)
     viewer.show_agreement(
         codes=codes,
@@ -42,6 +50,7 @@ def agreement(codes, settings, coders, metric, folds, recursive_codes, depth, pa
         metric=metric,
         recursive_codes=recursive_codes,
         depth=depth,
+        unit=unit,
         pattern=pattern,
         file_list=read_file_list(filenames),
         format=_format,

@@ -386,7 +386,7 @@ evaluation is entirely internal to the human-coded portion of the
 corpus, it costs nothing in terms of new coding effort or API calls
 (embeddings are already cached). Cross-validation is most informative
 when each code has at least ten to twenty coded examples; the minimum
-required for training is set by ``autocode_min_examples`` (default: 5).
+required for training is set by ``autocode.min_examples`` (default: 5).
 
 **A note on what these numbers mean**: a cross-validated F1 of 0.75
 for a code does not mean that 25% of predictions will be wrong—it is
@@ -420,14 +420,14 @@ wide range of analytical tasks.
 ``qc`` obtains embeddings by sending text to an OpenAI-compatible
 embedding API—either a locally-hosted model (such as `Ollama
 <https://ollama.com>`__ or `LM Studio <https://lmstudio.ai>`__) or a
-cloud-based service. The ``autocode_api_base`` and
-``autocode_api_model`` settings configure which service is used. Using
+cloud-based service. The ``autocode.api_base`` and
+``autocode.api_model`` settings configure which service is used. Using
 a local model keeps all data on the researcher's own machine, which is
 important for research involving sensitive or confidential data.
 
 For the *line* unit of analysis, ``qc`` embeds each line together with
 a small window of surrounding lines (configurable with
-``autocode_window``), providing the classifier with context. For the
+``autocode.window``), providing the classifier with context. For the
 *paragraph* unit, the full paragraph text is embedded; for the
 *document* unit, the full document. Embeddings are cached on disk, so
 the API is only called once per document; subsequent retraining,
@@ -487,8 +487,8 @@ it in a calibration layer (Platt scaling) that converts the model's
 output to a confidence score between 0 and 1. This score represents the
 model's estimated probability that a given piece of text belongs to the
 code. Confidence scores are used to threshold predictions
-(``autocode_confidence_threshold``), to navigate the code tree
-(``autocode_child_threshold``), and to identify uncertain cases during
+(``autocode.confidence_threshold``), to navigate the code tree
+(``autocode.child_threshold``), and to identify uncertain cases during
 active learning.
 
 No trained model is ever written to disk. Classifiers are rebuilt

@@ -70,9 +70,10 @@ DEFAULT_SETTINGS = {
     'log_file': 'qualitative_coding.log',
     'verbose': False,
     'unit': 'line',
+    'autocode': {},
 }
 
-LATEST_MIGRATION = Version.parse("1.4.0")
+LATEST_MIGRATION = Version.parse("2.0.0")
 
 class QCCorpus:
     """Provides data access to the corpus of documents and codes. 
@@ -729,7 +730,24 @@ class QCCorpus:
         query = self.filter_query_by_coders(query, coders)
         return self.get_session().execute(query).all()
 
-    def get_code_matrix(self, codes, 
+    def get_all_paragraphs(self, pattern=None, file_list=None):
+        """Returns [(file_path, start_line, end_line)] for every paragraph in
+        matching documents, regardless of whether it has been coded.
+        """
+        query = (
+            select(Document.file_path, Location.start_line, Location.end_line)
+            .join(DocumentIndex, DocumentIndex.document_id == Document.file_path)
+            .join(Location, Location.document_index_id == DocumentIndex.id)
+            .where(DocumentIndex.name == "paragraphs")
+            .order_by(Document.file_path, Location.start_line)
+        )
+        if pattern:
+            query = query.where(Document.file_path.contains(pattern))
+        if file_list:
+            query = query.where(Document.file_path.in_(file_list))
+        return self.get_session().execute(query).all()
+
+    def get_code_matrix(self, codes,
         recursive_codes=False,
         recursive_counts=False,
         depth=None, 

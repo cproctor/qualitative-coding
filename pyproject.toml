@@ -1,6 +1,6 @@
 [project]
 name = "qualitative-coding"
-version = "2.0.0"
+version = "2.0.1"
 description = "Qualitative coding tools to support computational thinking"
 authors = [
     {name = "Chris Proctor",email = "chris@chrisproctor.net"}
@@ -21,6 +21,10 @@ dependencies = [
     "rich>=13.9.4,<14.0.0",
     "more-itertools>=10.6.0,<11.0.0",
     "webvtt-py>=0.5.1,<0.6.0",
+]
+
+[project.optional-dependencies]
+ai = [
     "spacy>=3.8.7,<4.0.0",
     "scikit-learn>=1.6,<2",
     "openai>=1.0,<2",

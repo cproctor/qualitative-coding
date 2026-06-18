@@ -50,10 +50,17 @@ for Linux) which has Python 3.9 or higher installed. If you want to install
 
     uv tool install qualitative-coding
 
+AI features (`qc autocode`, `qc corpus anonymize`) depend on additional
+packages (spacy, openai, scikit-learn, krippendorff) which are not
+installed by default. Install the `ai` extra to use these features:
+
+    uv tool install "qualitative-coding[ai]"
+
 If your research project
 is already contained within a Python package and you want to install `qc` 
 as a local dependency, simply add `qualitative-coding` to `pyproject.toml`
-or `requirements.txt`.
+or `requirements.txt`. Add the `ai` extra (e.g. `qualitative-coding[ai]`)
+if you plan to use AI features.
 
 `qc` relies on [Pandoc](https://pandoc.org/) for converting between file formats, 
 so make sure that is installed as well. `qc` uses a text editor for coding; 

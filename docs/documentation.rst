@@ -243,8 +243,8 @@ corpus anonymize
 
 .. note::
 
-   This command requires installing the optional language model. See 
-   :ref:`installation`.
+   This command requires installing the ``ai`` dependency group (for
+   ``spacy``) as well as a spacy language model. See :ref:`installation`.
 
 Anonymize corpus documents. Documents containing personally-identifiable
 information (PII) frequently need to have this imformation removed in order to 
@@ -363,6 +363,11 @@ display more columns.
 codes agreement
 ~~~~~~~~~~~~~~~
 
+.. note::
+
+   This command requires installing the optional ``ai`` dependency
+   group. See :ref:`installation`.
+
 Computes inter-rater agreement or classifier quality across all selected
 codes. The ``--metric`` option selects the measure; ``-c`` specifies the
 coders to include.
@@ -395,10 +400,28 @@ filter options.
 Autocode commands
 -----------------
 
+.. note::
+
+   These commands require installing the optional ``ai`` dependency
+   group. See :ref:`installation`.
+
 The following commands are grouped under ``qc autocode`` (alias: ``qc ac``).
 They require embeddings to have been generated first with ``qc autocode embed``.
 See :ref:`autocode` for a technical overview and the Vignette for a
 worked example.
+
+autocode init
+~~~~~~~~~~~~~
+
+Interactively configure the ``autocode`` settings table (see
+`Autocode settings`_): cached embeddings directory, context window,
+training thresholds, and the embedding API connection. Run this before
+``qc autocode embed`` to set up a project for autocoding. It is safe to
+re-run; existing values are offered as defaults.
+
+.. code-block:: console
+
+   % qc autocode init
 
 autocode embed
 ~~~~~~~~~~~~~~
@@ -642,42 +665,57 @@ is used.
 Autocode settings
 ~~~~~~~~~~~~~~~~~
 
-The following settings configure the ``qc autocode`` command group. All have
-sensible defaults; most projects only need to set the embedding API connection.
+The following settings, nested under an ``autocode`` table in
+``settings.yaml``, configure the ``qc autocode`` command group. All have
+sensible defaults; most projects only need to set the embedding API
+connection. Every project has an ``autocode`` table (even if empty),
+whether or not autocode is in use. Run ``qc autocode init`` for an
+interactive setup, or edit ``settings.yaml`` directly:
 
-``autocode_embeddings_dir``
+.. code-block:: yaml
+
+   autocode:
+     embeddings_dir: embeddings
+     window: [2, 2]
+     min_examples: 5
+     confidence_threshold: 0.6
+     child_threshold: 0.4
+     api_base: http://localhost:1234/v1
+     api_key: ""
+     api_model: text-embedding-nomic-embed-text-v1.5
+
+``autocode.embeddings_dir``
   Directory for cached embeddings. Default: ``embeddings``. Add this directory
   to ``.gitignore`` — embeddings can be large and are reproducibly regenerated
   from the corpus.
 
-``autocode_window``
+``autocode.window``
   List of ``[lines_before, lines_after]`` included in each line's embedding
   text. Larger windows give classifiers more context; smaller windows are
   faster. Default: ``[2, 2]``. Only relevant when ``unit: line``.
 
-``autocode_min_examples``
+``autocode.min_examples``
   Minimum number of positive examples required to train a classifier for a
   code. Codes with fewer examples are skipped. Default: ``5``.
 
-``autocode_confidence_threshold``
+``autocode.confidence_threshold``
   Minimum classifier confidence required to write a prediction. Default:
   ``0.6``.
 
-``autocode_child_threshold``
+``autocode.child_threshold``
   When walking the code tree, minimum confidence required to prefer a child
   code over its parent. Default: ``0.4``.
 
-``autocode_api_base``
+``autocode.api_base``
   Base URL for the OpenAI-compatible embedding API. Default:
   ``http://localhost:1234/v1``. Set to ``https://api.openai.com/v1`` for
   OpenAI, or use any compatible local server (LM Studio, Ollama).
 
-``autocode_api_key``
+``autocode.api_key``
   API key for the embedding service. Default: empty string (suitable for local
-  servers). Can alternatively be set via the ``QC_AUTOCODE_API_KEY``
-  environment variable.
+  servers).
 
-``autocode_api_model``
+``autocode.api_model``
   Name of the embedding model on the configured server. Default:
   ``text-embedding-nomic-embed-text-v1.5``.
 
