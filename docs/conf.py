@@ -26,6 +26,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+# Publishes docs/skills/SKILL.md verbatim to the site root (e.g.
+# https://qualitative-coding.readthedocs.io/en/latest/SKILL.md), so it can be
+# fetched directly as a Claude Code skill.
+html_extra_path = ['skills']
 html_logo = '../qc_lockup.v0.png'
 html_theme_options = {
     'logo_only': True,
