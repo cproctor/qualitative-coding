@@ -362,7 +362,7 @@ class QCCorpusViewer:
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
                 with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = [line for line in fh]
+                    lines = fh.read().splitlines(keepends=True)
                 ranges = self.merge_ranges(
                     [range(n-before, n+after+1) for n in coded_lines.keys()], 
                     clamp=[0, len(lines)]
@@ -393,7 +393,7 @@ class QCCorpusViewer:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
                 with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = [line for line in fh]
+                    lines = fh.read().splitlines(keepends=True)
                 para_code_count = sum(len(code_set) for code_set in coded_paras.values())
                 print(f"\n{doc_path} ({para_code_count})")
                 print("=" * text_width)
@@ -486,7 +486,7 @@ class QCCorpusViewer:
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
                 with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = [line for line in fh]
+                    lines = fh.read().splitlines(keepends=True)
                 for line, codes in coded_lines.items():
                     for code in codes:
                         line_start = max(0, line - before)
@@ -507,7 +507,7 @@ class QCCorpusViewer:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
                 with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = [line for line in fh]
+                    lines = fh.read().splitlines(keepends=True)
                 for (para_start, para_end), codes in coded_paras.items():
                     for code in codes:
                         records.append({

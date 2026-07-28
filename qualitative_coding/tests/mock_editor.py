@@ -31,12 +31,21 @@ if args.memo:
     memo = "I'm having all these ideas. I need to write them down."
     memo_file_path.write_text(memo_file_path.read_text() + memo)
 else:
-    nlines = len(Path(args.corpus_file_path).read_text().split('\n'))
+    # Must match Viewer.open_editor's expected_length calculation (len(...splitlines())), not a
+    # plain '\n' split, or this mismatches on any corpus text containing a character
+    # str.splitlines() treats as a line break but a '\n' split doesn't (e.g. '\x0c' form feed).
+    nlines = len(Path(args.corpus_file_path).read_text().splitlines())
     if nlines == 1:
         Path(args.codes_file_path).write_text("code_one")
     else:
         lines = ["line, one", "line, two"] + ([""] * (nlines - 2))
-        Path(args.codes_file_path).write_text('\n'.join(lines))
+        # A trailing '\n' is required here, not optional: '\n'.join(lines) with an empty last
+        # element loses that element on round-trip through str.splitlines() (join doesn't emit a
+        # separator after the final item, so the empty last "line" leaves no trace), which used
+        # to be silently masked by nlines itself being miscounted by one (see the comment on the
+        # nlines calculation above) -- fixing that miscount alone would have broken this without
+        # this trailing newline too.
+        Path(args.codes_file_path).write_text('\n'.join(lines) + '\n')
     if args.verbose:
         print('-' * 80)
         print("MOCK EDITOR")
