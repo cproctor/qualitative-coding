@@ -21,19 +21,22 @@ def reindex_coded_lines(coded_lines, diff):
     Assumes coded_lines are sorted by line number.
     """
     offsets = peekable(read_diff_offsets(diff))
-    current_offset_line = 0
-    current_offset = 0
     cum_offset = 0
     reindexed_coded_lines = []
     for code, coder, line, path in coded_lines:
-        try:
-            if offsets.peek()[0] <= line:
-                current_offset_line, current_offset = next(offsets)
-                cum_offset += current_offset
-        except StopIteration:
-            pass
-
-
+        # Apply every offset at or before this line, not just the next one -- a single coded
+        # line can fall after multiple edits, and all of their shifts need to accumulate before
+        # this line is reindexed.
+        while True:
+            try:
+                if offsets.peek()[0] <= line:
+                    _, offset = next(offsets)
+                    cum_offset += offset
+                else:
+                    break
+            except StopIteration:
+                break
+        reindexed_coded_lines.append((code, coder, line + cum_offset, path))
     return reindexed_coded_lines
 
 def read_diff_offsets(diff):
@@ -71,9 +74,9 @@ def read_hunk(lines):
         while not lines.peek().startswith('@'):
             line = next(lines)
             if in_op:
-                if line[0] == '-':
+                if line.startswith('-'):
                     minus += 1
-                elif line[0] == '+':
+                elif line.startswith('+'):
                     plus += 1
                 else:
                     in_op = False
@@ -82,15 +85,22 @@ def read_hunk(lines):
                     elif plus - minus < 0:
                         ops.append((op_start_line_number + minus - plus - 1, plus - minus))
             else:
-                if line[0] == '-':
+                if line.startswith('-'):
                     in_op = True
                     op_start_line_number = line_number
                     minus, plus = 1, 0
-                elif line[0] == '+':
+                elif line.startswith('+'):
                     in_op = True
                     op_start_line_number = line_number
                     minus, plus = 0, 1
             line_number += 1
+    except StopIteration:
+        # Reaching the end of the diff (not just the end of this hunk) ends the loop the same
+        # way running into the next hunk's '@@' header would -- `finally` alone does not stop
+        # the StopIteration from propagating out of this function, which used to discard
+        # whatever `ops` had already collected (including the trailing op appended below)
+        # instead of returning it.
+        pass
     finally:
         if in_op:
             if plus - minus > 0:
