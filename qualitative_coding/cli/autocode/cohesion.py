@@ -1,10 +1,10 @@
 import click
 import os
-from tabulate import tabulate, tabulate_formats
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
+from qualitative_coding.views.table_output import write_table, TABLE_FORMATS
 
 @click.command()
 @click.argument("codes", nargs=-1)
@@ -13,8 +13,8 @@ from qualitative_coding.logs import configure_logger
 @click.option("-r", "--recursive-codes", "recursive_codes", is_flag=True)
 @click.option("-p", "--pattern", help="Pattern to filter corpus filenames")
 @click.option("-f", "--filenames", help="File path containing a list of filenames")
-@click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
-              metavar="[tabulate_formats]")
+@click.option("-m", "--format", "_format", type=click.Choice(TABLE_FORMATS),
+              metavar="[tabulate_formats|csv]")
 @handle_qc_errors
 def cohesion(codes, settings, coders, recursive_codes, pattern, filenames, _format):
     "Report per-code embedding cohesion (variance explained by first principal component)"
@@ -47,6 +47,5 @@ def cohesion(codes, settings, coders, recursive_codes, pattern, filenames, _form
         [name, info["examples"], info["variance_explained"] or "—", info["suggestion"]]
         for name, info in sorted(result.items())
     ]
-    click.echo(tabulate(rows,
-                        ["Code", "Examples", "Variance Explained", "Suggestion"],
-                        tablefmt=_format))
+    write_table(rows, ["Code", "Examples", "Variance Explained", "Suggestion"],
+                format=_format)

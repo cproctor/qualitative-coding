@@ -569,7 +569,9 @@ Output and formatting
 
 -  ``--format`` ``format`` (``-m``): Formatting style for output table.
    Supported values include “html”, “latex”, “github”, and `many
-   more <https://pypi.org/project/tabulate/>`__.
+   more <https://pypi.org/project/tabulate/>`__, plus ``csv``, which prints
+   comma-separated values to stdout instead of a formatted table. This is
+   useful for piping results to other tools.
 -  ``--expanded`` (``-e``): Show names of codes in expanded form (e.g. 
    “coding_process:grounded”)
 -  ``--outfile`` ``outfile`` (``-o``): Save tabular results to a csv

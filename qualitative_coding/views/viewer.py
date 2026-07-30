@@ -4,7 +4,7 @@ from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
 from qualitative_coding.optional_deps import import_ai_dependency
 from qualitative_coding.autocode.settings import set_autocode_setting
-from tabulate import tabulate
+from qualitative_coding.views.table_output import write_table, is_raw_output
 from collections import defaultdict, Counter
 from pathlib import Path
 from subprocess import run, CalledProcessError
@@ -13,7 +13,6 @@ from random import choice
 from itertools import count
 from textwrap import fill
 import numpy as np
-import csv
 import yaml
 import json
 import re
@@ -90,7 +89,7 @@ class QCCorpusViewer:
         def namer(node):
             if expanded:
                 return node.expanded_name()
-            elif recursive_codes and not outfile:
+            elif recursive_codes and not is_raw_output(format, outfile):
                 return node.indented_name(nodes)
             else:
                 return node.name
@@ -153,15 +152,9 @@ class QCCorpusViewer:
                 cols = ["Code", "Count"]
                 results = [(namer(n), n.count) for n in nodes]
 
-        if outfile:
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(results)
-        else:
-            print(tabulate(results, cols, tablefmt=format))
+        write_table(results, cols, format=format, outfile=outfile)
 
-    def show_document_coders_pivot_table(self, 
+    def show_document_coders_pivot_table(self,
         codes=None,
         recursive=False,
         format=None,
@@ -215,13 +208,7 @@ class QCCorpusViewer:
             results.append(row)
         totals = ["Total"] + [sum(col) for col in zip(*[r[1:] for r in results])]
         results.append(totals)
-        if outfile:
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(results)
-        else:
-            print(tabulate(results, cols, tablefmt=format))
+        write_table(results, cols, format=format, outfile=outfile)
 
 
     def crosstab(self, codes, 
@@ -260,16 +247,11 @@ class QCCorpusViewer:
         else:
             data = [[code, *row] for code, row in zip(labels, m)]
             cols = ["code", *labels]
-        if outfile:
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(data)
-        else:
+        if not is_raw_output(format, outfile):
             index_cols = 2 if compact else 1
             if not probs:
                 data = self.mask_lower_triangle(data, index_cols)
-            print(tabulate(data, cols, tablefmt=format, stralign="right"))
+        write_table(data, cols, format=format, outfile=outfile, stralign="right")
 
     def mask_lower_triangle(self, data, num_index_cols):
         "Replaces values in the lower triangle of a 2d Python list with ''"
@@ -310,13 +292,7 @@ class QCCorpusViewer:
         data = [(count, *values) for values, count in counts.items() if valid(count)]
         cols = ("count", *labels)
 
-        if outfile:
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(data)
-        else:
-            print(tabulate(data, cols, tablefmt=format))
+        write_table(data, cols, format=format, outfile=outfile)
 
     def report_files_matching_pattern(self, pattern, file_list=None):
         with self.corpus.session():
@@ -997,13 +973,7 @@ class QCCorpusViewer:
                 results.append([node.name, round(p, 3), round(r, 3), round(f, 3),
                                  examples, len(all_units)])
 
-        if outfile:
-            with open(outfile, 'w') as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(results)
-        else:
-            print(tabulate(results, cols, tablefmt=format))
+        write_table(results, cols, format=format, outfile=outfile)
 
     def _show_agreement_cv(self, codes=None, coders=None, depth=None,
                            pattern=None, file_list=None, format=None,
@@ -1088,13 +1058,7 @@ class QCCorpusViewer:
             except Exception as e:
                 results.append([code_name, n_pos, f"error: {e}", "", ""])
 
-        if outfile:
-            with open(outfile, "w") as fh:
-                writer = csv.writer(fh)
-                writer.writerow(cols)
-                writer.writerows(results)
-        else:
-            print(tabulate(results, cols, tablefmt=format))
+        write_table(results, cols, format=format, outfile=outfile)
 
     def merge_ranges(self, ranges, clamp=None):
         "Overlapping ranges? Let's fix that. Optionally supply clamp=[0, 100]"

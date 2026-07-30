@@ -1,10 +1,10 @@
 import click
 import os
-from tabulate import tabulate, tabulate_formats
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
+from qualitative_coding.views.table_output import write_table, TABLE_FORMATS
 
 @click.command()
 @click.argument("codes", nargs=-1)
@@ -14,8 +14,8 @@ from qualitative_coding.logs import configure_logger
               help="Minimum cross-classifier score to report (default: 0.5)")
 @click.option("-p", "--pattern", help="Pattern to filter corpus filenames")
 @click.option("-f", "--filenames", help="File path containing a list of filenames")
-@click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
-              metavar="[tabulate_formats]")
+@click.option("-m", "--format", "_format", type=click.Choice(TABLE_FORMATS),
+              metavar="[tabulate_formats|csv]")
 @handle_qc_errors
 def similar(codes, settings, coders, threshold, pattern, filenames, _format):
     "Find pairs of codes whose classifiers generalize to each other's examples"
@@ -51,6 +51,5 @@ def similar(codes, settings, coders, threshold, pattern, filenames, _format):
         click.echo(f"No code pairs found with cross-classifier score >= {threshold}.")
         return
 
-    click.echo(tabulate(pairs,
-                        ["Code A", "Code B", "P(B | A examples)", "P(A | B examples)"],
-                        tablefmt=_format))
+    write_table(pairs, ["Code A", "Code B", "P(B | A examples)", "P(A | B examples)"],
+                format=_format)

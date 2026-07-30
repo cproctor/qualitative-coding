@@ -6,7 +6,7 @@ from qualitative_coding.cli.decorators import handle_qc_errors
 from qualitative_coding.helpers import read_file_list
 from qualitative_coding.logs import configure_logger
 from qualitative_coding.exceptions import IncompatibleOptions
-from tabulate import tabulate_formats
+from qualitative_coding.views.table_output import TABLE_FORMATS
 
 @click.command(name="agreement")
 @click.argument("codes", nargs=-1)
@@ -23,8 +23,8 @@ from tabulate import tabulate_formats
         type=click.Choice(['line', 'paragraph', 'document']))
 @click.option("-p", "--pattern", help="Pattern to filter corpus filenames")
 @click.option("-f", "--filenames", help="File path containing a list of filenames to use")
-@click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
-        metavar="[tabulate_formats]", help="Output format")
+@click.option("-m", "--format", "_format", type=click.Choice(TABLE_FORMATS),
+        metavar="[tabulate_formats|csv]", help="Output format")
 @click.option("-o", "--outfile", help="Filename for CSV export")
 @handle_qc_errors
 def agreement(codes, settings, coders, metric, folds, recursive_codes, depth, unit, pattern,

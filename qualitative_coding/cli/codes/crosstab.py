@@ -2,7 +2,7 @@ import click
 import os
 import yaml
 from pathlib import Path
-from tabulate import tabulate_formats
+from qualitative_coding.views.table_output import TABLE_FORMATS
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.views.viewer import QCCorpusViewer
 from qualitative_coding.cli.decorators import handle_qc_errors
@@ -27,8 +27,8 @@ from qualitative_coding.logs import configure_logger
         help="Counts for codes include child codes")
 @click.option("-e", "--expanded", is_flag=True,
         help="Show names of codes in expanded form")
-@click.option("-m", "--format", "_format", type=click.Choice(tabulate_formats),
-        metavar="[tabulate.tabulate_formats]", help="Output format.")
+@click.option("-m", "--format", "_format", type=click.Choice(TABLE_FORMATS),
+        metavar="[tabulate.tabulate_formats|csv]", help="Output format.")
 @click.option("-o", "--outfile", help="Filename for CSV export")
 @click.option("-0", "--probs", is_flag=True, 
         help="Probabilities instead of counts")
