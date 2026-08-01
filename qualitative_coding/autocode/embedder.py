@@ -125,13 +125,12 @@ class CorpusEmbedder:
         """One embedding per paragraph, indexed by paragraph start line."""
         from qualitative_coding.helpers import iter_paragraph_lines
         texts, line_numbers = [], []
-        with open(corpus_path) as fh:
-            for p_start, p_end in iter_paragraph_lines(fh):
-                text = "\n".join(lines[p_start:p_end])
-                if not text.strip():
-                    continue
-                texts.append(text)
-                line_numbers.append(p_start)
+        for p_start, p_end in iter_paragraph_lines(lines):
+            text = "\n".join(lines[p_start:p_end])
+            if not text.strip():
+                continue
+            texts.append(text)
+            line_numbers.append(p_start)
         return texts, line_numbers
 
     def _chunks_document(self, lines):

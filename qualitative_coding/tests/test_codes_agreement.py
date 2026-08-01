@@ -74,6 +74,38 @@ class TestAgreementUnits(QCTestCase):
         self.assertIn("--unit is not supported with --metric cv", result.stderr)
 
 
+class TestAgreementFormFeed(QCTestCase):
+    """Regression test: show_agreement's line-unit domain used to be built with
+    `sum(1 for _ in open(path))`, plain file iteration that (unlike str.splitlines(), which is what
+    CodedLine.line numbers are actually assigned against everywhere else) does not treat '\\x0c' (form
+    feed) as a line break. On a document containing one, this undercounted the domain, silently
+    dropping any coded line past the form feed from the reliability computation and undercounting the
+    reported "Units" total.
+    """
+    def setUp(self):
+        super().setUp()
+        # Plain '\n'-only iteration sees 2 lines here ("First line\x0cSecond piece\n" as one line,
+        # "Third real line\n" as the second); str.splitlines() correctly sees 3.
+        (self.testpath / "form_feed.txt").write_text(
+            "First line\x0cSecond piece\nThird real line\n"
+        )
+        self.run_in_testpath("qc corpus import form_feed.txt --importer verbatim")
+        with self.corpus.session():
+            self.corpus.update_coded_lines("form_feed.txt", "chris", [
+                {"line": 2, "code_id": "pace"},
+            ])
+            self.corpus.update_coded_lines("form_feed.txt", "varun", [
+                {"line": 2, "code_id": "pace"},
+            ])
+
+    def test_line_unit_domain_includes_line_after_form_feed(self):
+        result = self.run_in_testpath(
+            "qc codes agreement pace -c chris -c varun --metric alpha -n line"
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("3", result.stdout.splitlines()[-1].split())
+
+
 class TestAgreement(QCTestCase):
     def setUp(self):
         super().setUp()

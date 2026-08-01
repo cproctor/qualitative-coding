@@ -41,6 +41,14 @@ class TestImport(QCTestCase):
         self.run_in_testpath("qc corpus import chapters/../macbeth.txt --importer verbatim")
         self.assertFileImported("macbeth.txt")
 
+    def test_import_empty_file(self):
+        # Regression test: iter_paragraph_lines used to raise NameError on a 0-line file (the
+        # loop variable `i` was never bound), crashing import of a genuinely empty document.
+        (self.testpath / "empty.txt").write_text("")
+        result = self.run_in_testpath("qc corpus import empty.txt --importer verbatim")
+        self.assertEqual(result.returncode, 0)
+        self.assertFileImported("empty.txt")
+
     def test_import_from_dir_with_spaces(self):
         (self.testpath / "chap ters").mkdir()
         (self.testpath / "chap ters/one.txt").write_text("one")

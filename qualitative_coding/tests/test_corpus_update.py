@@ -1,5 +1,19 @@
+import json
+
 from tests.fixtures import QCTestCase
 from qualitative_coding.corpus import QCCorpus
+
+PARAGRAPHS_DOC = """Paragraph one line one.
+
+Paragraph two line one.
+"""
+
+PARAGRAPHS_DOC_WITH_NEW_FIRST_PARAGRAPH = """New paragraph zero.
+
+Paragraph one line one.
+
+Paragraph two line one.
+"""
 
 MACBETH_IMPROVED = """Tomorrow, and tomorrow, and tomorrow,
 Tomorrow, and tomorrow, and tomorrow,
@@ -51,4 +65,33 @@ class TestCorpusUpdate(QCTestCase):
         self.assertNotEqual(old_hash, new_hash)
 
 
+class TestCorpusUpdateReindexesParagraphs(QCTestCase):
+    """Regression test: qc corpus update used to reindex CodedLine line numbers but never
+    rebuild the "paragraphs" DocumentIndex's Location rows, leaving them stale relative to the
+    new text. An edit that inserts a whole new paragraph before existing text shifts every later
+    paragraph's line range; against the stale (unrebuilt) index, the reindexed coded line's new
+    line number could fall outside every existing Location, and get_paragraph would raise QCError
+    -- or, in cases where it accidentally still matched some Location, return the wrong
+    paragraph's text.
+    """
+    def setUp(self):
+        super().setUp()
+        (self.testpath / "doc.txt").write_text(PARAGRAPHS_DOC)
+        self.run_in_testpath("qc corpus import doc.txt --importer verbatim")
+        with self.corpus.session():
+            # Line 2 ("Paragraph two line one.") is the second (and last) paragraph.
+            self.corpus.update_coded_lines("doc.txt", "chris", [
+                {"line": 2, "code_id": "light"},
+            ])
+        (self.testpath / "doc_updated.txt").write_text(PARAGRAPHS_DOC_WITH_NEW_FIRST_PARAGRAPH)
 
+    def test_update_rebuilds_stale_paragraph_index(self):
+        result = self.run_in_testpath("qc corpus update corpus/doc.txt --new doc_updated.txt")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        find_result = self.run_in_testpath("qc codes find light -n paragraph --json")
+        self.assertEqual(find_result.returncode, 0, find_result.stderr)
+        records = json.loads(find_result.stdout)
+        self.assertEqual(len(records), 1)
+        self.assertIn("Paragraph two line one.", records[0]["text"])
+        self.assertNotIn("New paragraph zero.", records[0]["text"])

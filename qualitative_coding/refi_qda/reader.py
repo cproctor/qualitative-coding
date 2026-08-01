@@ -1,5 +1,6 @@
 from qualitative_coding.exceptions import QCError
 from qualitative_coding.corpus import QCCorpus
+from qualitative_coding.helpers import read_lines
 from qualitative_coding.tree_node import TreeNode
 from xmlschema.validators.exceptions import XMLSchemaValidationError
 from collections import defaultdict
@@ -172,15 +173,14 @@ class REFIQDAReader:
     def line_positions(self, corpus_file_path):
         """returns a list of (start, end) character positions for lines in doc.
         """
-        text = (self.corpus.corpus_dir / corpus_file_path).read_text()
-        lines = []
+        positions = []
         index = 0
-        for line in text:
+        for line in read_lines(self.corpus.corpus_dir / corpus_file_path):
             start = index
             end = index + len(line)
-            lines.append((start, end))
+            positions.append((start, end))
             index += len(line)
-        return lines
+        return positions
 
     def print_tree(self, project_path):
         result = run("tree", cwd=project_path, capture_output=True, text=True, shell=True)

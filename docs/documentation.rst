@@ -217,11 +217,12 @@ document. Or recursively remove all documents in a directory with
 corpus update
 ~~~~~~~~~~~~~
 
-Update a document in the corpus. When a document changes, ``qc`` 
-needs to update the positions of all existing coded lines, which requires
-access to the old version and the updated version. Documents
-can be updated using two strategies. First, provide a new version 
-of the document, stored outside of the corpus:
+Update a document in the corpus. When a document changes, ``qc``
+needs to update the positions of all existing coded lines and
+paragraph boundaries, which requires access to the old version and
+the updated version. Documents can be updated using two strategies.
+First, provide a new version of the document, stored outside of the
+corpus:
 
 .. code-block:: console
 
@@ -559,6 +560,23 @@ Filter code selection
    ``settings.yaml`` is used (default: ``line``). Setting ``unit``
    in ``settings.yaml`` also controls how embeddings are generated
    for autocode (see :ref:`autocode`).
+
+   A line is considered "blank" (and so delimits a paragraph) if it is
+   empty or contains only whitespace, using Python's definition of
+   whitespace — this includes ordinary spaces/tabs as well as less
+   common characters such as non-breaking spaces or form feeds, but not
+   characters that merely *look* blank without being whitespace (e.g. a
+   zero-width space). Consecutive blank lines are collapsed: they never
+   produce empty paragraphs between them. A blank line itself belongs to
+   the paragraph that precedes it, so paragraphs always partition a
+   document's lines completely, with no lines excluded; a document
+   consisting entirely of blank lines (or no lines at all) is a single
+   paragraph with no codeable content. Line numbers — and therefore
+   paragraph boundaries — are computed the same way everywhere in ``qc``
+   using Python's ``str.splitlines()`` line-breaking rules, so unusual
+   line-break characters that can appear in PDF-extracted text (such as
+   form feeds) are handled consistently rather than desyncing line
+   counts between coding and reporting.
 -  ``--recursive-counts`` (``-a``): When counting codes, also count
    instances of codes’ children. In contrast to ``--recursive-codes``,
    which controls which codes will be reported, this option controls how

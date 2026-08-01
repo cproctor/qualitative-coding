@@ -1,5 +1,6 @@
 from qualitative_coding.corpus import QCCorpus
 from qualitative_coding.exceptions import QCError, InvalidParameter
+from qualitative_coding.helpers import read_lines
 from tempfile import TemporaryDirectory
 from shutil import copyfile
 from pathlib import Path
@@ -156,15 +157,14 @@ class REFIQDAWriter:
     def line_positions(self, corpus_file_path):
         """returns a list of (start, end) character positions for lines in doc.
         """
-        lines = []
+        positions = []
         index = 0
-        with (self.corpus.corpus_dir / corpus_file_path).open() as fh:
-            for line in fh:
-                start = index
-                end = index + len(line)
-                lines.append((start, end))
-                index += len(line)
-        return lines
+        for line in read_lines(self.corpus.corpus_dir / corpus_file_path):
+            start = index
+            end = index + len(line)
+            positions.append((start, end))
+            index += len(line)
+        return positions
 
     def coder_guid(self, coder):
         return self.guid(coder)

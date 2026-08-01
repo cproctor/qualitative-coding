@@ -49,6 +49,7 @@ from qualitative_coding.editors import editors
 from qualitative_coding.media_importers import media_importers
 from qualitative_coding.helpers import (
     iter_paragraph_lines,
+    read_lines,
     read_settings,
 )
 from qualitative_coding.diff import (
@@ -490,13 +491,12 @@ class QCCorpus:
             document=document,
         )
         self.get_session().add(index)
-        with open(corpus_path) as fh:
-            for p_start, p_end in iter_paragraph_lines(fh):
-                self.get_session().add(Location(
-                    start_line=p_start, 
-                    end_line=p_end,
-                    document_index=index,
-                ))
+        for p_start, p_end in iter_paragraph_lines(read_lines(corpus_path)):
+            self.get_session().add(Location(
+                start_line=p_start,
+                end_line=p_end,
+                document_index=index,
+            ))
         self.get_session().commit()
 
     def get_updated_coded_lines(self, file_path, diff):
@@ -929,17 +929,56 @@ class QCCorpus:
             corpus_path = str(self.get_corpus_path(file_path))
             coded_lines = self.get_coded_lines(file_list=[corpus_path])
             reindexed_coded_lines = reindex_coded_lines(coded_lines, diff)
+
+            # Existing CodedLine rows must be deleted while their current Locations still exist
+            # -- a CodedLine's only path to "which document is this?" is via its Location's
+            # DocumentIndex, so once reindex_document_indices below rebuilds (deletes and
+            # recreates) that document's Locations, any CodedLine still pointing at a deleted
+            # Location becomes unreachable through that join, but its row isn't gone: it would
+            # look like a fresh line to update_coded_lines below and get duplicated rather than
+            # replaced. Deleting them all first, then recreating from reindexed_coded_lines,
+            # avoids that.
+            existing_query = self.filter_query_by_document(select(CodedLine), file_list=[corpus_path])
+            for cl in self.get_session().execute(existing_query).scalars().unique().all():
+                self.get_session().delete(cl)
+            self.get_session().commit()
+
+            if new:
+                (self.corpus_dir / corpus_path).write_text(Path(new).read_text())
+
+            self.reindex_document_indices(self.corpus_dir / corpus_path)
+
             coded_lines_by_file_by_coder = defaultdict(lambda: defaultdict(list))
             for code, coder, line, file_path in reindexed_coded_lines:
                 coded_lines_by_file_by_coder[file_path][coder].append({
-                    'line': line, 
+                    'line': line,
                     'code_id': code,
                 })
             for file_path, lines_by_coder in coded_lines_by_file_by_coder.items():
                 for coder, lines in lines_by_coder.items():
                     self.update_coded_lines(file_path, coder, lines)
-            if new:
-                (self.corpus_dir / corpus_path).write_text(Path(new).read_text())
             doc = self.get_document(self.corpus_dir / corpus_path)
             doc.file_hash = self.hash_file(self.corpus_dir / corpus_path)
             self.get_session().commit()
+
+    def reindex_document_indices(self, corpus_path):
+        """Rebuilds every DocumentIndex's Location rows for a document from its current on-disk
+        text. Must be called only after any pre-existing CodedLine rows for the document have
+        already been deleted (see update_document) -- it deletes and recreates Location rows,
+        which silently drops any still-attached CodedLine's association to them without deleting
+        the CodedLine row itself.
+        """
+        document = self.get_document(corpus_path)
+        lines = read_lines(self.corpus_dir / document.file_path)
+        for index in list(document.indices):
+            if index.name != "paragraphs":
+                continue
+            for location in list(index.locations):
+                self.get_session().delete(location)
+            for start, end in iter_paragraph_lines(lines):
+                self.get_session().add(Location(
+                    start_line=start,
+                    end_line=end,
+                    document_index=index,
+                ))
+        self.get_session().commit()

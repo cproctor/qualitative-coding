@@ -1,4 +1,3 @@
-from textwrap import fill
 from pathlib import Path
 from subprocess import run
 from qualitative_coding.exceptions import QCError
@@ -23,10 +22,20 @@ def read_file_list(filename):
     if filename:
         return Path(filename).read_text().split("\n")
 
-def iter_paragraph_lines(fh):
+def read_lines(path):
+    """Splits corpus text into lines the same way everywhere in qc: str.splitlines(), which (unlike
+    plain file iteration) treats '\\x0c' and other non-'\\n' line-break characters as breaks, matching
+    the line numbers coded lines are actually stored under.
+    """
+    return Path(path).read_text().splitlines(keepends=True)
+
+def iter_paragraph_lines(lines):
+    "Given a list of lines (as from read_lines), yields (start, end) line-index ranges for paragraphs."
+    if not lines:
+        return
     p_start = 0
     in_whitespace = False
-    for i, line in enumerate(fh):
+    for i, line in enumerate(lines):
         if line.strip() == "":
             in_whitespace = True
         elif in_whitespace:
@@ -53,22 +62,6 @@ def merge_ranges(ranges, clamp=None):
         lo, hi = clamp
         results = [range(max(lo, r.start), min(hi, r.stop)) for r in results]
     return results
-
-def prepare_corpus_text(text, width=80, preformatted=False):
-    "Splits corpus text at blank lines and wraps it."
-    if preformatted:
-        outlines = []
-        lines = text.split("\n")
-        for line in lines:
-            while True:
-                outlines.append(line[:width])
-                if len(line) < 80:
-                    break
-                line = line[width:]
-        return "\n".join(outlines)
-    else:
-        paragraphs = text.split("\n\n")
-        return "\n\n".join(fill(p, width=width) for p in paragraphs)
 
 def prompt_for_choice(prompt, options):
     "Asks for a prompt, returns an index"

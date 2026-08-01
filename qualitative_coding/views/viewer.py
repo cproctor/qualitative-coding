@@ -1,5 +1,5 @@
 from qualitative_coding.tree_node import TreeNode
-from qualitative_coding.helpers import prompt_for_choice
+from qualitative_coding.helpers import prompt_for_choice, read_lines
 from qualitative_coding.exceptions import QCError, CodeFileParseError
 from qualitative_coding.editors import editors
 from qualitative_coding.optional_deps import import_ai_dependency
@@ -337,8 +337,7 @@ class QCCorpusViewer:
                 doc_code_counts[doc_path] += 1
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
-                with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = fh.read().splitlines(keepends=True)
+                lines = read_lines(self.corpus.corpus_dir / doc_path)
                 ranges = self.merge_ranges(
                     [range(n-before, n+after+1) for n in coded_lines.keys()], 
                     clamp=[0, len(lines)]
@@ -368,8 +367,7 @@ class QCCorpusViewer:
             for code, coder, doc_path, para_start, para_end in coded_paragraphs:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
-                with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = fh.read().splitlines(keepends=True)
+                lines = read_lines(self.corpus.corpus_dir / doc_path)
                 para_code_count = sum(len(code_set) for code_set in coded_paras.values())
                 print(f"\n{doc_path} ({para_code_count})")
                 print("=" * text_width)
@@ -461,8 +459,7 @@ class QCCorpusViewer:
                 doc_code_counts[doc_path] += 1
                 doc_coded_lines[doc_path][line_num].add(code)
             for doc_path, coded_lines in doc_coded_lines.items():
-                with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = fh.read().splitlines(keepends=True)
+                lines = read_lines(self.corpus.corpus_dir / doc_path)
                 for line, codes in coded_lines.items():
                     for code in codes:
                         line_start = max(0, line - before)
@@ -482,8 +479,7 @@ class QCCorpusViewer:
             for code, coder, doc_path, para_start, para_end in coded_paragraphs:
                 doc_coded_paras[doc_path][(para_start, para_end)].add(code)
             for doc_path, coded_paras in doc_coded_paras.items():
-                with open(self.corpus.corpus_dir / doc_path) as fh:
-                    lines = fh.read().splitlines(keepends=True)
+                lines = read_lines(self.corpus.corpus_dir / doc_path)
                 for (para_start, para_end), codes in coded_paras.items():
                     for code in codes:
                         records.append({
@@ -874,7 +870,7 @@ class QCCorpusViewer:
                     (doc.file_path, line_num)
                     for doc in self.corpus.get_documents(pattern=pattern, file_list=file_list)
                     for line_num in range(
-                        sum(1 for _ in open(self.corpus.corpus_dir / doc.file_path))
+                        len(read_lines(self.corpus.corpus_dir / doc.file_path))
                     )
                 )
             elif unit == "paragraph":

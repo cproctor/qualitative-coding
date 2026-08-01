@@ -2,6 +2,7 @@ import re
 from more_itertools import peekable
 from difflib import unified_diff
 from subprocess import run
+from qualitative_coding.helpers import read_lines
 
 def get_git_diff(path):
     "Gits a diff between file state and HEAD"
@@ -10,10 +11,8 @@ def get_git_diff(path):
 
 def get_diff(path0, path1):
     "Gets a diff between two file paths"
-    with open(path0) as fh:
-        doc0 = [line for line in fh]
-    with open(path1) as fh:
-        doc1 = [line for line in fh]
+    doc0 = read_lines(path0)
+    doc1 = read_lines(path1)
     return ''.join(unified_diff(doc0, doc1))
 
 def reindex_coded_lines(coded_lines, diff):
